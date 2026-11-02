@@ -1,0 +1,15 @@
+{
+  "name": "stillwater",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/server",
+    "build": "npm run build --workspace apps/server",
+    "start": "npm run start --workspace apps/server",
+    "check": "node scripts/check-original.mjs && node scripts/check-contrast.mjs"
+  }
+}
