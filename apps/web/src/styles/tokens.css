@@ -1,0 +1,142 @@
+/*
+ * Stillwater design tokens — the calm visual system.
+ * Owned by the designer (ARCHITECTURE.md §9). Every colour, space, radius,
+ * type size, shadow and motion value in the app comes from here. No
+ * component should hard-code a colour, a pixel size or a transition time.
+ *
+ * Theme: set `data-theme="light"` or `data-theme="dark"` on <html>.
+ * The app picks the system setting on first load and remembers the user's
+ * choice after that (see apps/web — not fixed here).
+ *
+ * Checked by scripts/check-contrast.mjs: every text/background pair below
+ * must clear WCAG AA (4.5:1 normal text, 3:1 large text/UI). Change a
+ * colour, re-run `node scripts/check-contrast.mjs`.
+ */
+
+:root {
+  /* ---- Colour: light (default) ---- */
+  --color-bg: #faf9f7;
+  --color-bg-subtle: #f3f1ed;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f5f3ef;
+  --color-border: #e3dfd8;
+  --color-border-strong: #cdc6bb;
+
+  --color-text: #2b2b28;
+  --color-text-muted: #635f58;
+  --color-text-faint: #8d8880; /* large text / icons / UI chrome only, not body text */
+  --color-text-on-accent: #ffffff;
+
+  --color-accent: #3f6f68;
+  --color-accent-strong: #2f5750;
+  --color-accent-soft: #e4ede9;
+
+  --color-success: #3c6b4b;
+  --color-success-soft: #e5efe6;
+  --color-warning: #7d5f26;
+  --color-warning-soft: #f3ead7;
+  --color-danger: #9a3f37;
+  --color-danger-soft: #f3e3e0;
+
+  --color-focus-ring: #3f6f68;
+  --color-overlay: rgba(43, 43, 40, 0.32);
+
+  /* ---- Spacing scale: 4px base, generous steps ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* ---- Radius: soft, never sharp ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* ---- Type scale ---- */
+  --font-sans: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-md: 18px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 30px;
+  --text-3xl: 36px;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ---- Shadow: soft and shallow, no hard drop shadows ---- */
+  --shadow-sm: 0 1px 2px rgba(43, 43, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(43, 43, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(43, 43, 40, 0.10);
+
+  /* ---- Motion: short, quiet, eased ---- */
+  --motion-instant: 80ms;
+  --motion-fast: 140ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --ease-standard: cubic-bezier(0.3, 0, 0.1, 1); /* quick start, soft settle */
+  --ease-enter: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+[data-theme='dark'] {
+  --color-bg: #1c1d1c;
+  --color-bg-subtle: #212221;
+  --color-surface: #262726;
+  --color-surface-sunken: #1f201f;
+  --color-border: #3a3b38;
+  --color-border-strong: #4c4d49;
+
+  --color-text: #ebe8e2;
+  --color-text-muted: #b6b1a8;
+  --color-text-faint: #8d8880; /* large text / icons / UI chrome only, not body text */
+  --color-text-on-accent: #0f1413;
+
+  --color-accent: #8fc0b6;
+  --color-accent-strong: #aed4cb;
+  --color-accent-soft: #2a3733;
+
+  --color-success: #92c29f;
+  --color-success-soft: #273229;
+  --color-warning: #d9b877;
+  --color-warning-soft: #352c1c;
+  --color-danger: #e0988d;
+  --color-danger-soft: #3a2621;
+
+  --color-focus-ring: #8fc0b6;
+  --color-overlay: rgba(0, 0, 0, 0.5);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.44);
+}
+
+/*
+ * Motion rule: every transition/animation in the app must use a
+ * --motion-* duration and an --ease-* curve from above, and must be
+ * skippable. This block is the one place that enforces the skip —
+ * components don't need their own prefers-reduced-motion checks.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
