@@ -1,0 +1,281 @@
+# Stillwater — Architecture
+
+Stillwater is a self-hosted team wiki: spaces, nested pages, a block editor,
+search, page history and AI help, with a calm, soft look in light and dark mode.
+
+This file records the decisions that are expensive to undo. Change them only
+through the team lead. Everything not fixed here is the builder's call.
+
+---
+
+## 1. Name and originality
+
+- The product name is **Stillwater**. Package scope is `@stillwater/*`.
+  Database, cookie, env and container names use `stillwater` / `STILLWATER_`.
+- Stillwater works like the established wiki tools, but the name, words, look,
+  icons, colours and code are our own. No other company's product names, logos,
+  icons, colours, fonts, copy or code are used anywhere in the repo.
+- `node scripts/check-original.mjs` enforces this. It fails on banned product or
+  company names, their design-kit packages, and their signature brand colours,
+  in file contents and file names. It runs in `npm run check` and in CI.
+  The only files it skips are the owner's brief (`PROJECT.md`), the agent
+  folder (`.claude/`) and generated output (`node_modules`, `dist`, lockfiles…).
+
+## 2. Repository layout — TypeScript monorepo
+
+npm workspaces, Node 22, TypeScript `strict` everywhere, ES modules.
+
+```
+apps/
+  server/        Fastify API, Drizzle schema + migrations, auth, search, AI, file storage
+  web/           React + Vite single-page app (Tiptap editor, routing, UI)
+packages/
+  shared/        zod schemas and TS types used by both sides (API contracts, roles)
+  editor-schema/ the Tiptap extension list = THE document schema (used by web AND server)
+e2e/             Playwright tests (run against the docker compose stack)
+scripts/         check-original.mjs, smoke.sh, dev helpers
+docker/          Dockerfile, entrypoint
+docker-compose.yml, .env.example, install.sh, INSTALL.md, ARCHITECTURE.md
+```
+
+- In production the server serves the built web app as static files, so the
+  whole product is **one container + Postgres**.
+- Root scripts (the contract every role relies on):
+  - `npm run dev` — Postgres from compose + server and web in watch mode
+  - `npm run build` — builds all workspaces
+  - `npm run check` — typecheck, lint, unit/integration tests, `check-original`
+  - `npm run e2e` — Playwright against a running stack (AI on the stub)
+
+## 3. Editor and document model (Yjs-ready)
+
+**Editor:** Tiptap 2 on ProseMirror, in `apps/web`.
+
+**One schema, shared.** `packages/editor-schema` exports `getExtensions()`, the
+single list of Tiptap nodes and marks. The web editor, the server-side text
+extractor and (later) the co-editing server all import it. A node type that is
+not in this package does not exist.
+
+**Stored shape.** A page body is ProseMirror JSON (`editor.getJSON()`), stored in
+`pages.doc` as `jsonb`. Rules that keep it ready for Yjs:
+
+1. **Schema-only content.** The document holds only what the schema defines:
+   node types, attrs and marks. No UI state, no computed values, no HTML strings.
+2. **Every top-level block has a stable `id` attr** (UUID, added by a global
+   attribute extension, kept on copy-split by regenerating). Used for history
+   diffs, deep links and comments later; Yjs keeps attrs as-is.
+3. **Embeds are references, never blobs.** Images, files and video store an
+   `attachmentId` (or an allow-listed external URL) in attrs. No base64 in the
+   document. Link previews store the URL; the preview card data lives in the
+   `link_previews` table and is fetched on render.
+4. **Tiptap's own History extension stays separate** from document storage
+   (`StarterKit.configure({ history })`), so it can be swapped for the Yjs undo
+   manager by flipping one flag.
+5. **Saving goes through one function**, `savePage(pageId, doc, baseVersion)`,
+   on both sides. Today the client autosaves (debounced ~1 s) the full JSON with
+   the version it started from; the server rejects a stale `baseVersion` with
+   409 and the client offers reload. Nothing else writes `pages.doc`.
+
+**How co-editing is added later, without a rewrite:**
+add `@tiptap/extension-collaboration` + `y-prosemirror` on the client, a
+Hocuspocus-style WebSocket endpoint on the server that loads/saves a Y.Doc into
+the reserved nullable column `pages.ydoc_state bytea`, and have that server call
+the same `savePage` (JSON derived from the Y.Doc via `TiptapTransformer`) on a
+debounce, so search, history and AI keep working unchanged. The schema package,
+the JSON column and the history table do not change.
+
+**Blocks we ship:** paragraph, headings 1–3, bullet/numbered/task lists,
+quote, divider, callout, code block (syntax highlight via lowlight), table,
+image, file, video (upload or allow-listed YouTube/Vimeo), link preview card,
+mention of a page. All reachable from a `/` slash menu and from Markdown
+shortcuts.
+
+## 4. Storage — Postgres + Drizzle
+
+- Postgres 16, run by `docker-compose.yml`. Single `DATABASE_URL`.
+- Drizzle ORM; schema in `apps/server/src/db/schema.ts`; SQL migrations
+  generated by `drizzle-kit generate` into `apps/server/drizzle/` and committed.
+  **Migrations run automatically on server start** (`migrate()` before listen).
+  Never edit an applied migration; add a new one.
+- IDs are UUIDs (`gen_random_uuid()`). Timestamps are `timestamptz`.
+
+Core tables:
+
+| table | key columns |
+|---|---|
+| `users` | id, email (unique, lower-cased), name, password_hash, role (`admin`/`editor`/`viewer`), created_at, disabled_at |
+| `sessions` | id, user_id, token_hash (sha256), expires_at, created_at, last_seen_at |
+| `spaces` | id, key (short slug, unique), name, description, visibility (`open`/`restricted`), default_role, created_by |
+| `space_members` | space_id, user_id, role (`admin`/`editor`/`viewer`) — PK (space_id, user_id) |
+| `pages` | id, space_id, parent_id (nullable, same space), position (fractional-index text), title, doc jsonb, doc_text text, search tsvector (generated), version int, ydoc_state bytea null, created_by, updated_by, created_at, updated_at, deleted_at |
+| `page_versions` | id, page_id, version, title, doc jsonb, author_id, created_at, restored_from (nullable) |
+| `attachments` | id, space_id, page_id, filename, mime, size, storage_key, created_by, created_at |
+| `link_previews` | url (PK), title, description, image_url, site_name, fetched_at |
+
+- **Page tree:** adjacency list (`parent_id`) + `position` fractional index for
+  ordering siblings. Moves check for cycles. Breadcrumbs and subtree queries use
+  recursive CTEs. Delete is soft (`deleted_at`) and cascades to children.
+- **Files:** a `FileStorage` interface (`put`, `get`, `delete`). Default is local
+  disk at `/data/uploads` on a named volume; S3-compatible can be added later.
+  Files are served only through an authenticated route that checks the
+  attachment's space permission. Size limit `MAX_UPLOAD_MB` (default 25).
+- **Link previews:** server-side fetch of Open Graph tags, 5 s timeout, 1 MB cap,
+  refuses private/loopback/link-local addresses (SSRF guard), cached in
+  `link_previews`.
+
+## 5. Page history
+
+- Every save bumps `pages.version`. A row is written to `page_versions` when the
+  author changes or the last snapshot is older than 5 minutes; otherwise the
+  latest snapshot by the same author is updated in place. So history is
+  readable, not one row per keystroke.
+- **Restore never deletes.** Restoring version N writes its title and doc as a
+  new current version (with `restored_from = N`) through `savePage`. Every
+  earlier version stays restorable.
+- The history view shows author, time and a block-level diff (using block ids).
+
+## 6. Search — Postgres full-text
+
+- On every save the server walks the doc with `packages/editor-schema` and
+  writes plain text to `pages.doc_text`.
+- `pages.search` is a generated column:
+  `setweight(to_tsvector('english', title), 'A') || setweight(to_tsvector('english', doc_text), 'B')`
+  with a GIN index. Queries use `websearch_to_tsquery('english', q)`, ranked by
+  `ts_rank_cd`, snippets by `ts_headline`. Title prefix matches are added for
+  the quick-find box.
+- **Permission filter is part of the SQL**, via the one shared helper
+  `visibleSpaceIds(user)` (see §7). Search never returns a page the user cannot
+  open, and deleted pages are excluded.
+
+## 7. Auth, roles and space permissions
+
+- **Accounts:** email + password. Passwords hashed with argon2id
+  (`@node-rs/argon2`). Login is rate-limited per IP and per email.
+- **Sessions:** server-side, in Postgres. The browser holds an opaque random
+  token in an `httpOnly`, `SameSite=Lax`, `Secure`-when-HTTPS cookie
+  (`stillwater_session`); only its sha256 is stored. 30-day sliding expiry.
+  Logout deletes the row.
+- **CSRF:** `SameSite=Lax` plus an `Origin` check on every non-GET request.
+- **Sign-up:** the first account becomes instance **admin**. After that sign-up
+  is open (new users are `editor`) unless `ALLOW_SIGNUP=false`, in which case
+  admins invite/create users.
+
+**Roles.** Two levels, one rule.
+
+- Instance role on the user: `admin` (manages users and every space),
+  `editor` (may create spaces), `viewer` (read-only everywhere).
+- Space role, per space: `admin` (settings, members, delete), `editor`
+  (create/edit/move/delete pages, upload), `viewer` (read, search, AI on what
+  they can read).
+- A space is `open` (every signed-in user gets the space's `default_role`,
+  usually viewer) or `restricted` (members only). The creator becomes space admin.
+
+**Effective role** in a space, computed in exactly one place,
+`apps/server/src/auth/permissions.ts`:
+
+```
+if user.role == admin            -> space admin
+base = membership.role ?? (space.visibility == open ? space.default_role : none)
+if user.role == viewer           -> min(base, viewer)
+else                             -> base
+```
+
+Every route calls `requireSpaceRole(user, spaceId, needed)`. List, search, AI
+retrieval and file download all use the same `visibleSpaceIds(user)` SQL
+helper, so there is no second permission path to drift.
+
+## 8. AI — provider interface, Anthropic default, test stub
+
+```ts
+// apps/server/src/ai/provider.ts
+export interface AiProvider {
+  readonly name: string;
+  complete(req: {
+    system: string;
+    messages: { role: 'user' | 'assistant'; content: string }[];
+    maxTokens: number;
+  }): Promise<{ text: string }>;
+}
+```
+
+- **`AnthropicProvider`** — official `@anthropic-ai/sdk`, key from
+  `ANTHROPIC_API_KEY`, model from `AI_MODEL` (default `claude-opus-5-5`; hosts
+  may set `claude-sonnet-5-5` or `claude-haiku-5-5` to cut cost).
+- **`StubProvider`** — deterministic, no network. Summaries are built from the
+  first sentences of the input; answers quote the first source and cite it.
+  Used by all automated tests, so tests cost nothing.
+- **Selection** (`AI_PROVIDER`): `anthropic` | `stub` | `off`. If unset:
+  `anthropic` when `ANTHROPIC_API_KEY` is set, otherwise `off`.
+  `GET /api/ai/status` returns `{ enabled }`; when off, the UI hides every AI
+  control. The key never reaches the browser.
+
+**Features built on the interface** (in `apps/server/src/ai/features.ts`, not in
+the provider):
+
+- **Summarise page** — page text (truncated to a token budget) → short summary.
+  Requires viewer on the page's space.
+- **Ask your docs** — question → full-text search over the asker's
+  `visibleSpaceIds` → top pages split into chunks by heading, best 8 chunks sent
+  as numbered sources → the model must answer only from them and cite `[n]` →
+  the server maps each `[n]` to `{ pageId, title, url }` and drops citations it
+  did not supply. Answer with no usable sources says so plainly.
+- Prompts live in one file, `apps/server/src/ai/prompts.ts`. Page text is
+  wrapped as data, never as instructions.
+
+## 9. Web app and look
+
+- React + Vite + React Router + TanStack Query. API calls go through one typed
+  client built on the `packages/shared` zod contracts.
+- Design tokens (colour, spacing, radius, type, shadow, motion) are CSS custom
+  properties in `apps/web/src/styles/tokens.css`, owned by the designer.
+  Light and dark via `data-theme` on `<html>`, defaulting to the system setting,
+  user choice remembered. Motion is short and eased and turns off under
+  `prefers-reduced-motion`. Text meets WCAG AA contrast in both themes.
+- Icons: an open-licence set (Lucide) or our own; no third-party brand icons.
+
+## 10. Self-hosting
+
+- `docker compose up` starts `app` (our image) and `db` (`postgres:16-alpine`)
+  with named volumes for data and uploads, health-checked; the app waits for
+  the DB, runs migrations, then serves on `PORT` (default 3000).
+- All config is env, documented in `.env.example`: `DATABASE_URL`,
+  `SESSION_SECRET`, `PUBLIC_URL`, `ALLOW_SIGNUP`, `MAX_UPLOAD_MB`,
+  `AI_PROVIDER`, `ANTHROPIC_API_KEY`, `AI_MODEL`.
+- `install.sh` installs and starts the site in the foreground on `$PORT`;
+  `INSTALL.md` gives the plain steps, plus backup/restore (`pg_dump` + uploads
+  volume).
+
+## 11. Checks
+
+- **Unit/integration (Vitest):** permissions table, savePage/version rules,
+  restore, doc-to-text, search filtering, AI features against the stub,
+  link-preview SSRF guard. Server tests run against a real Postgres.
+- **E2E (Playwright):** sign up/log in, roles, spaces, nested pages, slash menu
+  and each embed, search, history restore, AI summarise/ask (stub), dark mode.
+- **Smoke:** `scripts/smoke.sh` brings up the real compose stack and hits
+  health, sign-up, create page, search.
+- **Originality:** `scripts/check-original.mjs`.
+
+## 12. Done checks by build stage
+
+A stage is done when its checks pass in `npm run check` / `npm run e2e` **and**
+someone on the team has done it by hand in a browser against the compose stack.
+
+1. **Auth, spaces, nested pages** — three users sign up; first is admin; admin
+   sets roles; a viewer cannot create or edit; a restricted space is invisible
+   to non-members (UI and API return 404); pages nest three deep, reorder and
+   move; breadcrumbs are right; session survives reload, logout ends it.
+2. **Editor with slash commands and embeds** — `/` opens a filterable menu with
+   every block in §3; image and file upload and render after reload; YouTube
+   link becomes a player; a pasted URL can become a preview card; code block
+   highlights; table can add/remove rows and columns; doc JSON has block ids and
+   no base64; stale save returns 409 and is handled.
+3. **Search and history** — a word typed in a page body is found within one
+   save; a page in a restricted space never appears for a non-member; history
+   lists versions with author and time; restoring an old version brings its
+   content back and the newer versions are still listed.
+4. **AI** — with no key, no AI control is visible; with the stub, summarise
+   returns text and ask returns an answer whose source links open pages the
+   user can read; a page the asker cannot read is never cited.
+5. **Look and finish** — light and dark both pass the contrast check; reduced
+   motion is respected; `check-original` passes; `docker compose up` on a clean
+   machine gives a working wiki.
