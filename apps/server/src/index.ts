@@ -1,18 +1,25 @@
-import Fastify from 'fastify';
-import { Pool } from 'pg';
 import { env, requireDatabaseUrl } from './env.js';
 import { runMigrations } from './db/migrate.js';
+import { createDb } from './db/client.js';
+import { buildApp } from './app.js';
+import { purgeExpiredSessions } from './auth/session.js';
 
 async function main(): Promise<void> {
-  await runMigrations();
+  const databaseUrl = requireDatabaseUrl();
+  await runMigrations(databaseUrl);
 
-  const pool = new Pool({ connectionString: requireDatabaseUrl() });
-  const app = Fastify({ logger: true });
-
-  app.get('/health', async () => {
-    await pool.query('select 1');
-    return { status: 'ok' };
+  const { pool, db } = createDb(databaseUrl);
+  const app = await buildApp({
+    db,
+    config: env,
+    logger: true,
+    health: async () => {
+      await pool.query('select 1');
+    },
   });
+
+  const purge = setInterval(() => purgeExpiredSessions(db).catch((err) => app.log.warn(err)), 6 * 60 * 60 * 1000);
+  purge.unref();
 
   const close = async () => {
     await app.close();

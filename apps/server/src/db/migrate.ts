@@ -3,11 +3,14 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { requireDatabaseUrl } from '../env.js';
 
-export async function runMigrations(): Promise<void> {
-  const pool = new Pool({ connectionString: requireDatabaseUrl() });
+export async function runMigrations(databaseUrl: string = requireDatabaseUrl()): Promise<void> {
+  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
   const db = drizzle(pool);
-  await migrate(db, { migrationsFolder: new URL('../../drizzle', import.meta.url).pathname });
-  await pool.end();
+  try {
+    await migrate(db, { migrationsFolder: new URL('../../drizzle', import.meta.url).pathname });
+  } finally {
+    await pool.end();
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
