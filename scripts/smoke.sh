@@ -8,6 +8,9 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+if [ -z "${PORT:-}" ] && [ -f .env ]; then
+  PORT="$(grep -E '^PORT=' .env | tail -n1 | cut -d= -f2-)"
+fi
 PORT="${PORT:-3000}"
 COMPOSE="docker compose"
 

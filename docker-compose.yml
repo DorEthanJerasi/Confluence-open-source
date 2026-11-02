@@ -23,7 +23,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      PORT: ${PORT:-3000}
+      PORT: 3000
       DATABASE_URL: postgres://stillwater:${POSTGRES_PASSWORD:-stillwater}@db:5432/stillwater
       SESSION_SECRET: ${SESSION_SECRET:-}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
