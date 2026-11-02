@@ -55,6 +55,26 @@ function hexToRgb(hex) {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+// Parses any opaque colour value this token file might use for a solid
+// text/background pair. Returns [r, g, b] or null if the value isn't a
+// colour we can resolve to an opaque RGB triple (e.g. a translucent
+// rgba()/hsla() overlay, which isn't a valid text/background colour anyway).
+function parseColor(value) {
+  const hex = value.match(/^#[0-9a-f]{3,6}$/i);
+  if (hex) return hexToRgb(value);
+
+  const rgb = value.match(
+    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i
+  );
+  if (rgb) {
+    const alpha = rgb[4] === undefined ? 1 : parseFloat(rgb[4]);
+    if (alpha < 1) return null; // translucent — not a solid colour to compare
+    return [parseFloat(rgb[1]), parseFloat(rgb[2]), parseFloat(rgb[3])];
+  }
+
+  return null;
+}
+
 function relativeLuminance([r, g, b]) {
   const chan = (c) => {
     const s = c / 255;
@@ -64,9 +84,9 @@ function relativeLuminance([r, g, b]) {
   return 0.2126 * R + 0.7152 * G + 0.0722 * B;
 }
 
-function contrastRatio(hexA, hexB) {
-  const lA = relativeLuminance(hexToRgb(hexA));
-  const lB = relativeLuminance(hexToRgb(hexB));
+function contrastRatio(rgbA, rgbB) {
+  const lA = relativeLuminance(rgbA);
+  const lB = relativeLuminance(rgbB);
   const [lighter, darker] = lA > lB ? [lA, lB] : [lB, lA];
   return (lighter + 0.05) / (darker + 0.05);
 }
@@ -92,12 +112,18 @@ for (const [themeName, vars] of themes) {
       failures++;
       continue;
     }
-    if (!/^#[0-9a-f]{3,6}$/i.test(fg) || !/^#[0-9a-f]{3,6}$/i.test(bg)) {
-      // Skip non-hex values (e.g. rgba() overlays) — not text/background pairs.
+    const fgRgb = parseColor(fg);
+    const bgRgb = parseColor(bg);
+    if (!fgRgb || !bgRgb) {
+      console.error(
+        `check-contrast: ${themeName} theme — --${fgName} (${fg}) or --${bgName} (${bg}) ` +
+          `is not a solid colour this checker can resolve; fix the token or the pair list.`
+      );
+      failures++;
       continue;
     }
     checked++;
-    const ratio = contrastRatio(fg, bg);
+    const ratio = contrastRatio(fgRgb, bgRgb);
     const min = THRESHOLDS[level];
     const ok = ratio >= min;
     if (!ok) {
