@@ -128,24 +128,24 @@ page's title and body.
       transaction.
 - [x] `savePage` follows the snapshot rule above in one transaction, and a 409
       writes no snapshot. Moving a page writes no snapshot.
-- [ ] `GET /api/pages/:id/versions?before=<version>` (space viewer and above):
+- [x] `GET /api/pages/:id/versions?before=<version>` (space viewer and above):
       newest first, 50 at a time. Each entry has `version`, `title`, author
       `{ id, name }` (or null if the user was removed), `savedAt` and
       `restoredFrom`. No doc bodies in the list.
-- [ ] `GET /api/pages/:id/versions/:version` (space viewer and above): that
+- [x] `GET /api/pages/:id/versions/:version` (space viewer and above): that
       snapshot's title and doc. A version number that belongs to no snapshot,
       or to another page, gives 404.
-- [ ] Restore route as above (space editor and above). A stale `baseVersion`
+- [x] Restore route as above (space editor and above). A stale `baseVersion`
       gives 409 and changes nothing. A viewer gets 403. A non-member of a
       restricted space, a deleted page or an unknown version gives 404 (the
       same as every other page route). The restored doc passes the same
       validation as a normal save. Attachments it refers to still load, because
       their rows are not removed when a block is taken out of the doc.
-- [ ] Every history route checks permission through `requirePageRole`, so it
+- [x] Every history route checks permission through `requirePageRole`, so it
       uses the one permission path.
 
 ### Checks that must exist and pass
-- [ ] **API (Vitest, real Postgres), `apps/server/test/history.test.ts`:**
+- [x] **API (Vitest, real Postgres), `apps/server/test/history.test.ts`:**
   - creating a page makes snapshot version 1;
   - two quick saves by the same author give one snapshot, holding the second
     save's content and version;
@@ -169,7 +169,7 @@ page's title and body.
   - list paging: 60 snapshots give 50, then 10 with `before`;
   - the migration backfill: a page created without a snapshot row gets one
     (or the test runs the backfill SQL on a seeded page).
-- [ ] `npm run check` passes.
+- [x] `npm run check` passes.
 
 ---
 
