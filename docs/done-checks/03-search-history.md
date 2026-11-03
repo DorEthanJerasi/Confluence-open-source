@@ -28,21 +28,21 @@ page's title and body.
 ## 3a — Search limited to pages the user may see
 
 ### Build
-- [ ] `GET /api/search?q=…&limit=…` (any signed-in user; signed out gets 401).
+- [x] `GET /api/search?q=…&limit=…` (any signed-in user; signed out gets 401).
       Returns `{ results: [{ pageId, title, spaceKey, spaceName, snippet, breadcrumbs }] }`,
       best match first. `limit` defaults to 20, and anything above 50 is
       treated as 50.
-- [ ] The query uses `pages.search @@ websearch_to_tsquery('english', q)` (so the
+- [x] The query uses `pages.search @@ websearch_to_tsquery('english', q)` (so the
       GIN index is used), ranks with `ts_rank_cd`, and builds the snippet with
       `ts_headline` on `doc_text` (or on the title if the body has no match).
-- [ ] **The permission filter is inside the same SQL** and uses
+- [x] **The permission filter is inside the same SQL** and uses
       `visibleSpaceIds(user)`. There is no second permission rule and no
       filtering after the query in JavaScript. Soft-deleted pages, and pages
       under a deleted parent, never appear.
-- [ ] Title prefix for quick-find: a partial last word finds a page whose title
+- [x] Title prefix for quick-find: a partial last word finds a page whose title
       word starts with it (typing `relea` finds "Release notes"). Only letters
       and digits from the user's text reach the prefix query.
-- [ ] Any input is safe: empty or only spaces gives `{ results: [] }`, and so do
+- [x] Any input is safe: empty or only spaces gives `{ results: [] }`, and so do
       stop words like `the`. Quotes, `&`, `|`, `!`, `:*`, `(`, a 1,000-character
       string and non-Latin text all return 200, never 500. A query over 200
       characters is cut to 200.
@@ -59,7 +59,7 @@ page's title and body.
       respects `prefers-reduced-motion`. Light and dark both look right.
 
 ### Checks that must exist and pass
-- [ ] **API (Vitest, real Postgres), `apps/server/test/search.test.ts`:**
+- [x] **API (Vitest, real Postgres), `apps/server/test/search.test.ts`:**
   - a word saved into a page body is found right after that one save, and a
     word only in the title is found too;
   - a title match ranks above a body-only match for the same word;
