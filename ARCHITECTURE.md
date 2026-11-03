@@ -107,7 +107,7 @@ Core tables:
 | `spaces` | id, key (short slug, unique), name, description, visibility (`open`/`restricted`), default_role, created_by |
 | `space_members` | space_id, user_id, role (`admin`/`editor`/`viewer`) — PK (space_id, user_id) |
 | `pages` | id, space_id, parent_id (nullable, same space), position (fractional-index text), title, doc jsonb, doc_text text, search tsvector (generated), version int, ydoc_state bytea null, created_by, updated_by, created_at, updated_at, deleted_at |
-| `page_versions` | id, page_id, version, title, doc jsonb, author_id, created_at, restored_from (nullable) |
+| `page_versions` | id, page_id, version, title, doc jsonb, author_id, created_at, saved_at, restored_from (nullable) |
 | `attachments` | id, space_id, page_id, filename, mime, size, storage_key, created_by, created_at |
 | `link_previews` | url (PK), title, description, image_url, site_name, fetched_at |
 
@@ -275,6 +275,8 @@ someone on the team has done it by hand in a browser against the compose stack.
    save; a page in a restricted space never appears for a non-member; history
    lists versions with author and time; restoring an old version brings its
    content back and the newer versions are still listed.
+   Full check, split into items 3a (search), 3b (history server) and 3c
+   (history screen): `docs/done-checks/03-search-history.md`.
 4. **AI** — with no key, no AI control is visible; with the stub, summarise
    returns text and ask returns an answer whose source links open pages the
    user can read; a page the asker cannot read is never cited.
