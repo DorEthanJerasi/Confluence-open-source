@@ -18,45 +18,45 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 ## 2a — The editor, the shared schema, slash menu, text blocks, code, tables, saving
 
 ### Build
-- [ ] New package `packages/editor-schema` exporting `getExtensions()`, the single
+- [x] New package `packages/editor-schema` exporting `getExtensions()`, the single
       list of Tiptap nodes and marks (ARCHITECTURE.md §3). The web editor and the
       server's `docToText` both import it. No node type is defined anywhere else.
-- [ ] A global attribute extension gives every top-level block a stable `id`
+- [x] A global attribute extension gives every top-level block a stable `id`
       (UUID). Splitting a block or pasting gives the new block a fresh id; no two
       blocks in one doc share an id.
-- [ ] Tiptap's History is turned on through one flag in one place, so it can be
+- [x] Tiptap's History is turned on through one flag in one place, so it can be
       swapped for the Yjs undo manager later.
-- [ ] `PageScreen` shows the Tiptap editor for space editors/admins and a
+- [x] `PageScreen` shows the Tiptap editor for space editors/admins and a
       read-only render of the same schema for viewers (no editable surface, no
       slash menu, no toolbar).
-- [ ] Blocks: paragraph, heading 1–3, bullet list, numbered list, task list,
+- [x] Blocks: paragraph, heading 1–3, bullet list, numbered list, task list,
       quote, divider, callout, code block with syntax highlight (lowlight), table.
       Marks: bold, italic, strike, inline code, link.
-- [ ] `/` opens a menu at the caret listing every block above; typing filters it;
+- [x] `/` opens a menu at the caret listing every block above; typing filters it;
       arrow keys + Enter pick; Esc closes; picking replaces the `/query` text.
       Markdown shortcuts work for headings (`# `), lists (`- `, `1. `, `[] `),
       quote (`> `), code (```` ``` ````) and divider (`---`).
-- [ ] Table: insert from the slash menu as 3×3 with a header row; add and remove
+- [x] Table: insert from the slash menu as 3×3 with a header row; add and remove
       rows and columns from a small table menu.
-- [ ] Autosave: debounced ~1 s, sends full JSON plus `baseVersion` through the one
+- [x] Autosave: debounced ~1 s, sends full JSON plus `baseVersion` through the one
       `savePage` path. A quiet "Saving… / Saved" state is shown. On 409 the
       editor keeps the user's text, says plainly the page changed elsewhere, and
       offers **Reload** (and copying their text) — it never silently overwrites.
-- [ ] Server validates the incoming doc against the schema (`Node.fromJSON` on a
+- [x] Server validates the incoming doc against the schema (`Node.fromJSON` on a
       schema built from `getExtensions()`); an unknown node type, a missing doc
       root, or any `data:` URL anywhere in attrs is a 400.
-- [ ] Editor styling uses the design tokens only (`apps/web/src/styles/tokens.css`):
+- [x] Editor styling uses the design tokens only (`apps/web/src/styles/tokens.css`):
       calm spacing, soft code/table/callout surfaces, slash menu fades in and
       respects `prefers-reduced-motion`. Light and dark both look right.
 
 ### Checks that must exist and pass
-- [ ] **Unit (server, Vitest):** `docToText` on a doc with every block type gives
+- [x] **Unit (server, Vitest):** `docToText` on a doc with every block type gives
       the expected text (code block and table cell text included, no attrs).
-- [ ] **Unit:** a doc with an unknown node, and one with a `data:` URL, are
+- [x] **Unit:** a doc with an unknown node, and one with a `data:` URL, are
       rejected with 400; a valid doc with every block type is accepted.
-- [ ] **API:** save with a stale `baseVersion` returns 409 and does not change the
+- [x] **API:** save with a stale `baseVersion` returns 409 and does not change the
       stored doc.
-- [ ] **E2E (Playwright), `e2e/tests/editor.spec.ts`:**
+- [x] **E2E (Playwright), `e2e/tests/editor.spec.ts`:**
   - editor types text, waits for "Saved", reloads, the text is still there;
   - `/` then typing `head` filters to headings; Enter on "Heading 2" makes an `h2`;
   - every block in the list above can be inserted from the slash menu (one loop);
@@ -67,11 +67,30 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
   - a viewer opening the same page sees the content and has no editable surface;
   - two tabs edit the same page: the second save gets the 409 message and a
     Reload button, and its text is not lost before reload.
-- [ ] `npm run check` passes (typecheck, server tests, originality, contrast).
+- [x] `npm run check` passes (typecheck, server tests, originality, contrast).
 
 ### Hand check by the lead (compose stack, browser)
 - [ ] Write a page using the slash menu only, in light and dark mode; it feels
       calm (no jumpy motion, no harsh borders), and reloads intact.
+      **Open:** this machine has no running Docker daemon, so the compose stack
+      could not be started. Done instead on the same built app (the e2e server
+      on embedded Postgres): light/dark screenshots and the slash menu look calm.
+      Tick this together with the 2b compose check once Docker is available.
+
+### Lead review, item #61 (2026-11-03)
+2a accepted, with the one compose box above still open. Evidence:
+- `npm run check` (Node 22): typecheck, 50 server tests, originality and contrast all pass.
+  The server tests cover `docToText` for every block, 400 for an unknown node,
+  an unknown mark, a missing doc root and `data:` URLs, and 409 on a stale `baseVersion`.
+- `npm run test:e2e`: 8/8 pass (editor.spec 4, wiki.spec 4). That covers every item
+  on the E2E list above.
+- A one-off lead browser check (not committed) also passed: markdown shortcuts for
+  `- `, `1. `, `[] `, `> `, ```` ``` ```` and `---`; bold, italic, strike and inline code
+  survive a reload; splitting a paragraph gives the new block its own id; with
+  reduced motion the slash menu opens with no animation.
+- Code read: one node list in `packages/editor-schema` (no `Node.create` in the apps);
+  History is behind the one `history` flag in `getExtensions`; autosave is 1000 ms;
+  the conflict note offers Copy my text and Reload.
 
 ---
 
