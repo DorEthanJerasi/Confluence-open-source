@@ -106,20 +106,20 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
       attachment's space; anyone else gets 404. `Content-Type` from the stored
       mime, `Content-Disposition: attachment` for non-image/non-video, and
       `X-Content-Type-Options: nosniff`. SVG and HTML are never served inline.
-- [ ] Nodes in `editor-schema`: `image`, `file`, `video`, `linkPreview` — attrs
+- [x] Nodes in `editor-schema`: `image`, `file`, `video`, `linkPreview` — attrs
       hold `attachmentId` or an allow-listed URL only, never file bytes.
-- [ ] Image: slash menu, paste and drag-drop all upload, then render; optional
+- [x] Image: slash menu, paste and drag-drop all upload, then render; optional
       caption. File: shows name, size and a download link. Video: upload (mp4/webm)
       plays in a `<video>`; a YouTube or Vimeo URL becomes an embedded player
       (privacy host `youtube-nocookie.com`); any other host is refused.
-- [ ] Link preview: pasting a bare URL on an empty line offers "Show as preview
+- [x] Link preview: pasting a bare URL on an empty line offers "Show as preview
       card"; the card shows title, description, site name and image from Open
       Graph, fetched by the server and cached in `link_previews`.
-- [ ] Link preview fetch: 5 s timeout, 1 MB cap, follows at most 3 redirects and
+- [x] Link preview fetch: 5 s timeout, 1 MB cap, follows at most 3 redirects and
       re-checks each one, and refuses loopback, private, link-local and metadata
       addresses (IPv4 and IPv6, after DNS resolution). A refused or failed URL
       shows a plain link card, not an error page.
-- [ ] Viewers see every embed; they cannot upload (no control, and the API says 403).
+- [x] Viewers see every embed; they cannot upload (no control, and the API says 403).
 
 ### Checks that must exist and pass
 - [x] **API:** upload then fetch works for a member; a non-member of a restricted
@@ -128,7 +128,7 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
       `[::1]`, a hostname that resolves to a private address, and a redirect to one.
       Tests use a local stub server — no real internet in any test.
 - [x] **Unit:** YouTube/Vimeo URL parsing gives the embed URL; other hosts give null.
-- [ ] **E2E, added to `e2e/tests/editor.spec.ts`:**
+- [x] **E2E, added to `e2e/tests/editor.spec.ts`:**
   - upload a PNG from the slash menu; after reload the image shows and its `src`
     is `/api/attachments/…`;
   - upload a PDF; after reload the file card shows its name and the download works;
@@ -139,7 +139,7 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
   - the stored doc still has no `data:` anywhere.
 - [ ] `docker compose up` from a clean checkout: an image uploaded before
       `docker compose restart` still shows after it (uploads volume works).
-- [ ] `npm run check` passes.
+- [x] `npm run check` passes.
 
 ### Hand check by the lead (compose stack, browser)
 - [ ] Build a page with one of every embed, in light and dark mode; reload; all
@@ -174,6 +174,27 @@ Server half of the link-preview and video boxes accepted. Evidence:
   `linkPreviewFetch`); the socket connects to the checked address.
 - Still open for the next items: the "Link preview" and "Link preview fetch" boxes need the
   editor card (plain link on refusal) and the e2e stub-page test; the video box needs the editor.
+
+### Lead review, item #67 (2026-11-03)
+Editor half of video and link cards accepted; build boxes, the E2E box and `npm run check` ticked.
+Evidence:
+- `npm run check` (Node 22): typecheck, 202 server tests, originality and contrast pass.
+- `npm run test:e2e`: 13 of 13 pass. `e2e/tests/video-links.spec.ts` uploads a webm that
+  really plays, pastes YouTube (iframe to `youtube-nocookie.com`), adds Vimeo, refuses another
+  host with a note, offers "Show as preview card" (Esc dismisses), and shows a plain link card
+  for a refused address; all survive reload; no `data:` in the stored doc; the viewer sees all
+  of it, gets no offer and no new block. Image/file/viewer-403 parts are in `embeds.spec.ts`.
+- `test/embeds.test.ts`: a video from another host, both or neither source, a URL as an
+  attachment id, and `data:`/`file:` card pictures are all 400.
+- Dark-mode screenshot read: cards and players sit calmly in the column.
+- **Changed wording, on purpose:** the E2E line "card from a local stub page served by the
+  test" cannot hold as written, because the guard rightly refuses the test machine's own
+  address and must not get a test-only bypass. Accepted instead: the browser test stubs the
+  `/api/link-preview` reply for the full card, and `test/linkPreview.test.ts` proves the real
+  fetch and Open Graph parsing against a local stub page. The E2E lives in its own spec files,
+  not `editor.spec.ts`.
+- Still open: the compose box (`docker/Dockerfile` does not copy `packages/editor-schema`)
+  and the lead's hand check on the compose stack.
 
 ---
 
