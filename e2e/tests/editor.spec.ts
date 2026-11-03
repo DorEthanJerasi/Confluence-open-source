@@ -190,4 +190,18 @@ test.describe.serial('editor', () => {
     await expect(body(b)).toContainText('from A');
     await ctx.close();
   });
+
+  test('slash menu has no animation with reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await logIn(page, admin);
+    await page.goto(pageUrl);
+    await body(page).click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('/');
+    const menu = page.getByRole('listbox', { name: 'Insert block' });
+    await expect(menu).toBeVisible();
+    const duration = await menu.evaluate((el) => parseFloat(getComputedStyle(el).animationDuration));
+    expect(duration).toBeLessThan(0.01);
+  });
 });
