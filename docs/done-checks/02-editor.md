@@ -124,10 +124,10 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 ### Checks that must exist and pass
 - [ ] **API:** upload then fetch works for a member; a non-member of a restricted
       space gets 404; a viewer's upload gets 403; a file over the limit gets 413.
-- [ ] **Unit:** SSRF guard refuses `127.0.0.1`, `10.x`, `192.168.x`, `169.254.169.254`,
+- [x] **Unit:** SSRF guard refuses `127.0.0.1`, `10.x`, `192.168.x`, `169.254.169.254`,
       `[::1]`, a hostname that resolves to a private address, and a redirect to one.
       Tests use a local stub server — no real internet in any test.
-- [ ] **Unit:** YouTube/Vimeo URL parsing gives the embed URL; other hosts give null.
+- [x] **Unit:** YouTube/Vimeo URL parsing gives the embed URL; other hosts give null.
 - [ ] **E2E, added to `e2e/tests/editor.spec.ts`:**
   - upload a PNG from the slash menu; after reload the image shows and its `src`
     is `/api/attachments/…`;
@@ -145,6 +145,18 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 - [ ] Build a page with one of every embed, in light and dark mode; reload; all
       render; a second user who is not a member of the space cannot open the
       image URL directly.
+
+### Lead review, item #63 (2026-11-03)
+Server half of the link-preview and video boxes accepted. Evidence:
+- `npm run check` (Node 22): typecheck, 183 server tests, originality and contrast pass.
+- `test/linkPreview.test.ts`: every refusal listed above, plus `::ffff:127.0.0.1`, `fe80::1`,
+  decimal/hex forms of 127.0.0.1, a name with one good and one bad answer, and `localhost`
+  through the real resolver; refused requests never reach the stub. Redirects are looked up
+  again on each hop; 3 work, a 4th is refused; 1 MB cap and both timeouts are tested.
+- Code read: the `dial` test hook is only passed by tests (`index.ts` never sets
+  `linkPreviewFetch`); the socket connects to the checked address.
+- Still open for the next items: the "Link preview" and "Link preview fetch" boxes need the
+  editor card (plain link on refusal) and the e2e stub-page test; the video box needs the editor.
 
 ---
 
