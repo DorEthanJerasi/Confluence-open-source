@@ -116,6 +116,29 @@ export const pages = pgTable(
   ],
 );
 
+// Page history (ARCHITECTURE.md §5). Written only by createPage and savePage,
+// in the same transaction as the page row. created_at is when the snapshot was
+// opened; saved_at is the last save folded into it (the time the screen shows).
+// restored_from is set when the snapshot is a restore; such rows are never
+// folded into.
+export const pageVersions = pgTable(
+  'page_versions',
+  {
+    id: id(),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    version: integer('version').notNull(),
+    title: text('title').notNull(),
+    doc: jsonb('doc').$type<Doc>().notNull(),
+    authorId: uuid('author_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
+    restoredFrom: integer('restored_from'),
+  },
+  (t) => [uniqueIndex('page_versions_page_version_idx').on(t.pageId, t.version.desc())],
+);
+
 // Uploaded files (ARCHITECTURE.md §4, "Files"). The bytes live in FileStorage
 // under storage_key; the row only says what the file is and whose space it is in.
 export const attachments = pgTable(

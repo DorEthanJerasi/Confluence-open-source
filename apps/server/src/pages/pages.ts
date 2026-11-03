@@ -1,11 +1,13 @@
 // Page storage: create, read, save, move, delete. Permission checks happen in
 // the routes before these are called. savePage is the ONLY writer of
-// pages.doc (ARCHITECTURE.md §3, rule 5).
+// pages.doc (ARCHITECTURE.md §3, rule 5), and createPage and savePage are the
+// only writers of page_versions (§5), always in the same transaction as the
+// page row, so a page and its history never disagree.
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { generateKeyBetween } from 'fractional-indexing';
 import { EMPTY_DOC, type Crumb, type Doc, type Page, type Role } from '@stillwater/shared';
 import type { Db } from '../db/client.js';
-import { pages, spaces, users } from '../db/schema.js';
+import { pageVersions, pages, spaces, users } from '../db/schema.js';
 import { requireSpaceRole } from '../auth/permissions.js';
 import type { SessionUser } from '../auth/session.js';
 import { badRequest, conflict, notFound } from '../http.js';
@@ -59,7 +61,16 @@ export async function createPage(
         createdBy: input.userId,
         updatedBy: input.userId,
       })
-      .returning({ id: pages.id });
+      .returning({ id: pages.id, version: pages.version, updatedAt: pages.updatedAt });
+    await tx.insert(pageVersions).values({
+      pageId: row!.id,
+      version: row!.version,
+      title: input.title,
+      doc,
+      authorId: input.userId,
+      createdAt: row!.updatedAt,
+      savedAt: row!.updatedAt,
+    });
     return row!.id;
   });
 }
@@ -123,10 +134,46 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
   };
 }
 
+/** Snapshots by the same author opened less than this long ago are folded into. */
+export const SNAPSHOT_WINDOW_MINUTES = 5;
+
+/**
+ * Record a save in page history (ARCHITECTURE.md §5). Must run in the same
+ * transaction as the page update. If the newest snapshot is by the same
+ * author, is not a restore, and was opened (created_at) less than
+ * SNAPSHOT_WINDOW_MINUTES ago, it is updated in place to the new version;
+ * otherwise a new snapshot is inserted. A restore always inserts.
+ */
+async function recordSnapshot(
+  tx: Tx,
+  s: { pageId: string; version: number; title: string; doc: Doc; authorId: string; savedAt: Date; restoredFrom: number | null },
+) {
+  if (s.restoredFrom === null) {
+    const folded = await tx.execute(sql`
+      update page_versions
+      set version = ${s.version}, title = ${s.title}, doc = ${JSON.stringify(s.doc)}::jsonb, saved_at = ${s.savedAt}
+      where id = (select id from page_versions where page_id = ${s.pageId} order by version desc limit 1)
+        and author_id = ${s.authorId}
+        and restored_from is null
+        and created_at > now() - make_interval(mins => ${SNAPSHOT_WINDOW_MINUTES})`);
+    if ((folded.rowCount ?? 0) > 0) return;
+  }
+  await tx.insert(pageVersions).values({
+    pageId: s.pageId,
+    version: s.version,
+    title: s.title,
+    doc: s.doc,
+    authorId: s.authorId,
+    savedAt: s.savedAt,
+    restoredFrom: s.restoredFrom,
+  });
+}
+
 /**
  * The single write path for a page's title and body. Optimistic concurrency:
  * the caller sends the version it started from; a stale one is refused with 409.
- * (Page history snapshots hook in here in the history stage.)
+ * The history snapshot is written in the same transaction (see recordSnapshot);
+ * a refused save writes nothing. `restoredFrom` is set only by restore.
  */
 export async function savePage(
   db: Db,
@@ -134,26 +181,40 @@ export async function savePage(
   change: { title?: string; doc?: Doc },
   baseVersion: number,
   userId: string,
+  opts: { restoredFrom?: number } = {},
 ): Promise<{ version: number }> {
   const body = change.doc !== undefined ? normalizeDoc(change.doc) : undefined;
-  const [row] = await db
-    .update(pages)
-    .set({
-      ...(change.title !== undefined ? { title: change.title } : {}),
-      ...(body ? { doc: body.doc, docText: body.text } : {}),
-      version: sql`${pages.version} + 1`,
-      updatedBy: userId,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(pages.id, pageId), eq(pages.version, baseVersion), isNull(pages.deletedAt)))
-    .returning({ version: pages.version });
-  if (row) return row;
-  const [current] = await db
-    .select({ version: pages.version })
-    .from(pages)
-    .where(and(eq(pages.id, pageId), isNull(pages.deletedAt)));
-  if (!current) throw notFound('Page not found');
-  throw conflict('stale_version', `This page was changed by someone else (now version ${current.version}). Reload to get the latest.`);
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(pages)
+      .set({
+        ...(change.title !== undefined ? { title: change.title } : {}),
+        ...(body ? { doc: body.doc, docText: body.text } : {}),
+        version: sql`${pages.version} + 1`,
+        updatedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(pages.id, pageId), eq(pages.version, baseVersion), isNull(pages.deletedAt)))
+      .returning({ version: pages.version, title: pages.title, doc: pages.doc, updatedAt: pages.updatedAt });
+    if (row) {
+      await recordSnapshot(tx, {
+        pageId,
+        version: row.version,
+        title: row.title,
+        doc: row.doc,
+        authorId: userId,
+        savedAt: row.updatedAt,
+        restoredFrom: opts.restoredFrom ?? null,
+      });
+      return { version: row.version };
+    }
+    const [current] = await tx
+      .select({ version: pages.version })
+      .from(pages)
+      .where(and(eq(pages.id, pageId), isNull(pages.deletedAt)));
+    if (!current) throw notFound('Page not found');
+    throw conflict('stale_version', `This page was changed by someone else (now version ${current.version}). Reload to get the latest.`);
+  });
 }
 
 /** Move a page under a new parent (null = top level) at a sibling index. */

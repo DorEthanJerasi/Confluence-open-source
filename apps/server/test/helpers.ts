@@ -1,7 +1,8 @@
 import { inject } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import type { Pool } from 'pg';
 import { buildApp, type BuildOptions } from '../src/app.js';
-import { createDb } from '../src/db/client.js';
+import { createDb, type Db } from '../src/db/client.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { loadConfig } from '../src/env.js';
 
@@ -9,6 +10,8 @@ export interface TestCtx {
   app: FastifyInstance;
   close: () => Promise<void>;
   reset: () => Promise<void>;
+  pool: Pool;
+  db: Db;
 }
 
 export async function setupApp(
@@ -22,6 +25,8 @@ export async function setupApp(
   const app = await buildApp({ db, config, ...extra });
   return {
     app,
+    pool,
+    db,
     reset: async () => {
       await pool.query('truncate users, sessions, spaces, space_members, pages cascade');
     },
