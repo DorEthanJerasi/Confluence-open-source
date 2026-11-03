@@ -2,6 +2,7 @@
 // see the content again, and prove a viewer cannot edit. Runs against a
 // real server + Postgres (see ../global-setup.ts), not a mock.
 import { test, expect, type Page } from '@playwright/test';
+import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
 const viewer = { name: 'Vera Viewer', email: 'vera@stillwater.test', password: 'battery horse correct' };
@@ -27,6 +28,9 @@ async function logIn(page: Page, user: { email: string; password: string }) {
 }
 
 test.describe.serial('wiki basics', () => {
+  // Both spec files share one server; start this file from an empty database.
+  test.beforeAll(resetDatabase);
+
   test('the first person to sign up becomes admin and can create a space and a page', async ({ page }) => {
     await signUp(page, admin);
 

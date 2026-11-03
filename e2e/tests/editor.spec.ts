@@ -1,5 +1,6 @@
 // Stage 2a editor checks (docs/done-checks/02-editor.md, E2E list).
 import { test, expect, type Page } from '@playwright/test';
+import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
 const viewer = { name: 'Vera Viewer', email: 'vera@stillwater.test', password: 'battery horse correct' };
@@ -23,6 +24,9 @@ async function slash(page: Page, query: string, pick: string) {
 }
 
 test.describe.serial('editor', () => {
+  // Both spec files share one server; start this file from an empty database.
+  test.beforeAll(resetDatabase);
+
   test('setup + type, save, reload', async ({ page }) => {
     await page.goto('/signup');
     await page.getByLabel('Name').fill(admin.name);

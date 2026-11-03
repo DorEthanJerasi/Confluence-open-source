@@ -60,6 +60,8 @@ export default async function globalSetup() {
   await pg.start();
   await pg.createDatabase('stillwater_e2e');
   const databaseUrl = `postgres://stillwater:stillwater@127.0.0.1:${pgPort}/stillwater_e2e`;
+  // Test workers inherit this, so each spec file can empty the tables (reset-db.ts).
+  process.env.E2E_DATABASE_URL = databaseUrl;
 
   const appPort = Number(process.env.E2E_PORT ?? 3900);
   const server = spawn(process.execPath, [serverEntry], {
@@ -75,7 +77,13 @@ export default async function globalSetup() {
   });
 
   const teardown = async () => {
-    server.kill();
+    // Let the server close its pool before Postgres goes away, or it logs a
+    // "terminating connection" error dump on the way out.
+    if (server.exitCode === null && server.signalCode === null) {
+      const exited = new Promise<void>((resolve) => server.once('exit', () => resolve()));
+      server.kill();
+      await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))]);
+    }
     await pg.stop();
     rmSync(dir, { recursive: true, force: true });
   };
