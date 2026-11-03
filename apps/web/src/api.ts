@@ -7,6 +7,8 @@ import type {
   LinkPreview,
   Page,
   PageTreeItem,
+  PageVersion,
+  PageVersionList,
   Role,
   SearchResult,
   Space,
@@ -104,6 +106,13 @@ export const api = {
   linkPreview: (url: string) => get<LinkPreview>(`/api/link-preview?url=${encodeURIComponent(url)}`),
   /** Full-text search over the pages this user may read; snippets hold hit markers, never HTML. */
   search: (q: string) => get<{ results: SearchResult[] }>(`/api/search?q=${enc(q)}`),
+  /** Page history, newest first, 50 at a time; pass `nextBefore` as `before` for older ones. */
+  versions: (id: string, before?: number) =>
+    get<PageVersionList>(`/api/pages/${enc(id)}/versions${before !== undefined ? `?before=${before}` : ''}`),
+  version: (id: string, version: number) => get<PageVersion>(`/api/pages/${enc(id)}/versions/${version}`),
+  /** Writes that version's title and body as a new current version (nothing is deleted). */
+  restoreVersion: (id: string, version: number, baseVersion: number) =>
+    request<{ version: number }>('POST', `/api/pages/${enc(id)}/versions/${version}/restore`, { baseVersion }),
   deletePage: (id: string) => request<{ ok: true; deleted: number }>('DELETE', `/api/pages/${enc(id)}`),
 };
 

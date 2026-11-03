@@ -1,25 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, Trash2 } from 'lucide-react';
+import { FileText, History, Plus, Trash2 } from 'lucide-react';
 import type { Page } from '@stillwater/shared';
 import { api, ApiFailure } from '../api';
 import { PageEditor, SaveStatus } from '../editor/PageEditor';
 import { PageSaver } from '../editor/saver';
+import { HistoryPanel, VersionPreview, versionsKey } from '../history/HistoryPanel';
+import { timeAgo } from '../time';
 import { pageTitle } from '../tree';
 import { ErrorNote, Loading } from '../ui';
 import { NotFound } from './NotFound';
 import { useSpace } from './Space';
-
-function timeAgo(iso: string) {
-  const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'just now';
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} min ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} h ago`;
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
 
 function TitleEditor({ page, editable, saver }: { page: Page; editable: boolean; saver: PageSaver }) {
   const location = useLocation();
@@ -88,13 +80,19 @@ export function PageScreen() {
     if (q.error instanceof ApiFailure && q.error.status === 404) return <NotFound />;
     return <ErrorNote error={q.error} />;
   }
-  return <PageView page={q.data.page} />;
+  return <PageView key={pageId} page={q.data.page} />;
 }
 
 function PageView({ page }: { page: Page }) {
   const qc = useQueryClient();
   const { space, items, canEdit, newPage, deletePage } = useSpace();
   const [generation, setGeneration] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [viewing, setViewing] = useState<number | null>(null);
+  const closeHistory = useCallback(() => {
+    setHistoryOpen(false);
+    setViewing(null);
+  }, []);
 
   // One saver per page load; Reload after a conflict starts a fresh one.
   const saver = useMemo(
@@ -114,6 +112,8 @@ function PageView({ page }: { page: Page }) {
             : old,
         );
         if (change.title !== undefined) void qc.invalidateQueries({ queryKey: ['tree', page.spaceKey] });
+        // Keep an open history list up to date with this save.
+        void qc.invalidateQueries({ queryKey: versionsKey(page.id) });
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [page.id, generation],
@@ -122,6 +122,12 @@ function PageView({ page }: { page: Page }) {
   async function reload() {
     await qc.fetchQuery({ queryKey: ['page', page.id], queryFn: () => api.page(page.id), staleTime: 0 });
     setGeneration((g) => g + 1);
+  }
+
+  async function afterRestore() {
+    await reload();
+    setViewing(null);
+    void qc.invalidateQueries({ queryKey: ['tree', page.spaceKey] });
   }
 
   const children = items.filter((i) => i.parentId === page.id);
@@ -154,20 +160,41 @@ function PageView({ page }: { page: Page }) {
             )}
           </p>
         </div>
-        {canEdit && (
-          <div className="row">
-            <button className="btn btn-quiet" onClick={() => newPage(page.id)}>
-              <Plus size={16} aria-hidden="true" /> Sub-page
-            </button>
-            <button className="icon-btn" onClick={() => deletePage(page.id)} aria-label="Delete page" title="Delete page">
-              <Trash2 size={17} />
-            </button>
-          </div>
-        )}
+        <div className="row">
+          <button
+            className={`btn btn-quiet${historyOpen ? ' is-on' : ''}`}
+            onClick={() => (historyOpen ? closeHistory() : setHistoryOpen(true))}
+            aria-expanded={historyOpen}
+          >
+            <History size={16} aria-hidden="true" /> History
+          </button>
+          {canEdit && (
+            <>
+              <button className="btn btn-quiet" onClick={() => newPage(page.id)}>
+                <Plus size={16} aria-hidden="true" /> Sub-page
+              </button>
+              <button className="icon-btn" onClick={() => deletePage(page.id)} aria-label="Delete page" title="Delete page">
+                <Trash2 size={17} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
+      {historyOpen && <HistoryPanel page={page} selected={viewing} onSelect={setViewing} onClose={closeHistory} />}
+
       <div className="page-body">
-        {!canEdit && isEmptyDoc(page) ? (
+        {viewing !== null ? (
+          <VersionPreview
+            page={page}
+            version={viewing}
+            canRestore={canEdit}
+            saver={saver}
+            onClose={() => setViewing(null)}
+            onRestored={afterRestore}
+            onReload={reload}
+          />
+        ) : !canEdit && isEmptyDoc(page) ? (
           <p className="muted">This page has no content yet.</p>
         ) : (
           <PageEditor key={`${page.id}:${generation}`} page={page} editable={canEdit} saver={saver} onReload={reload} />

@@ -42,6 +42,11 @@ export class PageSaver {
     return this.pending;
   }
 
+  /** Resolves once no save is running (whether it worked or not). */
+  async settled(): Promise<void> {
+    while (this.running) await this.running.catch(() => {});
+  }
+
   /** Queue a change; resolves once it (and anything before it) is stored. */
   save(change: Change): Promise<void> {
     this.pending = { ...this.pending, ...change };
