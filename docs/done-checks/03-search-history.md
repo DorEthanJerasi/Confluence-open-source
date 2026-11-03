@@ -171,6 +171,17 @@ page's title and body.
     (or the test runs the backfill SQL on a seeded page).
 - [x] `npm run check` passes.
 
+**Lead check of stage 3b (item #74, 2026-11-04): pass.** `npm run check` run
+by the lead: 235 passed, 1 skipped (AI placeholder), `history.test.ts` 19 of
+19 on real Postgres, originality and contrast ok. Code read against every box:
+`0003_page_versions.sql` (unique index on `(page_id, version desc)`, cascade /
+set null, idempotent backfill); `createPage` and `savePage` write the snapshot
+in the page's transaction, a 409 or a move writes none, restores are never
+folded into; `pages/history.ts` and the three routes in `routes/pages.ts` all
+go through `requirePageRole` (viewer for list and read, editor for restore),
+and restore goes through `savePage` with `savePageBody` validation. Tests
+check the invariant after every save (`expectInvariant`). Nothing missing.
+
 ---
 
 ## 3c — Page history, screen
