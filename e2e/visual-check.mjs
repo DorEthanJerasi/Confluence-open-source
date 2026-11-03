@@ -1,3 +1,4 @@
+// One-off script: opens the editor and screenshots it in light/dark mode to /tmp for a manual look.
 import { chromium } from 'playwright-core';
 import { execSync } from 'node:child_process';
 

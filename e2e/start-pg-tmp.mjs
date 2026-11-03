@@ -1,3 +1,4 @@
+// Starts a throwaway local Postgres for running the app/tests without Docker; stop with Ctrl+C.
 import EmbeddedPostgres from 'embedded-postgres';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
