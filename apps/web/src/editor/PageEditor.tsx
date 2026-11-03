@@ -198,7 +198,9 @@ export function PageEditor({
 
   return (
     <div className={`page-editor${editable ? ' is-editable' : ' is-readonly'}`}>
-      {state === 'conflict' && <ConflictNote onReload={onReload} />}
+      {/* Always-present slot: the bubble menus below are moved out of this div by
+          Tippy, so React must never insert a node before them (it would crash). */}
+      <div className="conflict-slot">{state === 'conflict' && <ConflictNote onReload={onReload} />}</div>
       {editor && editable && <TableMenu editor={editor} />}
       {editor && editable && <MarksMenu editor={editor} />}
       <EditorContent editor={editor} />
