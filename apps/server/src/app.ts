@@ -16,6 +16,7 @@ import { spaceRoutes } from './routes/spaces.js';
 import { pageRoutes } from './routes/pages.js';
 import { attachmentRoutes } from './routes/attachments.js';
 import { linkPreviewRoutes } from './routes/linkPreview.js';
+import { searchRoutes } from './routes/search.js';
 import type { SafeFetchOptions } from './embeds/safeFetch.js';
 import { DiskStorage, type FileStorage } from './files/storage.js';
 
@@ -77,6 +78,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(pageRoutes, { prefix: '/api/pages' });
   await app.register(attachmentRoutes, { prefix: '/api' });
   await app.register(linkPreviewRoutes, { prefix: '/api', fetchOptions: opts.linkPreviewFetch });
+  await app.register(searchRoutes, { prefix: '/api' });
 
   // The built web app, served from the same origin (one container in production).
   const webDist = opts.config.webDist;

@@ -177,6 +177,46 @@ export interface LinkPreview {
   imageUrl: string | null;
 }
 
+// ---------- Search ----------
+
+/**
+ * Hit markers in a search snippet. They are private-use characters that the
+ * server strips from page text before highlighting, so they can never come
+ * from a page. The client splits on them and renders every part as plain
+ * text (hits inside <mark>); a snippet is never inserted as HTML.
+ */
+export const HIT_START = '';
+export const HIT_END = '';
+
+export interface SearchResult {
+  pageId: string;
+  title: string;
+  spaceKey: string;
+  spaceName: string;
+  /** Plain page text with hits wrapped in HIT_START / HIT_END. */
+  snippet: string;
+  /** Ancestors from the top of the space down to the parent. */
+  breadcrumbs: Crumb[];
+}
+
+/** Split a snippet into plain-text parts, each marked as a hit or not. */
+export function splitSnippet(snippet: string): { text: string; hit: boolean }[] {
+  const parts: { text: string; hit: boolean }[] = [];
+  let hit = false;
+  let text = '';
+  for (const ch of snippet) {
+    if (ch === HIT_START || ch === HIT_END) {
+      if (text) parts.push({ text, hit });
+      text = '';
+      hit = ch === HIT_START;
+    } else {
+      text += ch;
+    }
+  }
+  if (text) parts.push({ text, hit });
+  return parts;
+}
+
 export interface ApiError {
   error: string;
   message: string;
