@@ -46,16 +46,16 @@ page's title and body.
       stop words like `the`. Quotes, `&`, `|`, `!`, `:*`, `(`, a 1,000-character
       string and non-Latin text all return 200, never 500. A query over 200
       characters is cut to 200.
-- [ ] **Snippets cannot carry HTML.** The server marks hits with markers that
+- [x] **Snippets cannot carry HTML.** The server marks hits with markers that
       cannot be confused with page text, and the client turns them into `<mark>`
       and renders everything else as plain text. It is never inserted as raw
       HTML.
-- [ ] Screen: a search field in the top bar of `Shell`. `Ctrl+K` / `⌘K` focuses
+- [x] Screen: a search field in the top bar of `Shell`. `Ctrl+K` / `⌘K` focuses
       it (not `/`, which the editor uses). Enter opens `/search?q=…`, which lists
       the results with title, space name, breadcrumbs and the snippet with soft
       highlights. Clicking a result opens the page. With no results it says so
       calmly. The URL keeps the query, so reload and back work.
-- [ ] Styles use only the design tokens. The results list fades in quietly and
+- [x] Styles use only the design tokens. The results list fades in quietly and
       respects `prefers-reduced-motion`. Light and dark both look right.
 
 ### Checks that must exist and pass
@@ -76,7 +76,7 @@ page's title and body.
   - a page whose text is `<img src=x onerror=alert(1)>` comes back with that
     text as data, and the snippet holds no tags apart from the hit markers;
   - signed out gets 401.
-- [ ] **E2E (Playwright), `e2e/tests/search.spec.ts`:**
+- [x] **E2E (Playwright), `e2e/tests/search.spec.ts`:**
   - type a made-up word into a page, wait for "Saved", press `Ctrl+K`, search
     it: the page is listed with the word highlighted, and clicking it opens
     the page;
@@ -85,7 +85,7 @@ page's title and body.
   - the `<img onerror>` page shows the text literally, and no `img` element
     appears in the results;
   - reload on `/search?q=…` shows the same results.
-- [ ] `npm run check` passes (typecheck, server tests, originality, contrast).
+- [x] `npm run check` passes (typecheck, server tests, originality, contrast).
 
 ### Hand check by the lead (compose stack, browser)
 - [ ] Two users and one restricted space: search from both accounts in light
