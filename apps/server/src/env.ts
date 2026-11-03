@@ -9,11 +9,20 @@ export interface Config {
   webDist: string;
   /** Force the Secure flag on cookies (otherwise decided per request). */
   secureCookies: boolean;
+  /** Largest accepted upload, in bytes (MAX_UPLOAD_MB, default 25). */
+  maxUploadBytes: number;
+  /** Where uploaded files are kept on disk (the compose uploads volume). */
+  uploadDir: string;
 }
 
 function bool(v: string | undefined, fallback: boolean): boolean {
   if (v === undefined || v.trim() === '') return fallback;
   return !['false', '0', 'no', 'off'].includes(v.trim().toLowerCase());
+}
+
+function positive(v: string | undefined, fallback: number): number {
+  const n = Number(v);
+  return v !== undefined && v.trim() !== '' && Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
 export function loadConfig(e: NodeJS.ProcessEnv = process.env): Config {
@@ -25,6 +34,8 @@ export function loadConfig(e: NodeJS.ProcessEnv = process.env): Config {
     allowSignup: bool(e.ALLOW_SIGNUP, true),
     webDist: e.WEB_DIST ?? new URL('../../web/dist', import.meta.url).pathname,
     secureCookies: publicUrl.startsWith('https://'),
+    maxUploadBytes: Math.round(positive(e.MAX_UPLOAD_MB, 25) * 1024 * 1024),
+    uploadDir: e.UPLOAD_DIR?.trim() || '/data/uploads',
   };
 }
 

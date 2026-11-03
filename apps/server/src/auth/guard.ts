@@ -4,11 +4,13 @@ import type { Config } from '../env.js';
 import type { Db } from '../db/client.js';
 import { forbidden, unauthorized } from '../http.js';
 import type { SessionUser } from './session.js';
+import type { FileStorage } from '../files/storage.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
     config: Config;
+    storage: FileStorage;
   }
   interface FastifyRequest {
     user: SessionUser | null;

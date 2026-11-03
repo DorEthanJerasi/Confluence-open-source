@@ -15,6 +15,13 @@
       "when": 1793660127084,
       "tag": "0001_auth_spaces_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793684242196,
+      "tag": "0002_attachments_link_previews",
+      "breakpoints": true
     }
   ]
 }

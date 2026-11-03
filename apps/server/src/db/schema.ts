@@ -115,3 +115,35 @@ export const pages = pgTable(
     index('pages_search_idx').using('gin', t.search),
   ],
 );
+
+// Uploaded files (ARCHITECTURE.md §4, "Files"). The bytes live in FileStorage
+// under storage_key; the row only says what the file is and whose space it is in.
+export const attachments = pgTable(
+  'attachments',
+  {
+    id: id(),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => spaces.id, { onDelete: 'cascade' }),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    filename: text('filename').notNull(),
+    mime: text('mime').notNull(),
+    size: integer('size').notNull(),
+    storageKey: text('storage_key').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('attachments_page_idx').on(t.pageId), index('attachments_space_idx').on(t.spaceId)],
+);
+
+// Open Graph data fetched by the server for link preview cards, cached by URL.
+export const linkPreviews = pgTable('link_previews', {
+  url: text('url').primaryKey(),
+  title: text('title'),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  siteName: text('site_name'),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+});

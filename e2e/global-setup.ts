@@ -72,6 +72,8 @@ export default async function globalSetup() {
       PORT: String(appPort),
       PUBLIC_URL: `http://127.0.0.1:${appPort}`,
       ALLOW_SIGNUP: 'true',
+      // Uploads go in the same temp dir, removed in teardown.
+      UPLOAD_DIR: join(dir, 'uploads'),
     },
     stdio: 'inherit',
   });

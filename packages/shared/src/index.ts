@@ -156,6 +156,14 @@ export interface Page {
   myRole: Role;
 }
 
+/** An uploaded file, as returned by POST /api/pages/:id/attachments. */
+export interface Attachment {
+  id: string;
+  filename: string;
+  mime: string;
+  size: number;
+}
+
 export interface ApiError {
   error: string;
   message: string;

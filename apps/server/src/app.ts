@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
+import multipart from '@fastify/multipart';
 import type { Config } from './env.js';
 import type { Db } from './db/client.js';
 import { loadSession, SESSION_COOKIE } from './auth/session.js';
@@ -13,6 +14,8 @@ import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { spaceRoutes } from './routes/spaces.js';
 import { pageRoutes } from './routes/pages.js';
+import { attachmentRoutes } from './routes/attachments.js';
+import { DiskStorage, type FileStorage } from './files/storage.js';
 
 export interface BuildOptions {
   db: Db;
@@ -20,6 +23,8 @@ export interface BuildOptions {
   /** Extra health check, e.g. a DB round trip. */
   health?: () => Promise<void>;
   logger?: boolean;
+  /** Where uploads are kept; default is local disk at config.uploadDir. */
+  storage?: FileStorage;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -28,10 +33,13 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 5 * 1024 * 1024 });
   app.decorate('db', opts.db);
   app.decorate('config', opts.config);
+  app.decorate('storage', opts.storage ?? new DiskStorage(opts.config.uploadDir));
   app.decorateRequest('user', null);
   registerErrorHandler(app);
 
   await app.register(cookie);
+  // Uploads stream to storage; the size limit is enforced while streaming (413).
+  await app.register(multipart, { limits: { fileSize: opts.config.maxUploadBytes, files: 1, fields: 10, parts: 11 } });
 
   const publicHost = new URL(opts.config.publicUrl).host;
 
@@ -63,6 +71,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(userRoutes, { prefix: '/api/users' });
   await app.register(spaceRoutes, { prefix: '/api/spaces' });
   await app.register(pageRoutes, { prefix: '/api/pages' });
+  await app.register(attachmentRoutes, { prefix: '/api' });
 
   // The built web app, served from the same origin (one container in production).
   const webDist = opts.config.webDist;
