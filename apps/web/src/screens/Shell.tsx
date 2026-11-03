@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { LogOut, Moon, Sun, Users } from 'lucide-react';
+import { LogOut, Moon, Search, Sun, Users } from 'lucide-react';
 import { api } from '../api';
 import { useCurrentUser } from '../auth';
 import { currentTheme, setTheme, type Theme } from '../theme';
@@ -35,6 +35,68 @@ function ThemeToggle() {
   );
 }
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/**
+ * The search field in the top bar. Ctrl+K (⌘K on a Mac) focuses it from
+ * anywhere, the editor included; `/` is left to the editor's slash menu.
+ * Enter opens /search?q=…, so the query lives in the URL.
+ */
+function SearchField() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const urlQuery = location.pathname === '/search' ? (params.get('q') ?? '') : '';
+  const [value, setValue] = useState(urlQuery);
+  const ref = useRef<HTMLInputElement>(null);
+
+  // Keep the field in step with the URL (reload, back and forward).
+  useEffect(() => setValue(urlQuery), [urlQuery]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        e.stopPropagation();
+        ref.current?.focus();
+        ref.current?.select();
+      }
+    };
+    // Capture phase, so the editor never swallows the shortcut first.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
+
+  return (
+    <form
+      className="topsearch"
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const q = value.trim();
+        if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
+      }}
+    >
+      <Search size={16} className="topsearch-icon" aria-hidden="true" />
+      <input
+        ref={ref}
+        type="search"
+        className="topsearch-input"
+        placeholder="Search pages"
+        aria-label="Search pages"
+        aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
+        value={value}
+        maxLength={200}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => e.key === 'Escape' && e.currentTarget.blur()}
+      />
+      <kbd className="topsearch-kbd" aria-hidden="true">
+        {isMac ? '⌘K' : 'Ctrl K'}
+      </kbd>
+    </form>
+  );
+}
+
 export function Shell() {
   const user = useCurrentUser();
   const qc = useQueryClient();
@@ -64,6 +126,7 @@ export function Shell() {
             </NavLink>
           )}
         </nav>
+        <SearchField />
         <div className="topbar-end">
           <ThemeToggle />
           <span className="who" title={user.email}>

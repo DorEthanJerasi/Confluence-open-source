@@ -45,6 +45,9 @@ const PAIRS = [
   ['color-text', 'color-warning-soft', 'AA'],
   ['color-text', 'color-danger-soft', 'AA'],
   ['color-accent-strong', 'color-bg-subtle', 'AA'],
+  // Search (stage 3a): the top-bar field's placeholder and shortcut hint sit
+  // on bg-subtle; a <mark> hit in a snippet is body text on warning-soft.
+  ['color-text-muted', 'color-bg-subtle', 'AA'],
 ];
 
 const THRESHOLDS = { AA: 4.5, 'AA-large': 3 };

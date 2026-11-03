@@ -9,6 +9,7 @@ import { PageScreen } from './screens/PageScreen';
 import { SpaceSettings } from './screens/SpaceSettings';
 import { AdminUsers } from './screens/AdminUsers';
 import { NotFound } from './screens/NotFound';
+import { SearchScreen } from './screens/SearchScreen';
 
 export function App() {
   const { user } = useMe();
@@ -32,6 +33,7 @@ export function App() {
       <Route element={<Shell />}>
         <Route path="/" element={<Home />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/search" element={<SearchScreen />} />
         <Route path="/s/:key" element={<SpaceLayout />}>
           <Route index element={<SpaceHome />} />
           <Route path="p/:pageId" element={<PageScreen />} />

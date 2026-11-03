@@ -1,6 +1,19 @@
 // One typed client for the Stillwater API. Every call goes through `request`,
 // which sends the session cookie and turns error bodies into ApiFailure.
-import type { ApiError, AuthConfig, Doc, LinkPreview, Page, PageTreeItem, Role, Space, SpaceMember, User, Visibility } from '@stillwater/shared';
+import type {
+  ApiError,
+  AuthConfig,
+  Doc,
+  LinkPreview,
+  Page,
+  PageTreeItem,
+  Role,
+  SearchResult,
+  Space,
+  SpaceMember,
+  User,
+  Visibility,
+} from '@stillwater/shared';
 
 export class ApiFailure extends Error {
   constructor(
@@ -89,6 +102,8 @@ export const api = {
   },
   /** The Open Graph card for a link; only `url` is set when the server refused or could not read it. */
   linkPreview: (url: string) => get<LinkPreview>(`/api/link-preview?url=${encodeURIComponent(url)}`),
+  /** Full-text search over the pages this user may read; snippets hold hit markers, never HTML. */
+  search: (q: string) => get<{ results: SearchResult[] }>(`/api/search?q=${enc(q)}`),
   deletePage: (id: string) => request<{ ok: true; deleted: number }>('DELETE', `/api/pages/${enc(id)}`),
 };
 
