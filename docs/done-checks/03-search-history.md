@@ -119,14 +119,14 @@ page's title and body.
   is never folded into later. Every earlier snapshot stays.
 
 ### Build
-- [ ] New migration file `0003_page_versions.sql` (applied migrations are not
+- [x] New migration file `0003_page_versions.sql` (applied migrations are not
       edited) creates `page_versions` with an index on `(page_id, version desc)`,
       `on delete cascade` from pages, and `on delete set null` for the author.
       It **backfills one snapshot for every existing page** (its current
       version, title, doc and `updated_by`), so older pages have history too.
-- [ ] `createPage` writes the first snapshot (version 1) in the same
+- [x] `createPage` writes the first snapshot (version 1) in the same
       transaction.
-- [ ] `savePage` follows the snapshot rule above in one transaction, and a 409
+- [x] `savePage` follows the snapshot rule above in one transaction, and a 409
       writes no snapshot. Moving a page writes no snapshot.
 - [ ] `GET /api/pages/:id/versions?before=<version>` (space viewer and above):
       newest first, 50 at a time. Each entry has `version`, `title`, author
