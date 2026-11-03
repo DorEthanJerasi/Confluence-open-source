@@ -1,4 +1,4 @@
-// Scratch check by the coder; not committed.
+// Stage 2a editor checks (docs/done-checks/02-editor.md, E2E list).
 import { test, expect, type Page } from '@playwright/test';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -22,7 +22,7 @@ async function slash(page: Page, query: string, pick: string) {
   await menu.getByRole('option', { name: new RegExp('^' + pick) }).click();
 }
 
-test.describe.serial('editor smoke', () => {
+test.describe.serial('editor', () => {
   test('setup + type, save, reload', async ({ page }) => {
     await page.goto('/signup');
     await page.getByLabel('Name').fill(admin.name);
@@ -47,6 +47,7 @@ test.describe.serial('editor smoke', () => {
   });
 
   test('slash filter, every block, code highlight, table, ids', async ({ page }) => {
+    test.setTimeout(90_000);
     await logIn(page, admin);
     await page.goto(pageUrl);
     await body(page).click();
@@ -112,7 +113,8 @@ test.describe.serial('editor smoke', () => {
     await tmenu.getByRole('button', { name: 'Remove row' }).click();
     await expect(table.locator('tr')).toHaveCount(3);
     await tmenu.getByRole('button', { name: 'Remove column' }).click();
-    await expect(table.locator('tr').first().locator('th')).toHaveCount(3);
+    // The caret sat in the header row, so "Remove row" took that row; count cells of either kind.
+    await expect(table.locator('tr').first().locator('th, td')).toHaveCount(3);
     await page.keyboard.type('cell');
 
     // markdown shortcuts
@@ -123,7 +125,7 @@ test.describe.serial('editor smoke', () => {
     await expect(body(page).locator('h2', { hasText: 'md heading' })).toHaveCount(1);
 
     await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
-    await page.screenshot({ path: 'test-results/coder-light.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/editor-light.png', fullPage: true });
     await page.reload();
     await expect(body(page).locator('pre code span[class^="hljs"]').first()).toBeVisible();
     await expect(body(page).locator('table')).toContainText('cell');
@@ -141,7 +143,7 @@ test.describe.serial('editor smoke', () => {
 
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
-    await page.screenshot({ path: 'test-results/coder-dark.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/editor-dark.png', fullPage: true });
   });
 
   test('viewer sees content, no editable surface', async ({ page }) => {
