@@ -97,12 +97,12 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 ## 2b — Embeds: images, files, video, link previews
 
 ### Build
-- [ ] Migration adds `attachments` and `link_previews` tables (ARCHITECTURE.md §4,
+- [x] Migration adds `attachments` and `link_previews` tables (ARCHITECTURE.md §4,
       new migration file; applied ones are not edited).
-- [ ] `POST /api/pages/:id/attachments` (space editor or above), multipart, limit
+- [x] `POST /api/pages/:id/attachments` (space editor or above), multipart, limit
       `MAX_UPLOAD_MB`; stores on disk under `/data/uploads` (the compose volume);
       returns `{ id, filename, mime, size }`.
-- [ ] `GET /api/attachments/:id` streams the file only to a user who can read the
+- [x] `GET /api/attachments/:id` streams the file only to a user who can read the
       attachment's space; anyone else gets 404. `Content-Type` from the stored
       mime, `Content-Disposition: attachment` for non-image/non-video, and
       `X-Content-Type-Options: nosniff`. SVG and HTML are never served inline.
@@ -122,7 +122,7 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 - [ ] Viewers see every embed; they cannot upload (no control, and the API says 403).
 
 ### Checks that must exist and pass
-- [ ] **API:** upload then fetch works for a member; a non-member of a restricted
+- [x] **API:** upload then fetch works for a member; a non-member of a restricted
       space gets 404; a viewer's upload gets 403; a file over the limit gets 413.
 - [x] **Unit:** SSRF guard refuses `127.0.0.1`, `10.x`, `192.168.x`, `169.254.169.254`,
       `[::1]`, a hostname that resolves to a private address, and a redirect to one.
@@ -145,6 +145,23 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 - [ ] Build a page with one of every embed, in light and dark mode; reload; all
       render; a second user who is not a member of the space cannot open the
       image URL directly.
+
+### Lead review, item #62 (2026-11-03)
+Server half of the upload boxes accepted (migration, POST and GET, API test). Evidence:
+- `npm run check` (Node 22): typecheck, 183 server tests (9 in `test/attachments.test.ts`),
+  originality and contrast pass.
+- Migration: new file `0002_attachments_link_previews.sql`; `git log` shows 0000 and 0001
+  untouched since item #56.
+- Code read (`routes/attachments.ts`, `files/attachments.ts`, `files/storage.ts`): role is
+  checked before any byte is read; `UPLOAD_DIR` defaults to `/data/uploads`, the compose
+  volume; storage keys are server-made UUIDs only; only png/jpeg/gif/webp/avif/mp4/webm are
+  inline, everything else (SVG, HTML, PDF) is `attachment`, with `nosniff` and a sandbox CSP.
+- Tests prove: member upload and byte-exact fetch; non-member and signed-out 404 (fetch and
+  upload); viewer 403 with nothing on disk; over the limit 413 with nothing on disk, exactly at
+  the limit 201.
+- Not part of #62 and still open: the viewer box (no upload control) needs the editor;
+  `docker/Dockerfile` does not copy `packages/editor-schema`, so the compose build is expected
+  to fail until that is fixed (blocks the compose box).
 
 ### Lead review, item #63 (2026-11-03)
 Server half of the link-preview and video boxes accepted. Evidence:
