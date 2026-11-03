@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ComponentType } from 'react';
 import { Extension, type ChainedCommands, type Editor, type Range } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
+import { pickAttachment } from './embeds';
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion';
 import {
   CheckSquare,
@@ -10,7 +11,9 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  ImageIcon,
   Info,
+  Paperclip,
   List,
   ListOrdered,
   Minus,
@@ -25,7 +28,10 @@ export interface SlashItem {
   hint: string;
   keywords: string[];
   icon: ComponentType<LucideProps>;
-  run: (chain: ChainedCommands) => ChainedCommands;
+  /** Change the current block. */
+  run?: (chain: ChainedCommands) => ChainedCommands;
+  /** Or do something after the `/query` text is gone (open the file picker). */
+  action?: (editor: Editor) => void;
 }
 
 /** Every block the editor offers, in menu order. */
@@ -47,6 +53,20 @@ export const SLASH_ITEMS: SlashItem[] = [
     keywords: ['grid', 'table'],
     icon: Table2,
     run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+  },
+  {
+    title: 'Image',
+    hint: 'Upload a picture',
+    keywords: ['picture', 'photo', 'img', 'upload'],
+    icon: ImageIcon,
+    action: (editor) => pickAttachment(editor, 'image'),
+  },
+  {
+    title: 'File',
+    hint: 'Attach a file to download',
+    keywords: ['attachment', 'upload', 'pdf', 'document'],
+    icon: Paperclip,
+    action: (editor) => pickAttachment(editor, 'file'),
   },
 ];
 
@@ -148,7 +168,9 @@ export const SlashCommand = Extension.create({
         allow: ({ state }) => !state.selection.$from.parent.type.spec.code,
         items: ({ query }) => filterSlashItems(query),
         command: ({ editor, range, props }: { editor: Editor; range: Range; props: SlashItem }) => {
-          props.run(editor.chain().focus().deleteRange(range)).run();
+          const chain = editor.chain().focus().deleteRange(range);
+          (props.run ? props.run(chain) : chain).run();
+          props.action?.(editor);
         },
         render: () => {
           let renderer: ReactRenderer<MenuHandle, MenuProps> | null = null;

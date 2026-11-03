@@ -1,9 +1,9 @@
 // The one editor schema (ARCHITECTURE.md §3). The web editor, the server's
 // validation and text extraction, and (later) the co-editing server all build
 // their schema from getExtensions(). A node type not listed here does not exist.
-import { Extension, Node, getSchema, mergeAttributes, type AnyExtension } from '@tiptap/core';
+import { Extension, Node, getSchema, mergeAttributes, type AnyExtension, type NodeViewRenderer } from '@tiptap/core';
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
-import { Fragment, Node as PmNode, type Schema } from '@tiptap/pm/model';
+import { Fragment, Node as PmNode, type DOMOutputSpec, type Schema } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -34,6 +34,8 @@ export const TOP_LEVEL_TYPES = [
   'codeBlock',
   'table',
   'callout',
+  'image',
+  'file',
 ] as const;
 
 export const CALLOUT_TONES = ['info', 'success', 'warning', 'danger'] as const;
@@ -41,6 +43,14 @@ export type CalloutTone = (typeof CALLOUT_TONES)[number];
 
 /** Link targets we keep. Anything else (javascript:, data:, …) is refused. */
 const SAFE_HREF = /^(https?:|mailto:|\/|#)/i;
+
+/** An uploaded file is referenced by its attachment id only (ARCHITECTURE.md §3, rule 3). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Where the server hands out an attachment. The only URL an image or file block ever uses. */
+export function attachmentUrl(id: string): string {
+  return `/api/attachments/${encodeURIComponent(id)}`;
+}
 
 /** UUID v4 from getRandomValues, which (unlike randomUUID) works on plain-http self-hosts. */
 export function newBlockId(): string {
@@ -93,6 +103,98 @@ export const Callout = Node.create({
     };
   },
 });
+
+/** A uuid string or null; anything else (a URL, bytes, …) parses to null. */
+function attachmentIdAttr() {
+  return {
+    default: null as string | null,
+    parseHTML: (el: HTMLElement) => {
+      const v = el.getAttribute('data-attachment-id');
+      return v && UUID.test(v) ? v : null;
+    },
+    renderHTML: (attrs: Record<string, unknown>) => (attrs.attachmentId ? { 'data-attachment-id': attrs.attachmentId } : {}),
+  };
+}
+
+/**
+ * An uploaded image with an optional caption. Stores only the attachment id;
+ * the picture is always loaded from the permission-checked attachment route.
+ */
+export const Image = Node.create({
+  name: 'image',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      attachmentId: attachmentIdAttr(),
+      alt: { default: '', parseHTML: (el) => el.querySelector('img')?.getAttribute('alt') ?? '', renderHTML: () => ({}) },
+      caption: {
+        default: '',
+        parseHTML: (el) => el.querySelector('figcaption')?.textContent ?? '',
+        renderHTML: () => ({}),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'figure[data-image]' }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const id = node.attrs.attachmentId as string | null;
+    const img: DOMOutputSpec = ['img', { src: id ? attachmentUrl(id) : '', alt: node.attrs.alt || node.attrs.caption || '', loading: 'lazy' }];
+    const caption = node.attrs.caption as string;
+    const figure = mergeAttributes(HTMLAttributes, { 'data-image': '', class: 'embed embed-image' });
+    return caption ? ['figure', figure, img, ['figcaption', {}, caption]] : ['figure', figure, img];
+  },
+});
+
+/** An uploaded file of any kind: name, size and a download link. Stores the attachment id only. */
+export const FileBlock = Node.create({
+  name: 'file',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      attachmentId: attachmentIdAttr(),
+      filename: { default: 'file', parseHTML: (el) => el.getAttribute('data-filename') ?? 'file', renderHTML: (a) => ({ 'data-filename': a.filename }) },
+      size: {
+        default: 0,
+        parseHTML: (el) => Number(el.getAttribute('data-size')) || 0,
+        renderHTML: (a) => ({ 'data-size': String(a.size) }),
+      },
+      mime: { default: '', parseHTML: (el) => el.getAttribute('data-mime') ?? '', renderHTML: (a) => ({ 'data-mime': a.mime }) },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-file]' }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const id = node.attrs.attachmentId as string | null;
+    const name = String(node.attrs.filename);
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, { 'data-file': '', class: 'embed embed-file' }),
+      ['a', { href: id ? attachmentUrl(id) : '#', download: name, rel: 'noopener' }, name],
+      ['span', { class: 'embed-file-size' }, formatBytes(Number(node.attrs.size) || 0)],
+    ];
+  },
+});
+
+/** "2.4 MB", "830 KB", "12 bytes". */
+export function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n < 1024) return `${Math.max(0, Math.round(n || 0))} bytes`;
+  const units = ['KB', 'MB', 'GB'];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v >= 10 ? Math.round(v) : Math.round(v * 10) / 10} ${units[i]}`;
+}
 
 const blockIdKey = new PluginKey('blockId');
 
@@ -150,6 +252,11 @@ export interface ExtensionOptions {
    * manager takes over for co-editing (ARCHITECTURE.md §3, rule 4).
    */
   history?: boolean;
+  /**
+   * Interactive views for the embed blocks (the web editor's upload and caption
+   * UI). They change only how a block is drawn, never its schema.
+   */
+  nodeViews?: Partial<Record<'image' | 'file', NodeViewRenderer>>;
 }
 
 /** The single list of nodes and marks. */
@@ -174,8 +281,14 @@ export function getExtensions(opts: ExtensionOptions = {}): AnyExtension[] {
       HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' },
     }),
     Callout,
+    withView(Image, opts.nodeViews?.image),
+    withView(FileBlock, opts.nodeViews?.file),
     BlockId,
   ];
+}
+
+function withView(node: Node, view: NodeViewRenderer | undefined): Node {
+  return view ? node.extend({ addNodeView: () => view }) : node;
 }
 
 let cached: Schema | null = null;
@@ -195,6 +308,9 @@ function checkAttrs(node: Json, path: string) {
     for (const [k, v] of Object.entries(attrs as Json)) {
       if (typeof v === 'string' && /^\s*data:/i.test(v)) {
         throw new InvalidDocError(`${path}.${k}: files must be uploaded, not pasted into the page`);
+      }
+      if (k === 'attachmentId' && v !== null && v !== undefined && !(typeof v === 'string' && UUID.test(v))) {
+        throw new InvalidDocError(`${path}.${k}: must be the id of an uploaded file`);
       }
       if (k === 'href' && typeof v === 'string' && !SAFE_HREF.test(v.trim())) {
         throw new InvalidDocError(`${path}.${k}: only http, https and mailto links are allowed`);
@@ -251,10 +367,18 @@ export function withBlockIds(doc: PmNode): PmNode {
   return changed ? doc.copy(Fragment.fromArray(children)) : doc;
 }
 
+/** Text of a leaf block for search: an image's caption, a file's name. */
+function leafText(leaf: PmNode): string {
+  if (leaf.type.name === 'hardBreak') return '\n';
+  if (leaf.type.name === 'image') return String(leaf.attrs.caption ?? '');
+  if (leaf.type.name === 'file') return String(leaf.attrs.filename ?? '');
+  return '';
+}
+
 /** Plain text of a page: blocks and table cells separated by newlines, no attrs. */
 export function nodeToText(doc: PmNode): string {
   return doc
-    .textBetween(0, doc.content.size, '\n', (leaf) => (leaf.type.name === 'hardBreak' ? '\n' : ''))
+    .textBetween(0, doc.content.size, '\n', leafText)
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{2,}/g, '\n')
     .trim();

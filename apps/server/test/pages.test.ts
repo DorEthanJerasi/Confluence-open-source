@@ -127,7 +127,9 @@ const t = (text: string) => ({ type: 'text', text });
 const p = (text: string) => ({ type: 'paragraph', content: [t(text)] });
 const cell = (type: 'tableHeader' | 'tableCell', text: string) => ({ type, content: [p(text)] });
 
-/** One of every block and mark the editor offers in stage 2a. */
+const ATTACHMENT = '22222222-2222-4222-8222-222222222222';
+
+/** One of every block and mark the editor offers (2a, plus the 2b image and file blocks). */
 const EVERY_BLOCK = {
   type: 'doc',
   content: [
@@ -158,6 +160,8 @@ const EVERY_BLOCK = {
         { type: 'tableRow', content: [cell('tableCell', 'c1'), cell('tableCell', 'c2')] },
       ],
     },
+    { type: 'image', attrs: { attachmentId: ATTACHMENT, alt: '', caption: 'A calm bay' } },
+    { type: 'file', attrs: { attachmentId: ATTACHMENT, filename: 'notes.pdf', size: 2048, mime: 'application/pdf' } },
   ],
 };
 
@@ -178,6 +182,8 @@ describe('docToText', () => {
       'H2',
       'c1',
       'c2',
+      'A calm bay',
+      'notes.pdf',
     ]);
   });
 

@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BubbleMenu, EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
+import { NodeSelection } from '@tiptap/pm/state';
 import { getExtensions } from '@stillwater/editor-schema';
 import type { Doc, Page } from '@stillwater/shared';
 import { Bold, Code, Italic, Link2, Strikethrough } from 'lucide-react';
 import { SlashCommand } from './slash';
+import { AttachmentUpload, embedViews, type UploadNote } from './embeds';
 import type { PageSaver, SaveState } from './saver';
 
 const AUTOSAVE_MS = 1000;
@@ -78,7 +80,10 @@ function MarksMenu({ editor }: { editor: Editor }) {
     <BubbleMenu
       editor={editor}
       pluginKey="marksMenu"
-      shouldShow={({ editor: e, from, to }) => e.isEditable && from !== to && !e.isActive('codeBlock')}
+      // Text selections only: a selected image or file block is a node selection and gets no text menu.
+      shouldShow={({ editor: e, from, to }) =>
+        e.isEditable && from !== to && !e.isActive('codeBlock') && !(e.state.selection instanceof NodeSelection)
+      }
       tippyOptions={{ placement: 'top', duration: 140 }}
       className="bubble-menu"
     >
@@ -137,6 +142,7 @@ export function PageEditor({
   const state = useSaveState(saver);
   const timer = useRef<number | null>(null);
   const latest = useRef<Doc | null>(null);
+  const [note, setNote] = useState<UploadNote | null>(null);
 
   const flush = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -149,10 +155,11 @@ export function PageEditor({
   const editor = useEditor(
     {
       extensions: [
-        ...getExtensions({ history: true }),
+        ...getExtensions({ history: true, nodeViews: embedViews }),
         ...(editable
           ? [
               SlashCommand,
+              AttachmentUpload.configure({ pageId: page.id, onNote: setNote }),
               Placeholder.configure({
                 placeholder: ({ node }) => (node.type.name === 'paragraph' ? 'Write, or type / for blocks' : ''),
                 showOnlyCurrent: true,
@@ -200,7 +207,19 @@ export function PageEditor({
     <div className={`page-editor${editable ? ' is-editable' : ' is-readonly'}`}>
       {/* Always-present slot: the bubble menus below are moved out of this div by
           Tippy, so React must never insert a node before them (it would crash). */}
-      <div className="conflict-slot">{state === 'conflict' && <ConflictNote onReload={onReload} />}</div>
+      <div className="conflict-slot">
+        {state === 'conflict' && <ConflictNote onReload={onReload} />}
+        {note && (
+          <p className={`upload-note fade-in upload-${note.tone}`} aria-live="polite">
+            {note.text}
+            {note.tone === 'error' && (
+              <button type="button" className="btn btn-quiet btn-sm" onClick={() => setNote(null)}>
+                Dismiss
+              </button>
+            )}
+          </p>
+        )}
+      </div>
       {editor && editable && <TableMenu editor={editor} />}
       {editor && editable && <MarksMenu editor={editor} />}
       <EditorContent editor={editor} />

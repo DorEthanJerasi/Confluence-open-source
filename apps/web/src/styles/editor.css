@@ -373,3 +373,120 @@
   margin: var(--space-1);
   background: var(--color-border);
 }
+
+/* ── Embeds: image and file blocks (2b) ─────────────────────────── */
+.doc .embed {
+  margin-block: var(--space-5);
+  border-radius: var(--radius-md);
+  transition: box-shadow var(--motion-fast) var(--ease-standard);
+}
+.doc .embed.is-selected,
+.doc .embed.ProseMirror-selectednode {
+  box-shadow: 0 0 0 2px var(--color-accent-soft), 0 0 0 3px var(--color-focus-ring);
+}
+.doc .embed-image {
+  margin-inline: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.doc .embed-image img {
+  display: block;
+  align-self: center; /* natural size, never stretched, never wider than the page */
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+.doc .embed-image figcaption,
+.doc .embed-caption-input {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.doc .embed-caption-input {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: var(--space-1) var(--space-2);
+  font-family: inherit;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.doc .embed-caption-input::placeholder {
+  color: var(--color-text-faint);
+}
+.doc .embed-caption-input:hover,
+.doc .embed-caption-input:focus {
+  background: var(--color-bg-subtle);
+  outline: none;
+}
+.doc .embed-caption-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+.doc .embed-missing {
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+.doc .embed-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.doc .embed-file-icon {
+  display: inline-flex;
+  color: var(--color-text-faint);
+}
+.doc .embed-file-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.doc .embed-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-medium);
+}
+.doc .embed-file-size {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.doc a.embed-file-download {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  text-decoration: none;
+  color: var(--color-text);
+}
+.upload-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.upload-note.upload-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  .doc .embed,
+  .doc .embed-caption-input {
+    transition: none;
+  }
+}

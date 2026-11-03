@@ -13,11 +13,13 @@ export class ApiFailure extends Error {
 }
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  // A FormData body (file upload) goes as multipart; the browser sets its own content-type.
+  const form = body instanceof FormData;
   const res = await fetch(url, {
     method,
     credentials: 'same-origin',
-    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: body !== undefined && !form ? { 'content-type': 'application/json' } : {},
+    body: form ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
   const data = text ? (JSON.parse(text) as unknown) : null;
@@ -35,6 +37,14 @@ export interface DirectoryUser {
   id: string;
   name: string;
   email: string;
+}
+
+/** What the server keeps about an uploaded file (POST /api/pages/:id/attachments). */
+export interface Attachment {
+  id: string;
+  filename: string;
+  mime: string;
+  size: number;
 }
 
 export const api = {
@@ -72,6 +82,11 @@ export const api = {
     request<{ version: number }>('PUT', `/api/pages/${enc(id)}`, b),
   movePage: (id: string, b: { parentId: string | null; index: number }) =>
     request<{ ok: true }>('POST', `/api/pages/${enc(id)}/move`, b),
+  uploadAttachment: (pageId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<Attachment>('POST', `/api/pages/${enc(pageId)}/attachments`, form);
+  },
   deletePage: (id: string) => request<{ ok: true; deleted: number }>('DELETE', `/api/pages/${enc(id)}`),
 };
 
