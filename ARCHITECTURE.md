@@ -269,6 +269,8 @@ someone on the team has done it by hand in a browser against the compose stack.
    link becomes a player; a pasted URL can become a preview card; code block
    highlights; table can add/remove rows and columns; doc JSON has block ids and
    no base64; stale save returns 409 and is handled.
+   Full check, split into items 2a (editor) and 2b (embeds):
+   `docs/done-checks/02-editor.md`.
 3. **Search and history** — a word typed in a page body is found within one
    save; a page in a restricted space never appears for a non-member; history
    lists versions with author and time; restoring an old version brings its
