@@ -16,6 +16,8 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 import { videoEmbedUrl } from '@stillwater/shared';
 
+export { diffBlocks, type BlockDiff, type BlockJson, type DocJson } from './diff.js';
+
 // Keep the extensions' command typings (setHeading, insertTable, …) visible to editors.
 export type {} from '@tiptap/starter-kit';
 export type {} from '@tiptap/extension-task-list';
