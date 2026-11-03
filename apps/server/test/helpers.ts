@@ -1,6 +1,6 @@
 import { inject } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { buildApp } from '../src/app.js';
+import { buildApp, type BuildOptions } from '../src/app.js';
 import { createDb } from '../src/db/client.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { loadConfig } from '../src/env.js';
@@ -11,12 +11,15 @@ export interface TestCtx {
   reset: () => Promise<void>;
 }
 
-export async function setupApp(env: Record<string, string> = {}): Promise<TestCtx> {
+export async function setupApp(
+  env: Record<string, string> = {},
+  extra: Pick<BuildOptions, 'linkPreviewFetch'> = {},
+): Promise<TestCtx> {
   const databaseUrl = inject('databaseUrl');
   await runMigrations(databaseUrl);
   const { pool, db } = createDb(databaseUrl);
   const config = loadConfig({ DATABASE_URL: databaseUrl, PUBLIC_URL: 'http://wiki.test', WEB_DIST: '', ...env });
-  const app = await buildApp({ db, config });
+  const app = await buildApp({ db, config, ...extra });
   return {
     app,
     reset: async () => {

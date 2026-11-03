@@ -15,6 +15,8 @@ import { userRoutes } from './routes/users.js';
 import { spaceRoutes } from './routes/spaces.js';
 import { pageRoutes } from './routes/pages.js';
 import { attachmentRoutes } from './routes/attachments.js';
+import { linkPreviewRoutes } from './routes/linkPreview.js';
+import type { SafeFetchOptions } from './embeds/safeFetch.js';
 import { DiskStorage, type FileStorage } from './files/storage.js';
 
 export interface BuildOptions {
@@ -25,6 +27,8 @@ export interface BuildOptions {
   logger?: boolean;
   /** Where uploads are kept; default is local disk at config.uploadDir. */
   storage?: FileStorage;
+  /** Link-preview fetch settings; tests use them to reach a local stub server. */
+  linkPreviewFetch?: SafeFetchOptions;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -72,6 +76,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(spaceRoutes, { prefix: '/api/spaces' });
   await app.register(pageRoutes, { prefix: '/api/pages' });
   await app.register(attachmentRoutes, { prefix: '/api' });
+  await app.register(linkPreviewRoutes, { prefix: '/api', fetchOptions: opts.linkPreviewFetch });
 
   // The built web app, served from the same origin (one container in production).
   const webDist = opts.config.webDist;

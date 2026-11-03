@@ -164,7 +164,22 @@ export interface Attachment {
   size: number;
 }
 
+/**
+ * A link preview card, as returned by GET /api/link-preview. When the page
+ * could not be fetched (refused, failed, or not HTML) every field but `url`
+ * is null and the card shows as a plain link.
+ */
+export interface LinkPreview {
+  url: string;
+  title: string | null;
+  description: string | null;
+  siteName: string | null;
+  imageUrl: string | null;
+}
+
 export interface ApiError {
   error: string;
   message: string;
 }
+
+export { videoEmbedUrl } from './video.js';
