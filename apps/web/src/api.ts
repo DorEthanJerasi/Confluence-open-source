@@ -1,6 +1,6 @@
 // One typed client for the Stillwater API. Every call goes through `request`,
 // which sends the session cookie and turns error bodies into ApiFailure.
-import type { ApiError, AuthConfig, Page, PageTreeItem, Role, Space, SpaceMember, User, Visibility } from '@stillwater/shared';
+import type { ApiError, AuthConfig, Doc, Page, PageTreeItem, Role, Space, SpaceMember, User, Visibility } from '@stillwater/shared';
 
 export class ApiFailure extends Error {
   constructor(
@@ -68,7 +68,7 @@ export const api = {
   createPage: (key: string, b: { title: string; parentId: string | null }) =>
     request<{ page: Page }>('POST', `/api/spaces/${enc(key)}/pages`, b),
   page: (id: string) => get<{ page: Page }>(`/api/pages/${enc(id)}`),
-  savePage: (id: string, b: { baseVersion: number; title?: string }) =>
+  savePage: (id: string, b: { baseVersion: number; title?: string; doc?: Doc }) =>
     request<{ version: number }>('PUT', `/api/pages/${enc(id)}`, b),
   movePage: (id: string, b: { parentId: string | null; index: number }) =>
     request<{ ok: true }>('POST', `/api/pages/${enc(id)}/move`, b),

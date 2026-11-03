@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, Trash2 } from 'lucide-react';
 import type { Page } from '@stillwater/shared';
 import { api, ApiFailure } from '../api';
+import { PageEditor, SaveStatus } from '../editor/PageEditor';
+import { PageSaver } from '../editor/saver';
 import { pageTitle } from '../tree';
 import { ErrorNote, Loading } from '../ui';
 import { NotFound } from './NotFound';
@@ -19,23 +21,7 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** Plain text of each top-level block, until the block editor arrives. */
-function docParagraphs(page: Page): string[] {
-  const out: string[] = [];
-  const text = (n: unknown): string => {
-    if (!n || typeof n !== 'object') return '';
-    const node = n as { text?: string; content?: unknown[] };
-    return (node.text ?? '') + (node.content ?? []).map(text).join('');
-  };
-  for (const block of page.doc.content ?? []) {
-    const t = text(block).trim();
-    if (t) out.push(t);
-  }
-  return out;
-}
-
-function TitleEditor({ page, editable }: { page: Page; editable: boolean }) {
-  const qc = useQueryClient();
+function TitleEditor({ page, editable, saver }: { page: Page; editable: boolean; saver: PageSaver }) {
   const location = useLocation();
   const [value, setValue] = useState(page.title);
   const [error, setError] = useState<unknown>(null);
@@ -53,15 +39,10 @@ function TitleEditor({ page, editable }: { page: Page; editable: boolean }) {
     setSaving(true);
     setError(null);
     try {
-      const { version } = await api.savePage(page.id, { baseVersion: page.version, title });
-      qc.setQueryData<{ page: Page }>(['page', page.id], (old) =>
-        old ? { page: { ...old.page, title, version, updatedAt: new Date().toISOString() } } : old,
-      );
-      await qc.invalidateQueries({ queryKey: ['tree', page.spaceKey] });
-      await qc.invalidateQueries({ queryKey: ['page', page.id] });
+      await saver.save({ title });
     } catch (err) {
-      setError(err);
-      if (err instanceof ApiFailure && err.status === 409) await qc.invalidateQueries({ queryKey: ['page', page.id] });
+      // A conflict is shown once, above the body, with a Reload button.
+      if (!(err instanceof ApiFailure && err.status === 409)) setError(err);
     } finally {
       setSaving(false);
     }
@@ -92,9 +73,14 @@ function TitleEditor({ page, editable }: { page: Page; editable: boolean }) {
   );
 }
 
+/** True when the body holds no text and no non-paragraph block. */
+function isEmptyDoc(page: Page) {
+  const blocks = (page.doc.content ?? []) as { type?: string; content?: unknown[] }[];
+  return blocks.every((b) => b.type === 'paragraph' && !b.content?.length);
+}
+
 export function PageScreen() {
   const { pageId = '' } = useParams();
-  const { space, items, canEdit, newPage, deletePage } = useSpace();
   const q = useQuery({ queryKey: ['page', pageId], queryFn: () => api.page(pageId) });
 
   if (q.isPending) return <Loading />;
@@ -102,9 +88,43 @@ export function PageScreen() {
     if (q.error instanceof ApiFailure && q.error.status === 404) return <NotFound />;
     return <ErrorNote error={q.error} />;
   }
-  const page = q.data.page;
+  return <PageView page={q.data.page} />;
+}
+
+function PageView({ page }: { page: Page }) {
+  const qc = useQueryClient();
+  const { space, items, canEdit, newPage, deletePage } = useSpace();
+  const [generation, setGeneration] = useState(0);
+
+  // One saver per page load; Reload after a conflict starts a fresh one.
+  const saver = useMemo(
+    () =>
+      new PageSaver(page.id, page.version, (version, change) => {
+        qc.setQueryData<{ page: Page }>(['page', page.id], (old) =>
+          old
+            ? {
+                page: {
+                  ...old.page,
+                  ...(change.title !== undefined ? { title: change.title } : {}),
+                  ...(change.doc !== undefined ? { doc: change.doc } : {}),
+                  version,
+                  updatedAt: new Date().toISOString(),
+                },
+              }
+            : old,
+        );
+        if (change.title !== undefined) void qc.invalidateQueries({ queryKey: ['tree', page.spaceKey] });
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [page.id, generation],
+  );
+
+  async function reload() {
+    await qc.fetchQuery({ queryKey: ['page', page.id], queryFn: () => api.page(page.id), staleTime: 0 });
+    setGeneration((g) => g + 1);
+  }
+
   const children = items.filter((i) => i.parentId === page.id);
-  const paragraphs = docParagraphs(page);
 
   return (
     <article className="content fade-in" key={page.id}>
@@ -122,10 +142,16 @@ export function PageScreen() {
 
       <div className="page-head page-head-top">
         <div className="grow">
-          <TitleEditor page={page} editable={canEdit} />
+          <TitleEditor key={generation} page={page} editable={canEdit} saver={saver} />
           <p className="meta muted">
             {page.updatedBy ? `Edited by ${page.updatedBy.name} · ` : ''}
             {timeAgo(page.updatedAt)}
+            {canEdit && (
+              <>
+                {' '}
+                <SaveStatus saver={saver} />
+              </>
+            )}
           </p>
         </div>
         {canEdit && (
@@ -141,10 +167,10 @@ export function PageScreen() {
       </div>
 
       <div className="page-body">
-        {paragraphs.length > 0 ? (
-          paragraphs.map((p, i) => <p key={i}>{p}</p>)
-        ) : (
+        {!canEdit && isEmptyDoc(page) ? (
           <p className="muted">This page has no content yet.</p>
+        ) : (
+          <PageEditor key={`${page.id}:${generation}`} page={page} editable={canEdit} saver={saver} onReload={reload} />
         )}
       </div>
 

@@ -33,6 +33,18 @@ const PAIRS = [
   ['color-danger', 'color-surface', 'AA'],
   ['color-text', 'color-bg-subtle', 'AA'],
   ['color-text', 'color-surface-sunken', 'AA'],
+  // Editor (stage 2a): code-block highlight colours sit on the sunken surface,
+  // callouts put body text on the soft tones, table headers on bg-subtle.
+  ['color-text-muted', 'color-surface-sunken', 'AA'],
+  ['color-accent', 'color-surface-sunken', 'AA'],
+  ['color-success', 'color-surface-sunken', 'AA'],
+  ['color-warning', 'color-surface-sunken', 'AA'],
+  ['color-danger', 'color-surface-sunken', 'AA'],
+  ['color-text', 'color-accent-soft', 'AA'],
+  ['color-text', 'color-success-soft', 'AA'],
+  ['color-text', 'color-warning-soft', 'AA'],
+  ['color-text', 'color-danger-soft', 'AA'],
+  ['color-accent-strong', 'color-bg-subtle', 'AA'],
 ];
 
 const THRESHOLDS = { AA: 4.5, 'AA-large': 3 };

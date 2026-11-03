@@ -15,6 +15,13 @@ import Link from '@tiptap/extension-link';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 
+// Keep the extensions' command typings (setHeading, insertTable, …) visible to editors.
+export type {} from '@tiptap/starter-kit';
+export type {} from '@tiptap/extension-task-list';
+export type {} from '@tiptap/extension-table';
+export type {} from '@tiptap/extension-link';
+export type {} from '@tiptap/extension-code-block-lowlight';
+
 /** Node types that may sit directly under `doc`; each carries a stable block `id`. */
 export const TOP_LEVEL_TYPES = [
   'paragraph',

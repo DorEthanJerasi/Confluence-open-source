@@ -1,0 +1,375 @@
+/*
+ * The block editor, slash menu and bubble menus. Tokens only (tokens.css);
+ * reduced motion is handled once, in tokens.css.
+ */
+
+.page-editor {
+  position: relative;
+}
+
+.page-editor .doc {
+  outline: none;
+  min-height: 40vh;
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+}
+.page-editor.is-readonly .doc {
+  min-height: 0;
+}
+
+.doc > * + * {
+  margin-top: var(--space-4);
+}
+
+.doc h1,
+.doc h2,
+.doc h3 {
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-semibold);
+}
+.doc h1 {
+  font-size: var(--text-2xl);
+  margin-top: var(--space-7);
+}
+.doc h2 {
+  font-size: var(--text-xl);
+  margin-top: var(--space-6);
+}
+.doc h3 {
+  font-size: var(--text-lg);
+  margin-top: var(--space-5);
+}
+.doc > :first-child {
+  margin-top: 0;
+}
+
+.doc a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.doc s {
+  color: var(--color-text-muted);
+}
+
+.doc :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+}
+
+/* Lists */
+.doc ul,
+.doc ol {
+  padding-left: var(--space-5);
+}
+.doc li + li {
+  margin-top: var(--space-1);
+}
+.doc li > p + * {
+  margin-top: var(--space-1);
+}
+.doc ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+.doc ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.doc ul[data-type='taskList'] li > label {
+  flex: none;
+  padding-top: 0.3em;
+}
+.doc ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+.doc ul[data-type='taskList'] input[type='checkbox'] {
+  accent-color: var(--color-accent);
+  width: var(--text-base);
+  height: var(--text-base);
+  cursor: pointer;
+}
+.doc ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+/* Quote, divider, callout */
+.doc blockquote {
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+.doc hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-6) 0;
+}
+.doc hr.ProseMirror-selectednode {
+  border-top-color: var(--color-accent);
+}
+.doc .callout {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
+.doc .callout[data-tone='success'] {
+  background: var(--color-success-soft);
+}
+.doc .callout[data-tone='warning'] {
+  background: var(--color-warning-soft);
+}
+.doc .callout[data-tone='danger'] {
+  background: var(--color-danger-soft);
+}
+.doc .callout > p + p {
+  margin-top: var(--space-2);
+}
+
+/* Code blocks, highlighted by lowlight (hljs-* classes) */
+.doc pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+.doc pre code {
+  font: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-literal {
+  color: var(--color-accent);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attr {
+  color: var(--color-success);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-type {
+  color: var(--color-warning);
+}
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-deletion {
+  color: var(--color-danger);
+}
+
+/* Tables */
+.doc .tableWrapper {
+  overflow-x: auto;
+}
+.doc table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  font-size: var(--text-base);
+}
+.doc th,
+.doc td {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  vertical-align: top;
+  text-align: left;
+  position: relative;
+}
+.doc th {
+  background: var(--color-bg-subtle);
+  font-weight: var(--weight-semibold);
+}
+.doc .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent-soft);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Placeholder on the empty line the caret is on */
+.doc .is-empty.is-editor-empty::before,
+.doc p.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-text-faint);
+}
+
+/* Save state, next to "Edited by" */
+.save-status {
+  color: var(--color-text-muted);
+  transition: opacity var(--motion-base) var(--ease-standard);
+}
+.save-status.save-idle {
+  opacity: 0;
+}
+.save-status.save-error {
+  color: var(--color-danger);
+}
+.save-status:not(:empty)::before {
+  content: '· ';
+}
+
+/* Someone else saved first */
+.conflict-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-soft);
+  color: var(--color-text);
+  font-size: var(--text-base);
+}
+
+/* Slash menu */
+.slash-host {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+}
+.slash-menu {
+  width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  animation: slash-in var(--motion-fast) var(--ease-enter);
+}
+@keyframes slash-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.slash-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-instant) var(--ease-standard);
+}
+.slash-item[aria-selected='true'] {
+  background: var(--color-bg-subtle);
+}
+.slash-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+.slash-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.slash-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+.slash-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.slash-empty {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Bubble menus: text marks and table rows/columns */
+.bubble-menu > [role='toolbar'] {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.bubble-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--motion-instant) var(--ease-standard);
+}
+.bubble-btn.icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+}
+.bubble-btn:hover,
+.bubble-btn.is-on {
+  background: var(--color-bg-subtle);
+}
+.bubble-btn.is-on {
+  color: var(--color-accent-strong);
+}
+.bubble-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: var(--space-1);
+  background: var(--color-border);
+}
