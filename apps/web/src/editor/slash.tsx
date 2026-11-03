@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ComponentType } from 'react';
 import { Extension, type ChainedCommands, type Editor, type Range } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
-import { pickAttachment } from './embeds';
+import { pickAttachment, promptLinkCard, promptVideoLink } from './embeds';
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion';
 import {
   CheckSquare,
@@ -11,12 +11,15 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Film,
   ImageIcon,
+  Link2,
   Info,
   Paperclip,
   List,
   ListOrdered,
   Minus,
+  MonitorPlay,
   Pilcrow,
   Quote,
   Table2,
@@ -67,6 +70,27 @@ export const SLASH_ITEMS: SlashItem[] = [
     keywords: ['attachment', 'upload', 'pdf', 'document'],
     icon: Paperclip,
     action: (editor) => pickAttachment(editor, 'file'),
+  },
+  {
+    title: 'Video',
+    hint: 'Upload an mp4 or webm',
+    keywords: ['movie', 'clip', 'mp4', 'webm', 'upload'],
+    icon: Film,
+    action: (editor) => pickAttachment(editor, 'video'),
+  },
+  {
+    title: 'Video link',
+    hint: 'A YouTube or Vimeo video',
+    keywords: ['youtube', 'vimeo', 'embed', 'movie'],
+    icon: MonitorPlay,
+    action: (editor) => promptVideoLink(editor),
+  },
+  {
+    title: 'Link card',
+    hint: 'A link with its title and picture',
+    keywords: ['preview', 'bookmark', 'url', 'embed', 'link'],
+    icon: Link2,
+    action: (editor) => promptLinkCard(editor),
   },
 ];
 

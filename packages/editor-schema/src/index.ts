@@ -14,6 +14,7 @@ import TableCell from '@tiptap/extension-table-cell';
 import Link from '@tiptap/extension-link';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
+import { videoEmbedUrl } from '@stillwater/shared';
 
 // Keep the extensions' command typings (setHeading, insertTable, …) visible to editors.
 export type {} from '@tiptap/starter-kit';
@@ -36,6 +37,8 @@ export const TOP_LEVEL_TYPES = [
   'callout',
   'image',
   'file',
+  'video',
+  'linkPreview',
 ] as const;
 
 export const CALLOUT_TONES = ['info', 'success', 'warning', 'danger'] as const;
@@ -183,6 +186,114 @@ export const FileBlock = Node.create({
   },
 });
 
+/** Uploaded videos the browser plays in a `<video>`; any other video upload becomes a file block. */
+export const VIDEO_MIMES = ['video/mp4', 'video/webm'] as const;
+
+/**
+ * True only for a player URL exactly as `videoEmbedUrl` makes it: a
+ * youtube-nocookie.com embed or a player.vimeo.com video. Nothing else may sit
+ * in a video block, so no other site is ever framed in a page.
+ */
+export function isVideoEmbedUrl(v: unknown): v is string {
+  return typeof v === 'string' && videoEmbedUrl(v) === v;
+}
+
+const WEB_URL = /^https?:\/\/[^\s]+$/i;
+
+/** A plain http(s) address, or null. */
+function webUrlAttr(key: string, data = key) {
+  return {
+    default: null as string | null,
+    parseHTML: (el: HTMLElement) => {
+      const v = el.getAttribute(`data-${data}`);
+      return v && WEB_URL.test(v) ? v : null;
+    },
+    renderHTML: (attrs: Record<string, unknown>) => (attrs[key] ? { [`data-${data}`]: attrs[key] } : {}),
+  };
+}
+
+/** A short text attr kept on a `data-` attribute. */
+function textAttr(key: string, data = key) {
+  return {
+    default: '',
+    parseHTML: (el: HTMLElement) => el.getAttribute(`data-${data}`) ?? '',
+    renderHTML: (attrs: Record<string, unknown>) => (attrs[key] ? { [`data-${data}`]: String(attrs[key]) } : {}),
+  };
+}
+
+/**
+ * A video: either an uploaded mp4/webm (attachment id) played in a `<video>`,
+ * or a YouTube/Vimeo player URL (`embedUrl`, allow-listed). Exactly one is set.
+ */
+export const Video = Node.create({
+  name: 'video',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      attachmentId: attachmentIdAttr(),
+      embedUrl: {
+        default: null as string | null,
+        parseHTML: (el: HTMLElement) => {
+          const v = el.getAttribute('data-embed-url');
+          return isVideoEmbedUrl(v) ? v : null;
+        },
+        renderHTML: (attrs: Record<string, unknown>) => (attrs.embedUrl ? { 'data-embed-url': attrs.embedUrl } : {}),
+      },
+      filename: textAttr('filename'),
+      mime: textAttr('mime'),
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-video]' }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const wrap = mergeAttributes(HTMLAttributes, { 'data-video': '', class: 'embed embed-video' });
+    const id = node.attrs.attachmentId as string | null;
+    if (id) return ['div', wrap, ['video', { src: attachmentUrl(id), controls: '', preload: 'metadata' }]];
+    const src = node.attrs.embedUrl as string | null;
+    if (isVideoEmbedUrl(src)) {
+      return ['div', wrap, ['iframe', { src, title: 'Video', allowfullscreen: '', loading: 'lazy', referrerpolicy: 'strict-origin-when-cross-origin' }]];
+    }
+    return ['div', wrap];
+  },
+});
+
+/**
+ * A link shown as a card: the address plus the Open Graph title, description,
+ * site name and image the server fetched for it (GET /api/link-preview). When
+ * the fetch was refused or failed only `url` is set and the card is a plain link.
+ */
+export const LinkPreview = Node.create({
+  name: 'linkPreview',
+  group: 'block',
+  atom: true,
+  draggable: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      url: webUrlAttr('url'),
+      title: textAttr('title'),
+      description: textAttr('description'),
+      siteName: textAttr('siteName', 'site-name'),
+      imageUrl: webUrlAttr('imageUrl', 'image-url'),
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-link-preview]' }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    const url = (node.attrs.url as string | null) ?? '';
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, { 'data-link-preview': '', class: 'embed embed-link' }),
+      ['a', { href: url || '#', rel: 'noopener noreferrer nofollow', target: '_blank' }, String(node.attrs.title || url)],
+    ];
+  },
+});
+
 /** "2.4 MB", "830 KB", "12 bytes". */
 export function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n < 1024) return `${Math.max(0, Math.round(n || 0))} bytes`;
@@ -256,7 +367,7 @@ export interface ExtensionOptions {
    * Interactive views for the embed blocks (the web editor's upload and caption
    * UI). They change only how a block is drawn, never its schema.
    */
-  nodeViews?: Partial<Record<'image' | 'file', NodeViewRenderer>>;
+  nodeViews?: Partial<Record<'image' | 'file' | 'video' | 'linkPreview', NodeViewRenderer>>;
 }
 
 /** The single list of nodes and marks. */
@@ -283,6 +394,8 @@ export function getExtensions(opts: ExtensionOptions = {}): AnyExtension[] {
     Callout,
     withView(Image, opts.nodeViews?.image),
     withView(FileBlock, opts.nodeViews?.file),
+    withView(Video, opts.nodeViews?.video),
+    withView(LinkPreview, opts.nodeViews?.linkPreview),
     BlockId,
   ];
 }
@@ -301,6 +414,20 @@ export class InvalidDocError extends Error {}
 
 type Json = { [k: string]: unknown };
 
+/** Block-level rules the attr walk cannot see: what a video or a link card must hold. */
+function checkEmbed(node: Json, path: string) {
+  const a = (node.attrs && typeof node.attrs === 'object' ? node.attrs : {}) as Json;
+  if (node.type === 'video') {
+    const sources = [a.attachmentId, a.embedUrl].filter((v) => v !== null && v !== undefined && v !== '');
+    if (sources.length !== 1) {
+      throw new InvalidDocError(`${path}: a video is either an uploaded file or a YouTube or Vimeo link`);
+    }
+  }
+  if (node.type === 'linkPreview' && !(typeof a.url === 'string' && a.url)) {
+    throw new InvalidDocError(`${path}.url: a link card needs its address`);
+  }
+}
+
 /** Walk every attr of every node and mark; refuse inline data and unsafe links. */
 function checkAttrs(node: Json, path: string) {
   const attrs = node.attrs;
@@ -315,8 +442,15 @@ function checkAttrs(node: Json, path: string) {
       if (k === 'href' && typeof v === 'string' && !SAFE_HREF.test(v.trim())) {
         throw new InvalidDocError(`${path}.${k}: only http, https and mailto links are allowed`);
       }
+      if ((k === 'url' || k === 'imageUrl') && v !== null && v !== undefined && !(typeof v === 'string' && WEB_URL.test(v))) {
+        throw new InvalidDocError(`${path}.${k}: only http and https addresses are allowed`);
+      }
+      if (k === 'embedUrl' && v !== null && v !== undefined && !isVideoEmbedUrl(v)) {
+        throw new InvalidDocError(`${path}.${k}: only YouTube and Vimeo videos can be embedded`);
+      }
     }
   }
+  checkEmbed(node, path);
   if (Array.isArray(node.marks)) node.marks.forEach((m, i) => m && typeof m === 'object' && checkAttrs(m as Json, `${path}.marks[${i}]`));
   if (Array.isArray(node.content)) node.content.forEach((c, i) => c && typeof c === 'object' && checkAttrs(c as Json, `${path}.content[${i}]`));
 }
@@ -367,11 +501,16 @@ export function withBlockIds(doc: PmNode): PmNode {
   return changed ? doc.copy(Fragment.fromArray(children)) : doc;
 }
 
-/** Text of a leaf block for search: an image's caption, a file's name. */
+/** Text of a leaf block for search: an image's caption, a file's or video's name, a card's title and address. */
 function leafText(leaf: PmNode): string {
   if (leaf.type.name === 'hardBreak') return '\n';
   if (leaf.type.name === 'image') return String(leaf.attrs.caption ?? '');
   if (leaf.type.name === 'file') return String(leaf.attrs.filename ?? '');
+  if (leaf.type.name === 'video') return String(leaf.attrs.filename ?? '');
+  if (leaf.type.name === 'linkPreview') {
+    const { title, siteName, url } = leaf.attrs as Record<string, string | null>;
+    return [title, siteName, url].filter(Boolean).join(' ');
+  }
   return '';
 }
 

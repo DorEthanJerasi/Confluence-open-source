@@ -8,7 +8,7 @@ import { getExtensions } from '@stillwater/editor-schema';
 import type { Doc, Page } from '@stillwater/shared';
 import { Bold, Code, Italic, Link2, Strikethrough } from 'lucide-react';
 import { SlashCommand } from './slash';
-import { AttachmentUpload, embedViews, type UploadNote } from './embeds';
+import { AttachmentUpload, CardOfferButton, embedViews, type UploadNote } from './embeds';
 import type { PageSaver, SaveState } from './saver';
 
 const AUTOSAVE_MS = 1000;
@@ -222,6 +222,7 @@ export function PageEditor({
       </div>
       {editor && editable && <TableMenu editor={editor} />}
       {editor && editable && <MarksMenu editor={editor} />}
+      {editor && editable && <CardOfferButton editor={editor} />}
       <EditorContent editor={editor} />
     </div>
   );

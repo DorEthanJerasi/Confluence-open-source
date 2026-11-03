@@ -162,6 +162,9 @@ const EVERY_BLOCK = {
     },
     { type: 'image', attrs: { attachmentId: ATTACHMENT, alt: '', caption: 'A calm bay' } },
     { type: 'file', attrs: { attachmentId: ATTACHMENT, filename: 'notes.pdf', size: 2048, mime: 'application/pdf' } },
+    { type: 'video', attrs: { attachmentId: ATTACHMENT, filename: 'tour.webm', mime: 'video/webm' } },
+    { type: 'video', attrs: { embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ' } },
+    { type: 'linkPreview', attrs: { url: 'https://example.com/a', title: 'A card' } },
   ],
 };
 
@@ -184,6 +187,8 @@ describe('docToText', () => {
       'c2',
       'A calm bay',
       'notes.pdf',
+      'tour.webm',
+      'A card https://example.com/a',
     ]);
   });
 
