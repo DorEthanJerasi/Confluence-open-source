@@ -1,31 +1,25 @@
-// Plain text of a page body, for search (ARCHITECTURE.md §6). Walks the
-// ProseMirror JSON generically; block nodes are separated by newlines.
-// When packages/editor-schema lands, this moves onto its node list.
+// Page body checks and plain text, built on the one editor schema
+// (packages/editor-schema, ARCHITECTURE.md §3 and §6).
+import { InvalidDocError, nodeToText, parseDoc } from '@stillwater/editor-schema';
+import type { Doc } from '@stillwater/shared';
+import { badRequest } from '../http.js';
 
-interface PmNode {
-  type?: unknown;
-  text?: unknown;
-  content?: unknown;
+/**
+ * Check an incoming page body against the schema and return the stored form:
+ * normalised JSON (unknown attrs dropped, top-level block ids filled in) and
+ * its plain text. Anything the schema does not define is a 400.
+ */
+export function normalizeDoc(doc: unknown): { doc: Doc; text: string } {
+  try {
+    const node = parseDoc(doc);
+    return { doc: node.toJSON() as Doc, text: nodeToText(node) };
+  } catch (err) {
+    if (err instanceof InvalidDocError) throw badRequest(err.message);
+    throw err;
+  }
 }
 
-const INLINE = new Set(['text', 'hardBreak', 'mention']);
-
+/** Plain text of a page body for search: blocks and table cells on their own lines, no attrs. */
 export function docToText(doc: unknown): string {
-  const out: string[] = [];
-  const walk = (node: PmNode) => {
-    if (typeof node.text === 'string') {
-      out.push(node.text);
-      return;
-    }
-    if (Array.isArray(node.content)) {
-      for (const child of node.content) if (child && typeof child === 'object') walk(child as PmNode);
-    }
-    if (typeof node.type === 'string' && !INLINE.has(node.type)) out.push('\n');
-  };
-  if (doc && typeof doc === 'object') walk(doc as PmNode);
-  return out
-    .join('')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{2,}/g, '\n')
-    .trim();
+  return normalizeDoc(doc).text;
 }

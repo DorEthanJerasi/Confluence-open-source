@@ -34,7 +34,7 @@ describe('nested pages', () => {
     expect(page.title).toBe('Linux');
     expect(page.spaceKey).toBe('docs');
     expect(page.breadcrumbs.map((x: { title: string }) => x.title)).toEqual(['Guides', 'Setup']);
-    expect(page.doc).toEqual({ type: 'doc', content: [] });
+    expect(page.doc.content).toEqual([{ type: 'paragraph', attrs: { id: expect.any(String) } }]);
     expect(page.version).toBe(1);
   });
 
@@ -96,7 +96,9 @@ describe('nested pages', () => {
     expect(stale.body.error).toBe('stale_version');
 
     const page = (await ed.client.get(`/api/pages/${id}`)).body.page;
-    expect(page).toMatchObject({ title: 'Final', version: 2, doc, updatedBy: { name: 'Ada' } });
+    expect(page).toMatchObject({ title: 'Final', version: 2, updatedBy: { name: 'Ada' } });
+    expect(page.doc.content.map((b: { type: string }) => b.type)).toEqual(['heading', 'paragraph']);
+    expect(page.doc.content[0].content[0].text).toBe('Hello');
 
     expect((await ed.client.put(`/api/pages/${id}`, { baseVersion: 2, doc: { type: 'nope' } })).status).toBe(400);
   });
@@ -121,7 +123,64 @@ describe('nested pages', () => {
   });
 });
 
+const t = (text: string) => ({ type: 'text', text });
+const p = (text: string) => ({ type: 'paragraph', content: [t(text)] });
+const cell = (type: 'tableHeader' | 'tableCell', text: string) => ({ type, content: [p(text)] });
+
+/** One of every block and mark the editor offers in stage 2a. */
+const EVERY_BLOCK = {
+  type: 'doc',
+  content: [
+    { type: 'heading', attrs: { level: 1 }, content: [t('Title')] },
+    { type: 'heading', attrs: { level: 2 }, content: [t('Section')] },
+    { type: 'heading', attrs: { level: 3 }, content: [t('Sub')] },
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'bold ', marks: [{ type: 'bold' }] },
+        { type: 'text', text: 'italic ', marks: [{ type: 'italic' }] },
+        { type: 'text', text: 'strike ', marks: [{ type: 'strike' }] },
+        { type: 'text', text: 'code ', marks: [{ type: 'code' }] },
+        { type: 'text', text: 'link', marks: [{ type: 'link', attrs: { href: 'https://example.com' } }] },
+      ],
+    },
+    { type: 'bulletList', content: [{ type: 'listItem', content: [p('bullet')] }] },
+    { type: 'orderedList', content: [{ type: 'listItem', content: [p('numbered')] }] },
+    { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: true }, content: [p('task')] }] },
+    { type: 'blockquote', content: [p('quote')] },
+    { type: 'horizontalRule' },
+    { type: 'callout', attrs: { tone: 'warning' }, content: [p('careful')] },
+    { type: 'codeBlock', attrs: { language: 'js' }, content: [t('const x = 1')] },
+    {
+      type: 'table',
+      content: [
+        { type: 'tableRow', content: [cell('tableHeader', 'H1'), cell('tableHeader', 'H2')] },
+        { type: 'tableRow', content: [cell('tableCell', 'c1'), cell('tableCell', 'c2')] },
+      ],
+    },
+  ],
+};
+
 describe('docToText', () => {
+  it('gives the text of every block type, code and table cells included, no attrs', () => {
+    expect(docToText(EVERY_BLOCK).split('\n')).toEqual([
+      'Title',
+      'Section',
+      'Sub',
+      'bold italic strike code link',
+      'bullet',
+      'numbered',
+      'task',
+      'quote',
+      'careful',
+      'const x = 1',
+      'H1',
+      'H2',
+      'c1',
+      'c2',
+    ]);
+  });
+
   it('joins blocks with newlines and inline text without', () => {
     expect(
       docToText({
@@ -132,5 +191,74 @@ describe('docToText', () => {
         ],
       }),
     ).toBe('a b\nc');
+  });
+});
+
+describe('page body validation', () => {
+  async function page() {
+    const ed = await signup(ctx.app, 'Ada');
+    await ed.client.post('/api/spaces', { key: 'docs', name: 'Docs' });
+    const id = (await ed.client.post('/api/spaces/docs/pages', { title: 'P' })).body.page.id as string;
+    return { ed, id };
+  }
+
+  it('accepts a doc with every block type and gives each top-level block a unique id', async () => {
+    const { ed, id } = await page();
+    const res = await ed.client.put(`/api/pages/${id}`, { baseVersion: 1, doc: EVERY_BLOCK });
+    expect(res.status).toBe(200);
+    const doc = (await ed.client.get(`/api/pages/${id}`)).body.page.doc;
+    expect(doc.content.map((b: { type: string }) => b.type)).toEqual(EVERY_BLOCK.content.map((b) => b.type));
+    const ids = doc.content.map((b: { attrs: { id: string } }) => b.attrs.id);
+    expect(ids.every((x: string) => /^[0-9a-f-]{36}$/.test(x))).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('replaces repeated block ids so no two top-level blocks share one', async () => {
+    const { ed, id } = await page();
+    const same = '11111111-1111-4111-8111-111111111111';
+    const doc = { type: 'doc', content: [{ ...p('a'), attrs: { id: same } }, { ...p('b'), attrs: { id: same } }] };
+    await ed.client.put(`/api/pages/${id}`, { baseVersion: 1, doc });
+    const stored = (await ed.client.get(`/api/pages/${id}`)).body.page.doc;
+    expect(stored.content[0].attrs.id).toBe(same);
+    expect(stored.content[1].attrs.id).not.toBe(same);
+  });
+
+  it.each([
+    ['an unknown node', { type: 'doc', content: [{ type: 'marquee', content: [t('x')] }] }],
+    ['a missing doc root', { type: 'paragraph', content: [t('x')] }],
+    ['a node in the wrong place', { type: 'doc', content: [t('loose text')] }],
+    ['an unknown mark', { type: 'doc', content: [{ type: 'paragraph', content: [{ ...t('x'), marks: [{ type: 'blink' }] }] }] }],
+    [
+      'a data: URL in attrs',
+      { type: 'doc', content: [{ type: 'paragraph', content: [{ ...t('x'), marks: [{ type: 'link', attrs: { href: 'data:text/html;base64,PHNjcmlwdD4=' } }] }] }] },
+    ],
+    ['a data: URL on a block', { type: 'doc', content: [{ ...p('x'), attrs: { id: 'data:image/png;base64,AAAA' } }] }],
+    [
+      'a javascript: link',
+      { type: 'doc', content: [{ type: 'paragraph', content: [{ ...t('x'), marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }] }] }] },
+    ],
+  ])('rejects %s with 400 and leaves the page alone', async (_name, doc) => {
+    const { ed, id } = await page();
+    const res = await ed.client.put(`/api/pages/${id}`, { baseVersion: 1, doc });
+    expect(res.status).toBe(400);
+    const stored = (await ed.client.get(`/api/pages/${id}`)).body.page;
+    expect(stored.version).toBe(1);
+    expect(JSON.stringify(stored.doc)).not.toContain('data:');
+  });
+
+  it('rejects an invalid doc on create too', async () => {
+    const { ed } = await page();
+    const res = await ed.client.post('/api/spaces/docs/pages', { title: 'X', doc: { type: 'doc', content: [{ type: 'nope' }] } });
+    expect(res.status).toBe(400);
+  });
+
+  it('a stale baseVersion is 409 and does not change the stored doc', async () => {
+    const { ed, id } = await page();
+    expect((await ed.client.put(`/api/pages/${id}`, { baseVersion: 1, doc: { type: 'doc', content: [p('first')] } })).status).toBe(200);
+    const stale = await ed.client.put(`/api/pages/${id}`, { baseVersion: 1, doc: { type: 'doc', content: [p('second')] } });
+    expect(stale.status).toBe(409);
+    const stored = (await ed.client.get(`/api/pages/${id}`)).body.page;
+    expect(stored.version).toBe(2);
+    expect(stored.doc.content[0].content[0].text).toBe('first');
   });
 });

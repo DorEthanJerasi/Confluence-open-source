@@ -9,7 +9,7 @@ import { pages, spaces, users } from '../db/schema.js';
 import { requireSpaceRole } from '../auth/permissions.js';
 import type { SessionUser } from '../auth/session.js';
 import { badRequest, conflict, notFound } from '../http.js';
-import { docToText } from './docText.js';
+import { normalizeDoc } from './docText.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -37,7 +37,7 @@ export async function createPage(
   db: Db,
   input: { spaceId: string; userId: string; title: string; parentId: string | null; doc?: Doc },
 ): Promise<string> {
-  const doc = input.doc ?? EMPTY_DOC;
+  const { doc, text } = normalizeDoc(input.doc ?? EMPTY_DOC);
   return db.transaction(async (tx) => {
     await lockSpaceTree(tx, input.spaceId);
     if (input.parentId) await requireLiveParent(tx, input.spaceId, input.parentId);
@@ -55,7 +55,7 @@ export async function createPage(
         position: generateKeyBetween(last?.position ?? null, null),
         title: input.title,
         doc,
-        docText: docToText(doc),
+        docText: text,
         createdBy: input.userId,
         updatedBy: input.userId,
       })
@@ -135,11 +135,12 @@ export async function savePage(
   baseVersion: number,
   userId: string,
 ): Promise<{ version: number }> {
+  const body = change.doc !== undefined ? normalizeDoc(change.doc) : undefined;
   const [row] = await db
     .update(pages)
     .set({
       ...(change.title !== undefined ? { title: change.title } : {}),
-      ...(change.doc !== undefined ? { doc: change.doc, docText: docToText(change.doc) } : {}),
+      ...(body ? { doc: body.doc, docText: body.text } : {}),
       version: sql`${pages.version} + 1`,
       updatedBy: userId,
       updatedAt: new Date(),
