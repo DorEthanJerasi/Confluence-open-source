@@ -196,7 +196,7 @@ check the invariant after every save (`expectInvariant`). Nothing missing.
       as the viewer mode, with a block-level diff against the current page:
       blocks are matched by their `id`, and added, removed and changed blocks
       get soft token-based tints plus a text label, not colour alone.
-- [ ] The block diff is one pure function, `diffBlocks(oldDoc, newDoc)`, in
+- [x] The block diff is one pure function, `diffBlocks(oldDoc, newDoc)`, in
       `packages/editor-schema` (or `packages/shared`), with no DOM use, so the
       co-editing server can reuse it later.
 - [ ] Space editors and admins see **Restore this version**. It asks once ("This
@@ -210,7 +210,7 @@ check the invariant after every save (`expectInvariant`). Nothing missing.
       right.
 
 ### Checks that must exist and pass
-- [ ] **Unit:** `diffBlocks` on two docs gives the right added, removed and
+- [x] **Unit:** `diffBlocks` on two docs gives the right added, removed and
       changed ids, and unchanged blocks are left out. A reordered block is not
       reported as changed. This runs inside `npm run check`.
 - [ ] **E2E (Playwright), `e2e/tests/history.spec.ts`:**
