@@ -41,6 +41,9 @@ const SKIP_DIRS = new Set([
   '.cache',
   'playwright-report',
   'test-results',
+  // Local, git-ignored caches and check scratch space; never shipped.
+  '.npm-cache',
+  '.leadcheck',
 ]);
 
 // Files never scanned (relative to ROOT). PROJECT.md is the owner's brief.
