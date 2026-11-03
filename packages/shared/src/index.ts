@@ -156,6 +156,36 @@ export interface Page {
   myRole: Role;
 }
 
+// ---------- Page history ----------
+
+/** One entry of GET /api/pages/:id/versions (newest first, no doc body). */
+export interface PageVersionSummary {
+  version: number;
+  title: string;
+  /** null when the author's account was removed. */
+  author: { id: string; name: string } | null;
+  /** The last save folded into this snapshot. */
+  savedAt: string;
+  /** Set when this snapshot was made by restoring that earlier version. */
+  restoredFrom: number | null;
+}
+
+/** GET /api/pages/:id/versions?before=N. Pass `nextBefore` as `before` for the next page; null means no more. */
+export interface PageVersionList {
+  versions: PageVersionSummary[];
+  nextBefore: number | null;
+}
+
+/** GET /api/pages/:id/versions/:version. */
+export interface PageVersion extends PageVersionSummary {
+  doc: Doc;
+}
+
+export const versionListQuery = z.object({ before: z.coerce.number().int().min(1).optional() });
+
+/** POST /api/pages/:id/versions/:version/restore. */
+export const restoreVersionBody = z.object({ baseVersion: z.number().int().min(1) });
+
 /** An uploaded file, as returned by POST /api/pages/:id/attachments. */
 export interface Attachment {
   id: string;
