@@ -4,7 +4,8 @@
   "type": "module",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "e2e"
   ],
   "scripts": {
     "dev": "npm run build --workspace packages/shared && (npm run dev --workspace apps/server & npm run dev --workspace apps/web & wait)",
@@ -12,6 +13,8 @@
     "start": "npm run start --workspace apps/server",
     "typecheck": "npm run build --workspace packages/shared && npm run typecheck --workspace apps/server && npm run typecheck --workspace apps/web",
     "test": "npm run build --workspace packages/shared && npm run test --workspace apps/server",
+    "test:e2e": "npm run build && npm run install-browsers --workspace e2e && npm run test --workspace e2e",
+    "test:ai": "npm run build --workspace packages/shared && npm run test:ai --workspace apps/server",
     "check": "npm run typecheck && npm run test && node scripts/check-original.mjs && node scripts/check-contrast.mjs"
   }
 }

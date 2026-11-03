@@ -1,0 +1,14 @@
+{
+  "name": "@stillwater/e2e",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "test": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
+    "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "embedded-postgres": "^16.15.0-beta.19"
+  }
+}
