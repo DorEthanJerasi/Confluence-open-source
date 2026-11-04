@@ -1268,7 +1268,7 @@ textarea.input {
   }
 }
 
-/* ---- AI summary card (4b). Baseline only; the designer's 4b styling item refines it. ---- */
+/* ---- AI summary card (4b) ---- */
 
 .summary-card {
   margin-bottom: var(--space-6);
@@ -1276,6 +1276,7 @@ textarea.input {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
