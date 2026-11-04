@@ -280,6 +280,8 @@ someone on the team has done it by hand in a browser against the compose stack.
 4. **AI** — with no key, no AI control is visible; with the stub, summarise
    returns text and ask returns an answer whose source links open pages the
    user can read; a page the asker cannot read is never cited.
+   Full check, split into items 4a (provider switch), 4b (summarise), 4c (ask,
+   server) and 4d (ask screen): `docs/done-checks/04-ai.md`.
 5. **Look and finish** — light and dark both pass the contrast check; reduced
    motion is respected; `check-original` passes; `docker compose up` on a clean
    machine gives a working wiki.
