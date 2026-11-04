@@ -187,25 +187,25 @@ check the invariant after every save (`expectInvariant`). Nothing missing.
 ## 3c — Page history, screen
 
 ### Build
-- [ ] A quiet "History" control on `PageScreen`, for everyone who can read the
+- [x] A quiet "History" control on `PageScreen`, for everyone who can read the
       page, opens a side panel. It lists versions newest first with the
       author's name, a relative time (the exact time on hover) and a soft
       "Restored from version N" label where it applies. "Load older" fetches
       the next 50.
-- [ ] Choosing a version shows it read-only, using the same schema and renderer
+- [x] Choosing a version shows it read-only, using the same schema and renderer
       as the viewer mode, with a block-level diff against the current page:
       blocks are matched by their `id`, and added, removed and changed blocks
       get soft token-based tints plus a text label, not colour alone.
 - [x] The block diff is one pure function, `diffBlocks(oldDoc, newDoc)`, in
       `packages/editor-schema` (or `packages/shared`), with no DOM use, so the
       co-editing server can reuse it later.
-- [ ] Space editors and admins see **Restore this version**. It asks once ("This
+- [x] Space editors and admins see **Restore this version**. It asks once ("This
       becomes the current page. Nothing is deleted."), then restores. The open
       editor loads the restored doc and its new version, so the next edit saves
       with no 409. Viewers never see the Restore button.
-- [ ] If the page changed elsewhere (409), say so plainly and offer Reload,
+- [x] If the page changed elsewhere (409), say so plainly and offer Reload,
       just like the editor does.
-- [ ] Panel open/close and list fades are quiet, respect
+- [x] Panel open/close and list fades are quiet, respect
       `prefers-reduced-motion`, and use only tokens. Light and dark both look
       right.
 
@@ -213,7 +213,7 @@ check the invariant after every save (`expectInvariant`). Nothing missing.
 - [x] **Unit:** `diffBlocks` on two docs gives the right added, removed and
       changed ids, and unchanged blocks are left out. A reordered block is not
       reported as changed. This runs inside `npm run check`.
-- [ ] **E2E (Playwright), `e2e/tests/history.spec.ts`:**
+- [x] **E2E (Playwright), `e2e/tests/history.spec.ts`:**
   - user A writes "first text" and user B (a space editor) replaces it with
     "second text". History lists both versions with the right names;
   - opening A's version shows "first text" read-only with the changed block
@@ -226,6 +226,30 @@ check the invariant after every save (`expectInvariant`). Nothing missing.
   - the dark-mode history panel renders (screenshot read by the lead).
 - [ ] `npm run check` passes and `npm run test:e2e` passes in full (older specs
       included).
+
+**Lead check of stage 3c (item #79, 2026-11-04): not yet a pass, one box open.**
+`npm run check` run by the lead: exit 0 (11 diff tests, 235 server tests, 1
+skipped AI placeholder, originality and contrast ok). `history.spec.ts` 5 of 5
+pass, in the full run and again alone. Dark and light screenshots
+(`e2e/test-results/history-{dark,light}.png`) read by the lead: panel, version
+rows, "Current" and "Restored from version N" tags, the read-only version bar
+and the labelled "Changed since this version" tint all render calmly in both
+themes. Code read: `history/HistoryPanel.tsx` (newest first, author, relative
+time with exact time on hover, Load older through `nextBefore`, Restore only
+when `canEdit`, one confirm with the agreed words, 409 shows the conflict note
+with Reload), `history/VersionDoc.tsx` (same `getExtensions` + `embedViews` as
+the editor, read-only, diff from `diffBlocks`, every tint carries a text
+label), `screens/PageScreen.tsx` (restore reloads the page and starts a new
+saver, so the next save has no 409), and the panel CSS (tokens only, open and
+close motion, reduced motion handled in `tokens.css`). Load older and the 409
+path on this screen are covered by the server tests (60 snapshots page 50 + 10;
+stale `baseVersion` gives 409) and the code read, not by a browser test.
+Still open: **the full `npm run test:e2e` did not pass.**
+`embeds.spec.ts` "upload from slash menu, paste and drop" failed once (2
+images after reload, expected 3) and passed 2 of 2 when run alone. It looks
+like a race: the test waits for "Saved" right after the drop, and that status
+can still show the previous save before the new one starts. Sent back to the
+tester and coder in the team chat.
 
 ### Hand check by the lead (compose stack, browser)
 - [ ] Edit a page as two users over a few minutes, open History, restore the
