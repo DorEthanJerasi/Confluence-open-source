@@ -9,9 +9,9 @@ import { ErrorNote } from '../ui';
 
 export const aiStatusKey = ['ai', 'status'] as const;
 
-/** True only when the server says AI is on. Fetched once per app load and cached. */
-export function useAiEnabled(): boolean {
-  const q = useQuery({
+/** The /api/ai/status query. Fetched once per app load and cached. */
+export function useAiStatus() {
+  return useQuery({
     queryKey: aiStatusKey,
     queryFn: api.aiStatus,
     staleTime: Infinity,
@@ -19,7 +19,11 @@ export function useAiEnabled(): boolean {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  return q.data?.enabled === true;
+}
+
+/** True only when the server says AI is on. */
+export function useAiEnabled(): boolean {
+  return useAiStatus().data?.enabled === true;
 }
 
 export const AI_UNAVAILABLE_LINE = 'AI is not available right now. Try again in a moment.';

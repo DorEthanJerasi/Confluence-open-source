@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { LogOut, Moon, Search, Sun, Users } from 'lucide-react';
+import { LogOut, MessageCircleQuestion, Moon, Search, Sun, Users } from 'lucide-react';
 import { api } from '../api';
 import { useCurrentUser } from '../auth';
 import { currentTheme, setTheme, type Theme } from '../theme';
 import { ROLE_LABEL } from '../ui';
+import { useAiEnabled } from '../ai/SummaryCard';
 
 export function Logo() {
   return (
@@ -101,6 +102,7 @@ export function Shell() {
   const user = useCurrentUser();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const aiOn = useAiEnabled();
 
   async function logout() {
     await api.logout().catch(() => undefined);
@@ -127,6 +129,11 @@ export function Shell() {
           )}
         </nav>
         <SearchField />
+        {aiOn && (
+          <NavLink to="/ask" className="topnav-link topbar-ask">
+            <MessageCircleQuestion size={16} aria-hidden="true" /> Ask
+          </NavLink>
+        )}
         <div className="topbar-end">
           <ThemeToggle />
           <span className="who" title={user.email}>

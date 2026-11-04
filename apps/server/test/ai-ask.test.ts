@@ -20,6 +20,7 @@ import { NO_SOURCES_ANSWER, applyCitations } from '../src/ai/features.js';
 import { ASK_MAX_TOKENS, ASK_SYSTEM } from '../src/ai/prompts.js';
 import type { AiMessage, AiProvider } from '../src/ai/provider.js';
 import { StubProvider } from '../src/ai/stub.js';
+import { ASK_NO_SOURCES_ANSWER, splitAnswer, type AskSource } from '@stillwater/shared';
 
 // ---------- No network ----------
 
@@ -481,5 +482,41 @@ describe('POST /api/ai/ask', () => {
     expect(res.status).toBe(502);
     expect(res.body.error).toBe('ai_unavailable');
     expect(res.raw.body).not.toContain('sk-test');
+  });
+});
+
+// ---------- Client split of the answer (4d) ----------
+
+describe('splitAnswer (what the /ask screen renders)', () => {
+  const src = (n: number): AskSource => ({
+    n,
+    pageId: `p${n}`,
+    title: `Page ${n}`,
+    spaceKey: 'ENG',
+    spaceName: 'Engineering',
+    url: `/s/ENG/p/p${n}`,
+  });
+
+  it('turns only listed [n] markers into source parts; everything else stays text', () => {
+    const parts = splitAnswer('Quokkas nap [1] and eat [2]. See [9].', [src(1), src(2)]);
+    expect(parts).toEqual([
+      { text: 'Quokkas nap ' },
+      { text: '[1]', source: src(1) },
+      { text: ' and eat ' },
+      { text: '[2]', source: src(2) },
+      { text: '. See [9].' },
+    ]);
+  });
+
+  it('keeps HTML-looking text as plain text and loses no characters', () => {
+    const answer = '<img src=x onerror=alert(1)> is text [1]';
+    const parts = splitAnswer(answer, [src(1)]);
+    expect(parts.map((p) => p.text).join('')).toBe(answer);
+    expect(parts[0]).toEqual({ text: '<img src=x onerror=alert(1)> is text ' });
+  });
+
+  it('the no-sources answer is one text part, and the server uses the shared sentence', () => {
+    expect(NO_SOURCES_ANSWER).toBe(ASK_NO_SOURCES_ANSWER);
+    expect(splitAnswer(ASK_NO_SOURCES_ANSWER, [])).toEqual([{ text: ASK_NO_SOURCES_ANSWER }]);
   });
 });

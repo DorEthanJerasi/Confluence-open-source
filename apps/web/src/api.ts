@@ -3,6 +3,7 @@
 import type {
   AiStatus,
   ApiError,
+  AskReply,
   AuthConfig,
   Doc,
   LinkPreview,
@@ -121,6 +122,8 @@ export const api = {
   aiStatus: () => get<AiStatus>('/api/ai/status'),
   /** A short plain-text summary of the page; 502 ai_unavailable when the provider fails. */
   summarisePage: (id: string) => request<PageSummary>('POST', `/api/pages/${enc(id)}/summary`),
+  /** An answer from the pages the user can see, citing [n]; 502 ai_unavailable when the provider fails. */
+  ask: (question: string) => request<AskReply>('POST', '/api/ai/ask', { question }),
 };
 
 export function errorMessage(err: unknown): string {

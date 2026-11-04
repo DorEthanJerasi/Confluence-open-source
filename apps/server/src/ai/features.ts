@@ -2,6 +2,7 @@
 // Permission checks come first, through the same helpers every other route
 // uses, so a page the user cannot read is never sent to the model.
 import { eq } from 'drizzle-orm';
+import { ASK_NO_SOURCES_ANSWER } from '@stillwater/shared';
 import type { Db } from '../db/client.js';
 import { pages } from '../db/schema.js';
 import { notFound } from '../http.js';
@@ -41,7 +42,8 @@ export async function summarisePage(db: Db, provider: AiProvider, user: SessionU
 
 // ---------- Ask your docs ----------
 
-export const NO_SOURCES_ANSWER = "I couldn't find anything about that in the pages you can see.";
+/** Shared with the web client, which shows the same sentence with no Sources list. */
+export const NO_SOURCES_ANSWER = ASK_NO_SOURCES_ANSWER;
 
 export interface CitedSource {
   n: number;

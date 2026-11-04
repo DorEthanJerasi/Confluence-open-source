@@ -281,6 +281,37 @@ export type AskSource = z.infer<typeof askSource>;
 export const askReply = z.object({ answer: z.string(), sources: z.array(askSource) }).strict();
 export type AskReply = z.infer<typeof askReply>;
 
+/** The sentence the server answers with when no page the asker can see matches. */
+export const ASK_NO_SOURCES_ANSWER = "I couldn't find anything about that in the pages you can see.";
+
+/** One piece of an answer: plain text, or an [n] marker that names a source in the reply's list. */
+export type AnswerPart = { text: string; source?: AskSource };
+
+/**
+ * Splits an ask answer into plain-text parts and citation parts, so the
+ * client can render text as text and only turn [n] markers that are in
+ * `sources` into links. A marker not in the list stays plain text. The
+ * result never contains HTML: callers render every part as a text node.
+ */
+export function splitAnswer(answer: string, sources: AskSource[]): AnswerPart[] {
+  const byN = new Map(sources.map((s) => [s.n, s]));
+  const parts: AnswerPart[] = [];
+  let text = '';
+  let last = 0;
+  for (const m of answer.matchAll(/\[(\d{1,3})\]/g)) {
+    const source = byN.get(Number(m[1]));
+    if (!source) continue;
+    text += answer.slice(last, m.index);
+    if (text) parts.push({ text });
+    text = '';
+    parts.push({ text: m[0], source });
+    last = m.index + m[0].length;
+  }
+  text += answer.slice(last);
+  if (text) parts.push({ text });
+  return parts;
+}
+
 export interface ApiError {
   error: string;
   message: string;
