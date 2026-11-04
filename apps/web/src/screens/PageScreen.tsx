@@ -88,9 +88,15 @@ function PageView({ page }: { page: Page }) {
   const { space, items, canEdit, newPage, deletePage } = useSpace();
   const [generation, setGeneration] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyClosing, setHistoryClosing] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
+  // Closing plays the panel's exit animation before it unmounts (see onClosed below).
   const closeHistory = useCallback(() => {
+    setHistoryClosing(true);
+  }, []);
+  const finishCloseHistory = useCallback(() => {
     setHistoryOpen(false);
+    setHistoryClosing(false);
     setViewing(null);
   }, []);
 
@@ -181,7 +187,16 @@ function PageView({ page }: { page: Page }) {
         </div>
       </div>
 
-      {historyOpen && <HistoryPanel page={page} selected={viewing} onSelect={setViewing} onClose={closeHistory} />}
+      {historyOpen && (
+        <HistoryPanel
+          page={page}
+          selected={viewing}
+          onSelect={setViewing}
+          onClose={closeHistory}
+          closing={historyClosing}
+          onClosed={finishCloseHistory}
+        />
+      )}
 
       <div className="page-body">
         {viewing !== null ? (

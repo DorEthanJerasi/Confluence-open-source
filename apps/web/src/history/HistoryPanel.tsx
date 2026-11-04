@@ -62,11 +62,16 @@ export function HistoryPanel({
   selected,
   onSelect,
   onClose,
+  closing = false,
+  onClosed,
 }: {
   page: Page;
   selected: number | null;
   onSelect: (version: number) => void;
   onClose: () => void;
+  /** True while the panel is playing its closing animation; parent unmounts it on `onClosed`. */
+  closing?: boolean;
+  onClosed?: () => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   const q = useInfiniteQuery({
@@ -90,7 +95,14 @@ export function HistoryPanel({
   const versions = q.data?.pages.flatMap((p) => p.versions) ?? [];
 
   return (
-    <aside className="history-panel" aria-label="Page history" ref={ref}>
+    <aside
+      className={`history-panel${closing ? ' is-closing' : ''}`}
+      aria-label="Page history"
+      ref={ref}
+      onAnimationEnd={(e) => {
+        if (closing && e.target === ref.current) onClosed?.();
+      }}
+    >
       <header className="history-head">
         <h2 className="history-title">History</h2>
         <button type="button" className="icon-btn panel-close" onClick={onClose} aria-label="Close history" title="Close">

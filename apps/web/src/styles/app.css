@@ -1080,6 +1080,15 @@ textarea.input {
     transform: translateX(var(--space-5));
   }
 }
+.history-panel.is-closing {
+  animation: panel-out var(--motion-base) var(--ease-exit) forwards;
+}
+@keyframes panel-out {
+  to {
+    opacity: 0;
+    transform: translateX(var(--space-5));
+  }
+}
 .history-head {
   display: flex;
   align-items: center;
