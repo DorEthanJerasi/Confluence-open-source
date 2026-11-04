@@ -257,6 +257,30 @@ export type AiStatus = z.infer<typeof aiStatusReply>;
 export const pageSummaryReply = z.object({ summary: z.string() }).strict();
 export type PageSummary = z.infer<typeof pageSummaryReply>;
 
+/** POST /api/ai/ask body: 1 to 500 characters after trimming. */
+export const askBody = z.object({ question: z.string().trim().min(1, 'Ask a question').max(500, 'Keep the question under 500 characters') });
+export type AskBody = z.infer<typeof askBody>;
+
+/** One page section the answer cites as [n]. `url` is the link a search result opens. */
+export const askSource = z
+  .object({
+    n: z.number().int().min(1),
+    pageId: z.string(),
+    title: z.string(),
+    spaceKey: z.string(),
+    spaceName: z.string(),
+    url: z.string(),
+  })
+  .strict();
+export type AskSource = z.infer<typeof askSource>;
+
+/**
+ * POST /api/ai/ask reply. `answer` is plain text: the client renders it as
+ * text and turns only the [n] markers listed in `sources` into links.
+ */
+export const askReply = z.object({ answer: z.string(), sources: z.array(askSource) }).strict();
+export type AskReply = z.infer<typeof askReply>;
+
 export interface ApiError {
   error: string;
   message: string;

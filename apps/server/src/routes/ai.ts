@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import { aiStatusReply, pageSummaryReply, type AiStatus, type PageSummary } from '@stillwater/shared';
+import { aiStatusReply, askBody, askReply, pageSummaryReply, type AiStatus, type AskReply, type PageSummary } from '@stillwater/shared';
 import { requireUser } from '../auth/guard.js';
-import { uuidParam } from '../http.js';
-import { summarisePage } from '../ai/features.js';
+import { parse, uuidParam } from '../http.js';
+import { askDocs, summarisePage } from '../ai/features.js';
 import { aiOff } from '../ai/provider.js';
 
 export async function aiRoutes(app: FastifyInstance) {
@@ -10,6 +10,15 @@ export async function aiRoutes(app: FastifyInstance) {
   app.get('/status', async (req): Promise<AiStatus> => {
     requireUser(req);
     return aiStatusReply.parse({ enabled: app.ai !== null });
+  });
+
+  // Ask your docs: answers only from pages the asker can read, with the
+  // server's own list of cited sources.
+  app.post('/ask', async (req): Promise<AskReply> => {
+    if (!app.ai) throw aiOff();
+    const user = requireUser(req);
+    const { question } = parse(askBody, req.body);
+    return askReply.parse(await askDocs(app.db, app.ai, user, question));
   });
 }
 
