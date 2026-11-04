@@ -1,4 +1,4 @@
-import { env, requireDatabaseUrl } from './env.js';
+import { aiSetupNote, env, requireDatabaseUrl } from './env.js';
 import { runMigrations } from './db/migrate.js';
 import { createDb } from './db/client.js';
 import { buildApp } from './app.js';
@@ -17,6 +17,10 @@ async function main(): Promise<void> {
       await pool.query('select 1');
     },
   });
+
+  const aiNote = aiSetupNote();
+  if (aiNote) app.log.warn(aiNote);
+  app.log.info(`AI features: ${app.ai ? 'on' : 'off'}`);
 
   const purge = setInterval(() => purgeExpiredSessions(db).catch((err) => app.log.warn(err)), 6 * 60 * 60 * 1000);
   purge.unref();

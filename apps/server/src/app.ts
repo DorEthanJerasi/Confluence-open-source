@@ -17,6 +17,8 @@ import { pageRoutes } from './routes/pages.js';
 import { attachmentRoutes } from './routes/attachments.js';
 import { linkPreviewRoutes } from './routes/linkPreview.js';
 import { searchRoutes } from './routes/search.js';
+import { aiRoutes } from './routes/ai.js';
+import { createProvider, guardProvider, type AiProvider } from './ai/provider.js';
 import type { SafeFetchOptions } from './embeds/safeFetch.js';
 import { DiskStorage, type FileStorage } from './files/storage.js';
 
@@ -30,6 +32,11 @@ export interface BuildOptions {
   storage?: FileStorage;
   /** Link-preview fetch settings; tests use them to reach a local stub server. */
   linkPreviewFetch?: SafeFetchOptions;
+  /**
+   * Overrides createProvider(config.ai): tests inject the stub or a fake.
+   * null = AI off. Leave undefined to follow the config.
+   */
+  aiProvider?: AiProvider | null;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -39,6 +46,8 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   app.decorate('db', opts.db);
   app.decorate('config', opts.config);
   app.decorate('storage', opts.storage ?? new DiskStorage(opts.config.uploadDir));
+  const provider = opts.aiProvider !== undefined ? opts.aiProvider : createProvider(opts.config.ai);
+  app.decorate('ai', provider ? guardProvider(provider, app.log) : null);
   app.decorateRequest('user', null);
   registerErrorHandler(app);
 
@@ -79,6 +88,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(attachmentRoutes, { prefix: '/api' });
   await app.register(linkPreviewRoutes, { prefix: '/api', fetchOptions: opts.linkPreviewFetch });
   await app.register(searchRoutes, { prefix: '/api' });
+  await app.register(aiRoutes, { prefix: '/api/ai' });
 
   // The built web app, served from the same origin (one container in production).
   const webDist = opts.config.webDist;

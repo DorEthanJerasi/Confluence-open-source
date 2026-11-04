@@ -5,12 +5,15 @@ import type { Db } from '../db/client.js';
 import { forbidden, unauthorized } from '../http.js';
 import type { SessionUser } from './session.js';
 import type { FileStorage } from '../files/storage.js';
+import type { AiProvider } from '../ai/provider.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
     config: Config;
     storage: FileStorage;
+    /** The guarded AI provider, or null when AI is off. */
+    ai: AiProvider | null;
   }
   interface FastifyRequest {
     user: SessionUser | null;

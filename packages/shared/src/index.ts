@@ -247,6 +247,12 @@ export function splitSnippet(snippet: string): { text: string; hit: boolean }[] 
   return parts;
 }
 
+// ---------- AI ----------
+
+/** GET /api/ai/status. Only whether AI is on: no provider name, no model, never the key. */
+export const aiStatusReply = z.object({ enabled: z.boolean() }).strict();
+export type AiStatus = z.infer<typeof aiStatusReply>;
+
 export interface ApiError {
   error: string;
   message: string;
