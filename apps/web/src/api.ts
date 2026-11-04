@@ -1,11 +1,13 @@
 // One typed client for the Stillwater API. Every call goes through `request`,
 // which sends the session cookie and turns error bodies into ApiFailure.
 import type {
+  AiStatus,
   ApiError,
   AuthConfig,
   Doc,
   LinkPreview,
   Page,
+  PageSummary,
   PageTreeItem,
   PageVersion,
   PageVersionList,
@@ -114,6 +116,11 @@ export const api = {
   restoreVersion: (id: string, version: number, baseVersion: number) =>
     request<{ version: number }>('POST', `/api/pages/${enc(id)}/versions/${version}/restore`, { baseVersion }),
   deletePage: (id: string) => request<{ ok: true; deleted: number }>('DELETE', `/api/pages/${enc(id)}`),
+
+  /** Whether the host has AI on. Only `{ enabled }`; never a key, provider or model. */
+  aiStatus: () => get<AiStatus>('/api/ai/status'),
+  /** A short plain-text summary of the page; 502 ai_unavailable when the provider fails. */
+  summarisePage: (id: string) => request<PageSummary>('POST', `/api/pages/${enc(id)}/summary`),
 };
 
 export function errorMessage(err: unknown): string {

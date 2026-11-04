@@ -1267,3 +1267,37 @@ textarea.input {
     align-items: stretch;
   }
 }
+
+/* ---- AI summary card (4b). Baseline only; the designer's 4b styling item refines it. ---- */
+
+.summary-card {
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.summary-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.summary-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.summary-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}

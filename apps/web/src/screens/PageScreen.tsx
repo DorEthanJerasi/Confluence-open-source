@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, History, Plus, Trash2 } from 'lucide-react';
+import { FileText, History, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { Page } from '@stillwater/shared';
+import { SummaryCard, useAiEnabled } from '../ai/SummaryCard';
 import { api, ApiFailure } from '../api';
 import { PageEditor, SaveStatus } from '../editor/PageEditor';
 import { PageSaver } from '../editor/saver';
@@ -90,6 +91,11 @@ function PageView({ page }: { page: Page }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyClosing, setHistoryClosing] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
+  const aiEnabled = useAiEnabled();
+  // Each press of Summarise mounts a fresh card, which asks the server once.
+  const [summaryRun, setSummaryRun] = useState(0);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const closeSummary = useCallback(() => setSummaryOpen(false), []);
   // Closing plays the panel's exit animation before it unmounts (see onClosed below).
   const closeHistory = useCallback(() => {
     setHistoryClosing(true);
@@ -174,6 +180,18 @@ function PageView({ page }: { page: Page }) {
           >
             <History size={16} aria-hidden="true" /> History
           </button>
+          {aiEnabled && (
+            <button
+              className={`btn btn-quiet${summaryOpen ? ' is-on' : ''}`}
+              onClick={() => {
+                setSummaryRun((n) => n + 1);
+                setSummaryOpen(true);
+              }}
+              aria-expanded={summaryOpen}
+            >
+              <Sparkles size={16} aria-hidden="true" /> Summarise
+            </button>
+          )}
           {canEdit && (
             <>
               <button className="btn btn-quiet" onClick={() => newPage(page.id)}>
@@ -197,6 +215,8 @@ function PageView({ page }: { page: Page }) {
           onClosed={finishCloseHistory}
         />
       )}
+
+      {aiEnabled && summaryOpen && <SummaryCard key={summaryRun} pageId={page.id} onClose={closeSummary} />}
 
       <div className="page-body">
         {viewing !== null ? (
