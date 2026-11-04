@@ -10,7 +10,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
-    "test:ai": "vitest run test/ai.test.ts",
+    "test:ai": "vitest run test/ai",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

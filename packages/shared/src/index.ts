@@ -253,6 +253,10 @@ export function splitSnippet(snippet: string): { text: string; hit: boolean }[] 
 export const aiStatusReply = z.object({ enabled: z.boolean() }).strict();
 export type AiStatus = z.infer<typeof aiStatusReply>;
 
+/** POST /api/pages/:id/summary. Plain text: the client renders it as text, never as HTML. */
+export const pageSummaryReply = z.object({ summary: z.string() }).strict();
+export type PageSummary = z.infer<typeof pageSummaryReply>;
+
 export interface ApiError {
   error: string;
   message: string;
