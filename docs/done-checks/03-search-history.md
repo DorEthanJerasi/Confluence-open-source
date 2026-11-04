@@ -227,7 +227,7 @@ check the invariant after every save (`expectInvariant`). Nothing missing.
 - [x] `npm run check` passes and `npm run test:e2e` passes in full (older specs
       included).
 
-**Lead check of stage 3c (item #79, 2026-11-04): not yet a pass, one box open.**
+**Lead check of stage 3c (item #79, 2026-11-04): one box was open; closed by item #78 (see below).**
 `npm run check` run by the lead: exit 0 (11 diff tests, 235 server tests, 1
 skipped AI placeholder, originality and contrast ok). `history.spec.ts` 5 of 5
 pass, in the full run and again alone. Dark and light screenshots
@@ -244,8 +244,18 @@ saver, so the next save has no 409), and the panel CSS (tokens only, open and
 close motion, reduced motion handled in `tokens.css`). Load older and the 409
 path on this screen are covered by the server tests (60 snapshots page 50 + 10;
 stale `baseVersion` gives 409) and the code read, not by a browser test.
-Was open: `npm run test:e2e` did not pass in full. Fixed by the tester
-(item #78): see note below.
+Was open: `npm run test:e2e` did not pass in full. Fixed in item #78:
+`embeds.spec.ts` now waits for a fresh "Saving…" before "Saved"
+(`waitForFreshSave`), so it can no longer pass on the previous save's label.
+
+**Lead check of item #78 (2026-11-04): pass.** Lead ran `npm run test:e2e`:
+22 of 22 pass in one full run, history 5 of 5 and embeds 2 of 2 included.
+Lead ran `npm run check`: exit 0 (235 server tests, 1 skipped AI placeholder,
+originality and contrast ok). The fresh `history-dark.png` from that run was
+read by the lead. It shows the viewer's dark panel with "Current" and
+"Restored from version 3" tags and the labelled "Changed since this version"
+block. There is no Restore button. Every 3c automated box is now ticked. Only
+the hand check below is open.
 
 ### Hand check by the lead (compose stack, browser)
 - [ ] Edit a page as two users over a few minutes, open History, restore the
