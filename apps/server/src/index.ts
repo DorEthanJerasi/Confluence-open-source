@@ -29,7 +29,8 @@ async function main(): Promise<void> {
   process.on('SIGTERM', close);
   process.on('SIGINT', close);
 
-  await app.listen({ host: '0.0.0.0', port: env.port });
+  // HOST defaults to all interfaces (needed inside the container); install.sh sets 127.0.0.1.
+  await app.listen({ host: process.env.HOST?.trim() || '0.0.0.0', port: env.port });
 }
 
 main().catch((err) => {
