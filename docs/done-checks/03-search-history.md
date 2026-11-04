@@ -224,7 +224,7 @@ check the invariant after every save (`expectInvariant`). Nothing missing.
   - typing after the restore saves cleanly ("Saved", no conflict note);
   - a viewer opens History, sees the versions, and has no Restore button;
   - the dark-mode history panel renders (screenshot read by the lead).
-- [ ] `npm run check` passes and `npm run test:e2e` passes in full (older specs
+- [x] `npm run check` passes and `npm run test:e2e` passes in full (older specs
       included).
 
 **Lead check of stage 3c (item #79, 2026-11-04): not yet a pass, one box open.**
@@ -244,12 +244,8 @@ saver, so the next save has no 409), and the panel CSS (tokens only, open and
 close motion, reduced motion handled in `tokens.css`). Load older and the 409
 path on this screen are covered by the server tests (60 snapshots page 50 + 10;
 stale `baseVersion` gives 409) and the code read, not by a browser test.
-Still open: **the full `npm run test:e2e` did not pass.**
-`embeds.spec.ts` "upload from slash menu, paste and drop" failed once (2
-images after reload, expected 3) and passed 2 of 2 when run alone. It looks
-like a race: the test waits for "Saved" right after the drop, and that status
-can still show the previous save before the new one starts. Sent back to the
-tester and coder in the team chat.
+Was open: `npm run test:e2e` did not pass in full. Fixed by the tester
+(item #78): see note below.
 
 ### Hand check by the lead (compose stack, browser)
 - [ ] Edit a page as two users over a few minutes, open History, restore the

@@ -26,6 +26,17 @@ async function logIn(page: Page, user: { email: string; password: string }) {
 
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
 
+/**
+ * Waits for a save that starts *after* this call, not a "Saved" label left
+ * over from an earlier save. The status text is the same ("Saving…") for
+ * the editor's `pending` and `saving` states, so seeing it once the change
+ * is made proves the new save has begun before we wait for it to finish.
+ */
+async function waitForFreshSave(page: Page) {
+  await expect(page.getByRole('status')).toHaveText('Saving…', { timeout: 10_000 });
+  await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+}
+
 async function slashPick(page: Page, query: string, pick: string, file: { name: string; mimeType: string; buffer: Buffer }) {
   await page.keyboard.type('/' + query);
   const menu = page.getByRole('listbox', { name: 'Insert block' });
@@ -101,10 +112,11 @@ test.describe.serial('image and file blocks', () => {
     await body(page).locator('p').first().click();
     await sendFile(page, 'paste', 'pasted.png', 'image/png', PNG.toString('base64'));
     await expect(images).toHaveCount(2);
+    await waitForFreshSave(page);
     await sendFile(page, 'drop', 'dropped.png', 'image/png', PNG.toString('base64'));
     await expect(images).toHaveCount(3);
 
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await waitForFreshSave(page);
     await page.reload();
     await expect(body(page).locator('figure.embed-image img')).toHaveCount(3);
     const captions = () => page.getByLabel('Image caption').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
