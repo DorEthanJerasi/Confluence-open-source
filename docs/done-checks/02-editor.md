@@ -70,12 +70,12 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 - [x] `npm run check` passes (typecheck, server tests, originality, contrast).
 
 ### Hand check by the lead (compose stack, browser)
-- [ ] Write a page using the slash menu only, in light and dark mode; it feels
+- [x] Write a page using the slash menu only, in light and dark mode; it feels
       calm (no jumpy motion, no harsh borders), and reloads intact.
-      **Open:** this machine has no running Docker daemon, so the compose stack
-      could not be started. Done instead on the same built app (the e2e server
-      on embedded Postgres): light/dark screenshots and the slash menu look calm.
-      Tick this together with the 2b compose check once Docker is available.
+      **Done on the app started by `install.sh`** (item #96, see the lead
+      review below).
+- [ ] Compose part of the box above: the same on `docker compose up`. Open:
+      this machine has no running Docker daemon.
 
 ### Lead review, item #61 (2026-11-03)
 2a accepted, with the one compose box above still open. Evidence:
@@ -142,9 +142,43 @@ Run everything with Node 22 (`PATH=~/.local/node22/bin:$PATH`).
 - [x] `npm run check` passes.
 
 ### Hand check by the lead (compose stack, browser)
-- [ ] Build a page with one of every embed, in light and dark mode; reload; all
+- [x] Build a page with one of every embed, in light and dark mode; reload; all
       render; a second user who is not a member of the space cannot open the
-      image URL directly.
+      image URL directly. **Done on the app started by `install.sh`** (item
+      #96, see the lead review below).
+- [ ] Compose part of the box above: the same on `docker compose up`. Open:
+      no Docker here.
+
+### Lead hand check, item #96 (2026-11-05)
+On the built app started with `PORT=3456 ./install.sh` (fresh local Postgres),
+in Chromium at 1280 px, driven step by step by a lead script (not committed,
+kept in `.leadcheck/hand96/`). I read every screenshot myself.
+- **2a, slash menu only:** a new page built with nothing but `/` commands:
+  Heading 2, Text, Bullet list, Numbered list, Task list, Quote, Callout,
+  Divider, Heading 3, Code block, Table. The first half was written in light
+  mode, the rest in dark. After a reload the text was the same and every block
+  was in place (the stored doc lists heading, paragraph, bulletList,
+  orderedList, taskList, blockquote, callout, horizontalRule, heading,
+  codeBlock, table). The code block keeps its highlight after the reload. The
+  slash menu fades in over 0.14 s with a 1 px soft border, the callout is a
+  soft tint, and the divider is a faint line. It feels calm in both modes.
+- **2b, every embed:** in a members-only space: image (uploaded), file (PDF,
+  name, size and a Download that gives `plan.pdf`), uploaded video (it plays,
+  16×16 clip), YouTube link (player frame on `youtube-nocookie.com`), link
+  card, code block and table, all from the slash menu. After a reload all of
+  them render in light and dark. The stored doc has no `data:`. A second
+  user who is not a member got **404** on the image URL, and the page itself
+  shows "Nothing here".
+- **Not seen here, because this machine has no internet:** the YouTube player
+  stays an empty frame, and the link card for `https://example.com/` falls
+  back to the plain link card, which is the designed fallback. The full card,
+  with title and description, is covered by `video-links.spec.ts` with a
+  stubbed reply. Seeing it on a real site needs a machine that is online.
+- **Small things found (not part of these boxes):** a long page title is cut
+  off at the History and Sub-page buttons instead of wrapping ("Written with
+  the slash m…"). Separately, when a page ends in an image, clicking just below it
+  did not give a new line in my one try. Arrow down, or clicking the image and pressing
+  Enter, does.
 
 ### Lead review, item #62 (2026-11-03)
 Server half of the upload boxes accepted (migration, POST and GET, API test). Evidence:

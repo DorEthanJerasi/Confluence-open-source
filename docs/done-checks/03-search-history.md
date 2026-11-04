@@ -88,9 +88,18 @@ page's title and body.
 - [x] `npm run check` passes (typecheck, server tests, originality, contrast).
 
 ### Hand check by the lead (compose stack, browser)
-- [ ] Two users and one restricted space: search from both accounts in light
+- [x] Two users and one restricted space: search from both accounts in light
       and dark mode. The member finds the page and the other user does not. The
-      results page feels calm.
+      results page feels calm. **Done on the app started by `install.sh`**
+      (item #96): the admin made the members-only space "Quiet Room" with a page
+      holding the word `quillwhistle`, and added Mira (editor) as a member.
+      Mira (Ctrl+K) found "Night shift notes · Quiet Room" with the word
+      highlighted, in light and dark, and the result opened the page. Otto
+      (editor, not a member) got "No results — Nothing you can see matches
+      that yet", in light and dark. Four screenshots read by the lead: lots of
+      space, soft highlight, dashed empty-state card. Calm.
+- [ ] Compose part of the box above: the same on `docker compose up`. Open:
+      no Docker here.
 
 ---
 
@@ -258,9 +267,27 @@ block. There is no Restore button. Every 3c automated box is now ticked. Only
 the hand check below is open.
 
 ### Hand check by the lead (compose stack, browser)
-- [ ] Edit a page as two users over a few minutes, open History, restore the
+- [x] Edit a page as two users over a few minutes, open History, restore the
       oldest version, then restore the newest pre-restore one. Both work and
-      nothing is lost. It feels calm in light and dark.
+      nothing is lost. It feels calm in light and dark. **Done on the app
+      started by `install.sh`** (item #96): Ada and Beck took turns rewriting
+      "Shared plan" (Plan A, B, C, D), about 45 s apart, over three minutes,
+      which made versions 3, 4, 5 and 6. In light mode, Ada opened version 3
+      (oldest). The preview showed Plan A with "Only in this version" and
+      "Only in the current page" marks. She restored it after the
+      "Restore this version? … Nothing is deleted." dialog, and Plan A
+      survived a reload. In dark mode, Beck saw version 7 "Restored from
+      version 3" on top, opened version 6 (newest before the restore) and
+      restored it. Plan D was back after a reload, as version 8 "Restored from
+      version 6". All earlier versions were still listed, and typing after the
+      restores saved as version 9 with no conflict note. Screenshots read by
+      the lead: calm in both modes.
+      **Found:** while the History panel is open it covers the right end of the
+      top bar (the light/dark switch, the user's name and Log out), so those
+      cannot be clicked until the panel is closed. Small, but real; it needs a
+      design fix (panel below the top bar).
+- [ ] Compose part of the box above: the same on `docker compose up`. Open:
+      no Docker here.
 
 ---
 
