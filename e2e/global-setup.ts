@@ -74,6 +74,9 @@ export default async function globalSetup() {
       ALLOW_SIGNUP: 'true',
       // Uploads go in the same temp dir, removed in teardown.
       UPLOAD_DIR: join(dir, 'uploads'),
+      // The AI suite runs against the deterministic stub, never the network.
+      AI_PROVIDER: 'stub',
+      ANTHROPIC_API_KEY: '',
     },
     stdio: 'inherit',
   });
