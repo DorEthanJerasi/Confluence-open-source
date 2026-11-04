@@ -119,6 +119,16 @@ test.describe.serial('ask your docs', () => {
     const sourceEntry = page.getByRole('link').filter({ hasText: 'Garden notes' }).first();
     await expect(sourceEntry).toBeVisible();
 
+    // Screenshots are taken here, on /ask with the answer showing, before
+    // either link is clicked and navigates away. Reduced motion is emulated
+    // so the theme switch is settled, not mid-fade, by the time we shoot.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+    await page.screenshot({ path: 'test-results/ai-ask-dark.png', fullPage: true });
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+    await page.screenshot({ path: 'test-results/ai-ask-light.png', fullPage: true });
+    await page.emulateMedia({ reducedMotion: null });
+
     await cite.click();
     await expect(page).toHaveURL(pageUrl);
     await expect(body(page)).toContainText(WORD);
@@ -131,11 +141,6 @@ test.describe.serial('ask your docs', () => {
     await expect(answer(page)).toBeVisible({ timeout: 10_000 });
     await page.locator('.ask-sources').getByRole('link', { name: /Garden notes/ }).click();
     await expect(page).toHaveURL(pageUrl);
-
-    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
-    await page.screenshot({ path: 'test-results/ai-ask-dark.png', fullPage: true });
-    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
-    await page.screenshot({ path: 'test-results/ai-ask-light.png', fullPage: true });
   });
 
   test('a viewer who is not a member of a restricted space gets the "couldn\'t find" answer, with no sources', async ({
