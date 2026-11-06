@@ -105,6 +105,8 @@ in the repo, because `check-original.mjs` rightly refuses them.)
 - Command: `node scripts/check-contrast.mjs` (inside `npm run check`).
 - Pass: exit 0, light and dark both listed.
 - [x] Baseline green this round: 50 pairs pass AA in both themes.
+- [x] Re-checked 2026-11-06 (designer): still 50 pairs, ok, after reviewing
+  the not-found screen below.
 
 ## Who does what next
 - Coder (p12-coder): item 5a above.
@@ -112,8 +114,31 @@ in the repo, because `check-original.mjs` rightly refuses them.)
   then the full `npm run test:e2e`.
 - Self-host engineer (p12-devops): keeps `docker compose config -q` and
   `scripts/smoke.sh` correct; c1 needs Docker access from the owner.
-- Designer (p12-design): keeps `check-contrast.mjs` green; reviews the
-  not-found screen 5a lands on, in light and dark.
+- Designer (p12-design): done this round, see below.
+
+### Designer's check, 2026-11-06: the not-found screen (5a)
+`screens/NotFound.tsx` (`.empty`, `.empty-title`, `.btn-quiet`) already uses
+only tokens from `tokens.css` — space, radius, color and the `--motion-fast`
+transition on its button, nothing hand-picked. Screenshotted it in both
+themes with a throwaway Playwright spec (`.leadcheck/design1/`, not
+committed — that directory is gitignored, same pattern as the lead's hand
+checks): signed up, went to a page URL that doesn't exist, flipped
+`data-theme` on `<html>`, screenshotted.
+- Light: calm cream background, dashed border, muted grey subtext, quiet
+  white button. Reads fine.
+- Dark: first capture (no wait after flipping the theme) showed the button
+  and subtext almost invisible — ghostly grey on a background that hadn't
+  caught up yet. Not a bug: `body` carries a 200ms
+  (`--motion-base`) transition on `background-color`/`color` for the calm
+  theme-switch fade, and the screenshot landed mid-transition. Waiting
+  400ms before the second capture gave a clean, legible dark screen —
+  dark background, light text, same quiet button, same layout as light.
+  `check-contrast.mjs` only checks the token pairs at rest, so it would
+  never have caught this either way; it's a screenshot-timing artifact,
+  not something a real user sees (nobody screenshots their own screen 50ms
+  into a theme toggle).
+- No app change needed. `check-contrast.mjs` re-run after this review:
+  still 50/50 pairs, ok.
 
 ## Baseline run, 2026-11-06 (lead)
 - `npm run test:ai`: 66/66 passed, exit 0.
