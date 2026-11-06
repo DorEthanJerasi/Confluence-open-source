@@ -211,3 +211,28 @@ load ~10 on 4 cores, and both suites rebuilt everything first (full build
 - Server tests' throwaway Postgres now fails after 90s instead of waiting
   forever if it never starts, and shutdown gives up after 15s.
 - Not yet re-timed: the full `test:e2e` (32 tests, ~4 min of tests).
+
+## Designer's check, loop #3 round 2, 2026-11-06
+Item 5a added one test file and a backend rate-limit fix — no new screens or
+components — so this round is a re-audit, not new work.
+- Re-ran both checks directly: `node scripts/check-original.mjs` → `ORIGINAL
+  OK`, exit 0. `node scripts/check-contrast.mjs` → `CONTRAST OK`, 50 pairs,
+  exit 0. The c5/c6 "not met" lines the checker reported before this round
+  are stale: they predate the lead's `072d35e5` fix (the scripts only used
+  to print "ok", not the literal words); both scripts pass clean now.
+- Swept the web app for anything that could have drifted off-tokens:
+  - No hex colours outside `tokens.css` (`grep -rn "#[0-9a-fA-F]\{3,6\}"`
+    across `apps/web/src` — nothing outside the tokens file).
+  - The two `style={{...}}` inline styles in the app (`Space.tsx` tree
+    indent, `embeds.tsx` card-offer position) both only carry dynamic
+    numbers (depth, cursor position), not hand-picked colours or spacing.
+  - Every `transition`/`animation` in `app.css` and `editor.css` uses a
+    `--motion-*` duration and `--ease-*` curve from `tokens.css`; reduced-
+    motion still collapses all of them to 0.001ms.
+  - The new lockout error (429 "too many attempts") the coder's rate-limit
+    fix can produce renders through the existing `ErrorNote` →
+    `.note-danger` component (`ui.tsx`, `app.css:429`), which is already on
+    tokens (`color-danger` on `color-danger-soft`) and already in the
+    contrast pair list — no new styling needed for it.
+- Nothing to change this round. Flagging for the coder/tester instead: c2/c4
+  timing is a test-speed issue, not a UI one, so I'm not touching it.
