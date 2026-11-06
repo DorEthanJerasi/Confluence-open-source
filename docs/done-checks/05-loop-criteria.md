@@ -37,6 +37,25 @@ here may reach the network or cost money: AI tests run on the stub.
       migrated schema (201, user row back with a role). Stack torn down after.
       This is not a replacement for `scripts/smoke.sh` on the real image; it
       only shows the app+Postgres+migrations path itself is sound.
+- [ ] Devops re-check, loop #3 round 2, 2026-11-06: ran `scripts/smoke.sh`
+      directly here. `docker compose up -d --build` fails immediately —
+      "Cannot connect to the Docker daemon at unix:///var/run/docker.sock" —
+      which is the exit-1 the checker reported for c1 this round; the socket
+      file exists but this workspace's sandbox has it bound to `/dev/null`
+      (confirmed from the `bwrap` invocation), so no Docker client here, in
+      the checker, or anywhere else reachable from this workspace can talk
+      to a daemon. No alternative runtime is installed (`podman`, `buildah`,
+      `nerdctl` all absent). `docker compose config -q` still exits 0, and
+      the Dockerfile/migration code reviewed again, no change needed.
+      Re-ran the no-Docker proof from scratch after a clean `npm run build`:
+      `scripts/local-start.mjs` brought up a fresh embedded Postgres, ran
+      migrations, and `/health` returned `{"status":"ok"}` with "AI features:
+      off" logged (no key set). So the app, migrations and compose file are
+      still correct; c1 stays blocked purely on Docker daemon access, same
+      as last round. Re-asking the owner: this needs Docker access granted
+      to the workspace (or the checker's own Docker result, if it has one,
+      taken as the real signal) — the team cannot clear this by writing more
+      code.
 
 ## c2 — The end-to-end suite passes, covering auth, permissions, the editor and embeds
 - Command: `npm run test:e2e` (builds, starts the app on a throwaway
