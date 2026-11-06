@@ -198,3 +198,16 @@ success. Both checks re-run here: `ORIGINAL OK`, `CONTRAST OK`.
       Postgres that never closes) and get `test:ai` under ~2 minutes and
       `test:e2e` as fast as it can go; `test:e2e` must not download a
       browser if one is already installed.
+
+## Coder, loop #3 round 2, 2026-11-06: c2/c4 time-outs
+`npm run test:ai` did not hang here: 66/66 in 38s. But this machine runs at
+load ~10 on 4 cores, and both suites rebuilt everything first (full build
+2–4 min before a single e2e test ran). Changes:
+- `scripts/build-if-needed.mjs`: `test:ai` and `test:e2e` now build a
+  workspace only when its output is missing or older than its sources
+  (`FORCE_BUILD=1` forces it). `test:ai` now 45s end to end, builds skipped.
+- `e2e/ensure-browser.mjs`: `test:e2e` downloads Chromium only when it is
+  not installed; prints "Chromium already installed, skipped download".
+- Server tests' throwaway Postgres now fails after 90s instead of waiting
+  forever if it never starts, and shutdown gives up after 15s.
+- Not yet re-timed: the full `test:e2e` (32 tests, ~4 min of tests).

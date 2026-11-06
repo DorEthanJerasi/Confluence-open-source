@@ -16,8 +16,8 @@
     "start": "npm run start --workspace apps/server",
     "typecheck": "npm run build --workspace packages/shared && npm run build --workspace packages/editor-schema && npm run typecheck --workspace apps/server && npm run typecheck --workspace apps/web",
     "test": "npm run build --workspace packages/shared && npm run build --workspace packages/editor-schema && npm run test --workspace packages/editor-schema && npm run test --workspace apps/server",
-    "test:e2e": "npm run build && npm run install-browsers --workspace e2e && npm run test --workspace e2e",
-    "test:ai": "npm run build --workspace packages/shared && npm run build --workspace packages/editor-schema && npm run test:ai --workspace apps/server",
+    "test:e2e": "node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && npm run install-browsers --workspace e2e && npm run test --workspace e2e",
+    "test:ai": "node scripts/build-if-needed.mjs packages/shared packages/editor-schema && npm run test:ai --workspace apps/server",
     "check": "npm run typecheck && npm run test && node scripts/check-original.mjs && node scripts/check-contrast.mjs"
   }
 }

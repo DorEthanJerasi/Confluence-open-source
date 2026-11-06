@@ -36,13 +36,19 @@ export default async function setup(project: TestProject) {
     autoRehydrateSymlinks: true,
     onLog: () => {},
   });
-  await pg.initialise();
-  await pg.start();
+  // Never wait forever: a Postgres that doesn't come up fails the run in 90s.
+  const limit = <T>(what: string, p: Promise<T>) =>
+    Promise.race([
+      p,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`test db: ${what} took over 90s`)), 90_000).unref()),
+    ]);
+  await limit('initdb', pg.initialise());
+  await limit('start', pg.start());
   await pg.createDatabase('stillwater_test');
   project.provide('databaseUrl', `postgres://stillwater:stillwater@127.0.0.1:${port}/stillwater_test`);
 
   return async () => {
-    await pg.stop();
+    await Promise.race([pg.stop(), new Promise((r) => setTimeout(r, 15_000).unref())]);
     rmSync(dir, { recursive: true, force: true });
   };
 }

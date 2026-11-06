@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "scripts": {
     "test": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
-    "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium"
+    "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=0 node ensure-browser.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
