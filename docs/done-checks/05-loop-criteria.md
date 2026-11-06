@@ -40,7 +40,7 @@ here may reach the network or cost money: AI tests run on the stub.
     (`search.spec.ts`, `ai.spec.ts`: an outsider finds nothing from a
     restricted space).
   - editor: `editor.spec.ts`. Embeds: `embeds.spec.ts`, `video-links.spec.ts`.
-- [ ] **Gap, next item (5a):** one browser test file
+- [x] **Gap, next item (5a):** one browser test file
       `e2e/tests/permissions.spec.ts` that proves per-space permissions and
       nested pages directly, on screen. Boxes for it are below.
 
@@ -48,20 +48,28 @@ here may reach the network or cost money: AI tests run on the stub.
 Small item: one new test file, no app changes unless a test finds a real bug
 (then fix the bug, and say so in the report). Reuse the `logIn` / `newPage`
 helpers pattern from `search.spec.ts`, and `resetDatabase` in `beforeAll`.
-- [ ] Admin (Ada) makes space A "Only members" and adds Eve as **editor** of A;
+- [x] Admin (Ada) makes space A "Only members" and adds Eve as **editor** of A;
       makes space B open to everyone. Otto is a plain editor, not a member of A.
-- [ ] Ada makes a page in A and a **sub-page** under it; the sub-page shows
+- [x] Ada makes a page in A and a **sub-page** under it; the sub-page shows
       nested under its parent in the page tree, and reopening it by URL works.
-- [ ] Otto: space A is not in his space list or sidebar; opening A's page by
+- [x] Otto: space A is not in his space list or sidebar; opening A's page by
       its URL shows the calm not-found screen (`screens/NotFound.tsx`), never
       the content; `GET /api/pages/<id>` answers 404 (by design a space you
       cannot read does not exist for you, `auth/permissions.ts:58`).
-- [ ] Eve: opens A's page and sub-page and can edit and save them (status
+- [x] Eve: opens A's page and sub-page and can edit and save them (status
       "Saved").
-- [ ] Ada removes Eve from A in Space settings; after a reload Eve no longer
+- [x] Ada removes Eve from A in Space settings; after a reload Eve no longer
       sees A and its page URL is refused as for Otto.
-- [ ] Log out, then log back in, works (the session ends and comes back).
-- [ ] `npm run test:e2e` all green with the new file; `npm run check` green.
+- [x] Log out, then log back in, works (the session ends and comes back).
+- [x] `npm run test:e2e` all green with the new file; `npm run check` green.
+- Done by the coder, 2026-11-06: `e2e/tests/permissions.spec.ts`, 6 tests,
+  one per box above. Writing it found a real bug: the login limit counted
+  every login from one address, so a team behind one office address got
+  locked out after about 30 good logins. Fixed: only failed logins count
+  now (`apps/server/src/auth/rateLimit.ts`, `routes/auth.ts`), with two new
+  tests in `apps/server/test/auth.test.ts`. Runs: the new file 6/6, full
+  `test:e2e` 32/32, `npm run check` green (303/303 Vitest, originality ok,
+  contrast ok).
 
 ## c3 — Unit and API tests pass, including search scoping and history restore
 - Command: `npm run check` (typecheck, Vitest for `packages/editor-schema` and
