@@ -163,3 +163,24 @@ checks): signed up, went to a page URL that doesn't exist, flipped
   (no Docker service).
 - So c2–c6 have green commands today; c2 still lacks the 5a coverage, and c1
   needs Docker.
+
+## Tester's check, 2026-11-06: 5a repeat runs and full baseline
+Ran the new `e2e/tests/permissions.spec.ts` three times in a row, each a
+fresh browser-and-server run (Playwright's `globalSetup` starts a clean
+throwaway Postgres and server per `playwright test` invocation), to rule
+out flakiness before counting it:
+- Run 1: 6/6 passed (1.2m).
+- Run 2: 6/6 passed (58.7s).
+- Run 3: 6/6 passed (52.5s).
+
+No flakes, no retries, same 6 tests passed every time. Then re-ran the
+full suite to confirm nothing else moved:
+- `npm run test:e2e`: 32/32 passed (4.0m), exit 0.
+- `npm run check`: typecheck clean, 303/303 Vitest (14 files), originality
+  ok (no banned names/colours), contrast ok (50 pairs, both themes), exit 0.
+- `npm run test:ai`: 66/66 passed, exit 0.
+
+c2's gap (5a coverage) is closed: all six boxes under 5a now have a test
+proving them, confirmed stable across three independent runs. c1 is still
+the one open item, still blocked on Docker daemon access from this
+workspace — same ask to the owner as before.
