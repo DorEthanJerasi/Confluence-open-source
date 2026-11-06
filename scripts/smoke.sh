@@ -47,3 +47,4 @@ case "$body" in
 esac
 
 echo "smoke: PASSED"
+echo "SMOKE OK"

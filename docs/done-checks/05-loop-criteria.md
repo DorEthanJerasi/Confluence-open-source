@@ -184,3 +184,17 @@ c2's gap (5a coverage) is closed: all six boxes under 5a now have a test
 proving them, confirmed stable across three independent runs. c1 is still
 the one open item, still blocked on Docker daemon access from this
 workspace — same ask to the owner as before.
+
+## Lead, loop #3 round 2, 2026-11-06: the checker's exact words
+The outside checker looks for literal words in the output, not just exit 0.
+c5 and c6 exited 0 but failed because our scripts printed `ok`, not the
+words it wants. Fixed: `check-original.mjs` now also prints `ORIGINAL OK`,
+`check-contrast.mjs` prints `CONTRAST OK`, `smoke.sh` prints `SMOKE OK` on
+success. Both checks re-run here: `ORIGINAL OK`, `CONTRAST OK`.
+- [ ] **Next (coder + tester): c2 and c4 time out (exit 124) in the checker.**
+      Here, `npm run test:ai` ran over 10 minutes without finishing this
+      round, though the tester saw it pass earlier. Find what hangs or is
+      slow (the build step before Vitest, or a test waiting on a server or
+      Postgres that never closes) and get `test:ai` under ~2 minutes and
+      `test:e2e` as fast as it can go; `test:e2e` must not download a
+      browser if one is already installed.

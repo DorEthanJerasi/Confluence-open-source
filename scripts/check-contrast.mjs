@@ -156,3 +156,4 @@ if (failures) {
   process.exit(1);
 }
 console.log(`check-contrast: ok — ${checked} text/background pairs pass WCAG AA in both themes.`);
+console.log("CONTRAST OK");

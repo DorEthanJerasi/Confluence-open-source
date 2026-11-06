@@ -103,3 +103,4 @@ if (problems.length) {
   process.exit(1);
 }
 console.log('check-original: ok — no banned names, packages or brand colours found.');
+console.log('ORIGINAL OK');
