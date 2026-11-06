@@ -262,3 +262,15 @@ passed in 1m50.9s real time (was timing out past 10 minutes before commit
 `ac3058df`). c4 is confirmed fast and green.
 `npm run test:e2e` was still running past the 2-minute foreground window;
 continuing to verify it in the background rather than assume a result.
+
+## Tester's e2e timing result, loop #3 round 2, 2026-11-06
+`npm run test:e2e` finished: **32 passed (6.5m)**, real 6m48.8s, exit 0.
+All tests pass — c2's content is solid. But the time is worse than the
+4.0m baseline from before the speed fix (commit `ac3058df`), not better.
+This machine's load varies run to run (devops noted load ~10 on 4 cores
+earlier this round), so some of the difference may be noise, but 6m48s on
+a 32-test suite is still a real risk of hitting whatever wall-clock limit
+the outside checker uses — it hit exit 124 on this exact suite before.
+Flagging to the coder: worth checking whether anything in the suite or
+its setup (per-test server/Postgres restarts, `install-browsers` check
+overhead, etc.) got slower, independent of machine load.
