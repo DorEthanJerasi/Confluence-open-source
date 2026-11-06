@@ -25,6 +25,18 @@ here may reach the network or cost money: AI tests run on the stub.
       the Docker service (`/var/run/docker.sock` is not usable from the
       workspace). Only the owner or the outside checker can run it. Asked in
       the team chat again this round.
+- [x] Devops re-check after item 5a, 2026-11-06: 5a changed no schema and
+      added no migration (confirmed: `git log` on `apps/server/drizzle` since
+      5a shows nothing new), so `docker-compose.yml` and `docker/Dockerfile`
+      need no change. `docker compose config -q` still exits 0. Since the real
+      Docker daemon stays out of reach here, proved the same migrate-on-start
+      path another way: full `npm run build`, then started the real built
+      server against a real throwaway Postgres (`scripts/local-start.mjs`,
+      the same non-Docker path `install.sh` uses) — migrations ran, `/health`
+      returned `{"status":"ok"}`, and a real signup round-tripped through the
+      migrated schema (201, user row back with a role). Stack torn down after.
+      This is not a replacement for `scripts/smoke.sh` on the real image; it
+      only shows the app+Postgres+migrations path itself is sound.
 
 ## c2 — The end-to-end suite passes, covering auth, permissions, the editor and embeds
 - Command: `npm run test:e2e` (builds, starts the app on a throwaway
