@@ -21,6 +21,12 @@ export class RateLimiter {
     return entry.count <= this.limit;
   }
 
+  /** Takes back one attempt recorded by take(), e.g. once it turned out to be a good login. */
+  refund(key: string, now = Date.now()): void {
+    const entry = this.hits.get(key);
+    if (entry && entry.resetAt > now && entry.count > 0) entry.count -= 1;
+  }
+
   reset(key: string): void {
     this.hits.delete(key);
   }

@@ -85,6 +85,9 @@ export async function authRoutes(app: FastifyInstance) {
     if (!ok || row.disabledAt) {
       throw new HttpError(401, 'bad_credentials', 'That email and password do not match');
     }
+    // Only failed attempts count. A whole team behind one office address
+    // must be able to log in, so a good login gives its per-IP slot back.
+    perIp.refund(req.ip);
     perEmail.reset(body.email);
     setSessionCookie(app, req, reply, await createSession(db, row.id));
     return { user: toUser(row) };

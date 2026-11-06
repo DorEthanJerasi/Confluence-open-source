@@ -136,3 +136,39 @@ describe('closed sign-up', () => {
     expect(login.body.user.role).toBe('viewer');
   });
 });
+
+// Own server, so the in-memory login limiter starts empty and the
+// failures below cannot spill into the other tests.
+describe('login rate limit per address', () => {
+  let limited: TestCtx;
+  beforeAll(async () => {
+    limited = await setupApp();
+    await limited.reset();
+  });
+  afterAll(() => limited.close());
+
+  it('does not lock out a team logging in from one address: good logins do not count', async () => {
+    // Every request here comes from the same address, like an office behind one public IP.
+    const people = ['Ada', 'Bo', 'Cy', 'Di'];
+    for (const p of people) await signup(limited.app, p);
+    for (let round = 0; round < 10; round++) {
+      for (const p of people) {
+        const res = await new Client(limited.app).post('/api/auth/login', {
+          email: `${p.toLowerCase()}@example.com`,
+          password: 'correct horse battery',
+        });
+        expect(res.status).toBe(200);
+      }
+    }
+  });
+
+  it('still rate-limits many failed logins from one address, across different emails', async () => {
+    const c = new Client(limited.app);
+    const statuses: number[] = [];
+    for (let i = 0; i < 32; i++) {
+      statuses.push((await c.post('/api/auth/login', { email: `guess${i}@example.com`, password: 'wrong password' })).status);
+    }
+    expect(statuses[0]).toBe(401);
+    expect(statuses.at(-1)).toBe(429);
+  });
+});
