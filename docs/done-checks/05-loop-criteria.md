@@ -255,3 +255,10 @@ components — so this round is a re-audit, not new work.
     contrast pair list — no new styling needed for it.
 - Nothing to change this round. Flagging for the coder/tester instead: c2/c4
   timing is a test-speed issue, not a UI one, so I'm not touching it.
+
+## Tester's re-check, loop #3 round 2, 2026-11-06: timing after the coder's fix
+Re-ran `npm run test:ai` fresh (no stale build artifacts touched): 66/66
+passed in 1m50.9s real time (was timing out past 10 minutes before commit
+`ac3058df`). c4 is confirmed fast and green.
+`npm run test:e2e` was still running past the 2-minute foreground window;
+continuing to verify it in the background rather than assume a result.
