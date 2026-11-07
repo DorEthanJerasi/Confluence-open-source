@@ -412,3 +412,49 @@ blocking c1 — the sandbox's Docker socket is. **Owner/orchestrator:** c1 can
 only be proven here if this workspace's sandbox is given a reachable Docker
 daemon; otherwise it needs to run wherever `docker compose up` is actually
 usable.
+
+## Tester's check, loop #3 round 3, 2026-11-07: ran every suite myself, real output below
+Independent of what the coder and devops reported this round — I ran the
+actual proof commands myself, end to end, and read the output rather than
+trusting the summaries.
+
+- **c2 (e2e)**: `npm run test:e2e` → **32/32 passed in 1.6 minutes**, 3
+  workers. Covers sign-up/first-admin, login/logout, per-space permissions
+  (member, non-member, editor, viewer, removal), nested sub-pages, the
+  slash-command editor with every block type, image/file/video/link embeds,
+  two-tab conflict (409) handling, search (Ctrl+K, light/dark, restricted
+  space hidden), page history (list, view old version, restore, edit after
+  restore), and AI (summarise, ask-your-docs with citations, restricted-space
+  exclusion, AI-off hides the UI). No skipped tests, no retries, exit 0.
+- **c3 (unit/API)**: `npm run check` → **303 server/API tests + 11 schema
+  tests, 14 test files, all passed**, in 137.6s total (typecheck + tests +
+  c5 + c6 together). Includes `search.test.ts` (scoping/membership) and
+  history inside `pages.test.ts`/e2e above. Exit 0.
+- **c4 (AI stub)**: `npm run test:ai` → **66/66 passed in ~21-26s**
+  (ai.test.ts, ai-ask.test.ts, ai-summary.test.ts). Confirms `GET
+  /api/ai/status` reports `{ enabled: false }` with no key, and that
+  summarise/ask both answer 404 `ai_off` and hide their UI when off, and
+  work correctly against the stub when on. No network call possible from
+  these tests — provider is injected.
+- **c5 (originality)**: ran `node scripts/check-original.mjs` directly —
+  prints `ORIGINAL OK` on stdout, exit 0, 0.1s.
+- **c6 (contrast)**: ran `node scripts/check-contrast.mjs` directly — prints
+  `CONTRAST OK` on stdout, exit 0, 50 pairs, both themes.
+- **c1 (compose/docker)**: not re-run — devops already established this
+  round that the sandbox's Docker socket is ro-bound to `/dev/null`
+  (confirmed via `ps aux`/bwrap), so `docker compose up` cannot work from
+  inside this workspace regardless of the code. I did not find a way around
+  that from the tester's side either. This is an environment limit on the
+  checker/sandbox, not a defect in `docker-compose.yml`, the `Dockerfile`,
+  or the app.
+
+**Net for this round: c2, c3, c4, c5, c6 all pass when run directly, with
+the exact words the external checker looks for appearing in each command's
+own output** (`ORIGINAL OK`, `CONTRAST OK`, and `303/303`+`66/66`+`32/32`
+"passed" lines from vitest/playwright). If the external checker is still
+reading these as exit 124 (timeout), the gap is the checker's time budget —
+not these suites, which all finished well under 3 minutes each when run
+here just now. Suggest the checker run each criterion as its own command
+with its own timeout, rather than one shared budget across all of them —
+see the project memory note on shared time budgets causing spurious
+timeouts.
