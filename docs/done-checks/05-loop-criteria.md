@@ -378,3 +378,37 @@ this is a re-audit again, same as round 2:
 - Nothing to change this round. c1–c5 are not UI's blockers right now
   (Docker access, test timing on a shared disk, and GitHub push access) —
   flagging for devops/coder/lead, not touching them myself.
+
+## DevOps, loop #3 round 3, 2026-11-07: found why c1 fails here, verified the stack itself is sound
+`scripts/smoke.sh` needs `docker compose`, so I ran it directly:
+```
+unable to get image 'postgres:16-alpine': Cannot connect to the Docker daemon at
+unix:///var/run/docker.sock. Is the docker daemon running?
+```
+Checked why: `ps aux` shows this workspace runs inside a `bwrap` sandbox that
+ro-binds `/dev/null` over both `/run/docker.sock` and
+`/run/containerd/containerd.sock`. `docker`/`docker compose` CLIs are present
+and `docker compose config` parses `docker-compose.yml` cleanly, but there is
+no daemon this sandbox can reach — not a missing install, not a stopped
+service, a deliberate bind in the sandbox that nothing inside the workspace
+can undo. **This is the actual cause of c1's exit 1/124 across every round
+so far**, and no change to `docker-compose.yml`, `docker/Dockerfile`, or
+`scripts/smoke.sh` can fix it from in here.
+
+To still check the stack for real without Docker, I used the no-Docker path
+(`install.sh` / `scripts/local-start.mjs`, same server code, same
+`runMigrations()` call, a fresh Postgres):
+- `npm run build` — clean.
+- `PORT=3099 LOCAL_DATA_DIR=/tmp/sw-local-data node scripts/local-start.mjs`
+  against an empty data dir (fresh DB, like a clean checkout) — embedded
+  Postgres initialised, migrations ran, server came up in ~6s, logged `AI
+  features: off` (no key set, as expected).
+- `curl http://127.0.0.1:3099/health` → `{"status":"ok"}`, same body
+  `scripts/smoke.sh` checks for.
+- Killed the process and removed the temp data dir afterwards.
+
+So the app, its migrations-on-start, and the compose config are not what's
+blocking c1 — the sandbox's Docker socket is. **Owner/orchestrator:** c1 can
+only be proven here if this workspace's sandbox is given a reachable Docker
+daemon; otherwise it needs to run wherever `docker compose up` is actually
+usable.
