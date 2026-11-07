@@ -97,3 +97,75 @@ it 3 times on their own and records the output here. Only then does it count.
   and search's second test pressed Ctrl+K before the app was on screen. The
   second is fixed (it waits for the page list first). The 409s did not come
   back in the next two runs or the full run; I could not find the cause.
+
+## Item #102 (tester, 2026-11-07) — 3 timed runs of `npm run test:e2e`
+
+Ran `/usr/bin/time -v npm run test:e2e` three times back to back, no other
+change to the suite or the box. Load average is the 1-minute figure from
+`uptime` taken right before each run started.
+
+| run | load avg (1 min, start) | wall clock | result |
+|-----|--------------------------|-----------|--------|
+| 1   | 10.00                    | 1:28.29 (88.3 s) | **32 passed**, exit 0 |
+| 2   | 12.92                    | 2:03.01 (123.0 s) | **1 failed, 2 did not run, 29 passed**, exit 1 |
+| 3   | 21.12                    | 2:13.67 (133.7 s) | **32 passed**, exit 0 |
+
+None of the three runs is under 75 seconds. Check 1 of the done-check is
+**not met** on this box today (load through the three runs climbed from
+10 to about 24 on 4 cores, well past the "at load ≥ 5" floor — that part is
+covered, the speed part is not).
+
+Run 2's failure is not one of the two causes item #101 already named
+(`signUp` 409, search pressing Ctrl+K early — both in files #101 touched).
+It is a new one, in `permissions.spec.ts:150` ("Eve, an editor of the space,
+opens and edits its page and sub-page"):
+
+```
+Error: expect(locator).toBeEditable() failed
+Locator: getByLabel('Page title')
+Timeout: 5000ms
+Error: element(s) not found
+```
+
+The page title field never appeared within 5 s after `page.goto(url)`, at
+the point in the run where load had climbed to ~21. Two more tests in the
+same file then "did not run" because Playwright stopped the worker after
+the failure. This reads as the page taking longer than 5 s to render under
+heavy load, not a logic bug — but it is a real, on-screen failure in a run
+that otherwise passed 29/32, so I'm recording it rather than calling it
+noise. Full output: `/tmp/run2.log` (not committed — ask me if you need it
+copied in).
+
+### Point 3 coverage — behaviour still shown on screen today
+
+Checked each behaviour in the list against the current spec files (after
+#100 and #101 moved setup to the API, the assertions below are still done
+by clicking/reading the page, not by the API):
+
+- [x] sign-up / first admin — `wiki.spec.ts:34`
+- [x] log in / out — `permissions.spec.ts:198`
+- [x] per-space roles — admin/editor: `wiki.spec.ts:59`, `permissions.spec.ts:150`; viewer (read-only, no edit control): `wiki.spec.ts:72`, `editor.spec.ts:137`, `embeds.spec.ts:147`, `video-links.spec.ts:181`, `history.spec.ts:126`; member/non-member: `permissions.spec.ts:118`; removal: `permissions.spec.ts:171`
+- [x] nested pages — `permissions.spec.ts:83`
+- [x] every slash-command block — `editor.spec.ts:38`
+- [x] image/file/video/link embeds — `embeds.spec.ts:69`, `video-links.spec.ts:64`
+- [x] two-tab conflict — `editor.spec.ts:147`
+- [x] search scoping in both themes — `search.spec.ts:86` (light/dark), `search.spec.ts:111` (restricted space)
+- [x] history view and restore — `history.spec.ts:80`, `history.spec.ts:92`
+- [x] AI summarise — `ai.spec.ts:48`
+- [x] ask with sources — `ai.spec.ts:89`
+- [x] restricted-space exclusion — `ai.spec.ts:139` (AI), `search.spec.ts:111` (search)
+- [x] AI off hides the UI — `ai.spec.ts:164`
+
+No gap: every behaviour in the list is still proven by a visible assertion
+in a spec file, same as before #100/#101. Count is still 32 tests.
+
+### What this means for the done-check
+
+- Check 1 (under 75 s, 3 runs, load noted, one run ≥ load 5): **not met** —
+  none of the 3 runs is under 75 s.
+- Check 2 (N ≥ 32 passed, exit 0, no retries/skip/.only, every run): **not
+  met** — run 2 had 1 failed and 2 did not run.
+- Check 3 (coverage not reduced): **met** — see the list above.
+- The speed work in #100/#101 helped (147.7 s → best case 88.3 s) but the
+  suite is still 1.2x to 1.8x over the 75 s target on this box, and under
+  load it can now fail outright, not just run slow.
