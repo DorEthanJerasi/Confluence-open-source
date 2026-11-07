@@ -322,3 +322,11 @@ files, 44 MB) that `install.sh` / `scripts/local-start.mjs` create.
   containing a banned name is still caught (exit 1), then removed.
 - Note for everyone: c2–c4 exit 124 in the same round is very likely the
   same disk stall, not our code. Keep suites lean on disk I/O.
+- Then timed c3 here: `npm run check` hit my 7-minute limit (exit 124)
+  while Vitest for `packages/editor-schema` was still starting. Real time
+  7m00s, CPU time only 1m58s: the run spent most of its time waiting on the
+  disk, not computing. **Next (coder):** make `npm run check` skip rebuilds
+  that are already up to date (`scripts/build-if-needed.mjs`, as for
+  `test:ai`) and avoid typechecking the same packages twice, so it does far
+  less disk work. **Owner/Orchestrator:** the machine's disk is saturated by
+  work outside this project; no code change fixes that fully.
