@@ -7,7 +7,8 @@
 // the refused card uses this test server's own (loopback) address, which the
 // server's guard refuses, and the full card uses a stubbed /api/link-preview reply.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, logIn } from '../login';
+import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
+import { afterNextPaint } from '../paint';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -37,12 +38,16 @@ async function newLine(page: Page) {
   await page.keyboard.press('Enter');
 }
 
-/** Fire a paste of plain text at the editor, the way the browser would. */
-async function pasteText(page: Page, text: string) {
-  await body(page).evaluate((el, text) => {
+/**
+ * Fire a paste of plain text at the editor, the way the browser would.
+ * Resolves to false if a handler took it (the editor calls preventDefault),
+ * true if nothing did.
+ */
+async function pasteText(page: Page, text: string): Promise<boolean> {
+  return body(page).evaluate((el, text) => {
     const dt = new DataTransfer();
     dt.setData('text/plain', text);
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    return el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
   }, text);
 }
 
@@ -59,23 +64,15 @@ test.describe.serial('video and link cards', () => {
   test('upload a video, paste YouTube, add Vimeo, refuse other hosts, link cards', async ({ page, baseURL }) => {
     test.setTimeout(90_000);
     await blockPlayers(page);
-    await page.goto('/signup');
-    await page.getByLabel('Name').fill(admin.name);
-    await page.getByLabel('Email').fill(admin.email);
-    await page.getByLabel('Password', { exact: false }).fill(admin.password);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL('/');
-    await page.getByRole('button', { name: 'New space' }).click();
-    await page.getByLabel('Name').fill('Harbour');
-    await page.getByRole('button', { name: 'Create space' }).click();
-    await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
-    await expect(page).toHaveURL(/\/p\/.+/);
-    pageUrl = page.url();
-    await body(page).click();
-    await page.keyboard.type('Films of the bay');
+    // Sign-up, the space and the page come through the API (wiki.spec.ts
+    // clicks through those forms); this test is about the embeds.
+    await signUp(page, admin);
+    await createSpace(page, { name: 'Harbour', key: 'harbour' });
+    pageUrl = (await createPage(page, 'harbour', { title: 'Films', text: 'Films of the bay' })).path;
+    await page.goto(pageUrl);
 
     // Slash menu → Video: an uploaded webm plays in a <video>.
-    await page.keyboard.press('Enter');
+    await newLine(page);
     const chooser = page.waitForEvent('filechooser');
     await (await slash(page, 'vid', 'Video')).first().click();
     await (await chooser).setFiles({ name: 'bay.webm', mimeType: 'video/webm', buffer: WEBM });
@@ -197,8 +194,10 @@ test.describe.serial('video and link cards', () => {
     await expect(body(page)).toHaveAttribute('contenteditable', 'false');
 
     // Pasting a link does nothing for a viewer: no offer, no new block.
-    await pasteText(page, 'https://another.example/');
-    await page.waitForTimeout(300);
+    // Nothing takes the paste, and once the next frame is painted there is
+    // still no offer and no link.
+    expect(await pasteText(page, 'https://another.example/')).toBe(true);
+    await afterNextPaint(page);
     await expect(page.getByRole('button', { name: 'Show as preview card' })).toHaveCount(0);
     await expect(body(page).locator('a[href="https://another.example/"]')).toHaveCount(0);
   });

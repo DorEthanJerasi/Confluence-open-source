@@ -1,6 +1,6 @@
 // Stage 2a editor checks (docs/done-checks/02-editor.md, E2E list).
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, logIn } from '../login';
+import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -21,20 +21,12 @@ test.describe.serial('editor', () => {
   test.beforeAll(resetDatabase);
 
   test('setup + type, save, reload', async ({ page }) => {
-    await page.goto('/signup');
-    await page.getByLabel('Name').fill(admin.name);
-    await page.getByLabel('Email').fill(admin.email);
-    await page.getByLabel('Password', { exact: false }).fill(admin.password);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL('/');
-    await page.getByRole('button', { name: 'New space' }).click();
-    await page.getByLabel('Name').fill('Ocean Notes');
-    await page.getByRole('button', { name: 'Create space' }).click();
-    await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
-    await expect(page).toHaveURL(/\/p\/.+/);
-    pageUrl = page.url();
-    await page.getByLabel('Page title').fill('Tides');
-    await page.getByLabel('Page title').blur();
+    // Sign-up, the space and the empty page come through the API (wiki.spec.ts
+    // clicks through those forms and the title field); this test is about typing.
+    await signUp(page, admin);
+    await createSpace(page, { name: 'Ocean Notes', key: 'ocean-notes' });
+    pageUrl = (await createPage(page, 'ocean-notes', { title: 'Tides' })).path;
+    await page.goto(pageUrl);
 
     await body(page).click();
     await page.keyboard.type('Hello calm world');

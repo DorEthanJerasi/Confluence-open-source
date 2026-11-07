@@ -3,7 +3,7 @@
 // <mark>; a non-member of the restricted space gets "No results"; page text
 // that looks like HTML stays text; reload on /search?q=… keeps the results.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, logIn } from '../login';
+import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -16,15 +16,6 @@ let pageUrl = '';
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
 const results = (page: Page) => page.getByRole('list', { name: 'Search results' });
 
-async function newPage(page: Page, title: string, text: string) {
-  await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
-  await expect(page).toHaveURL(/\/p\/.+/);
-  await page.getByLabel('Page title').fill(title);
-  await page.getByLabel('Page title').blur();
-  await body(page).click();
-  await page.keyboard.type(text);
-  await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
-}
 
 /** Ctrl+K from wherever the focus is, type the query, Enter. */
 async function search(page: Page, q: string) {
@@ -40,21 +31,16 @@ test.describe.serial('search', () => {
   test.beforeAll(resetDatabase);
 
   test('a word typed into a page is found with Ctrl+K, highlighted, and opens the page', async ({ page }) => {
-    await page.goto('/signup');
-    await page.getByLabel('Name').fill(admin.name);
-    await page.getByLabel('Email').fill(admin.email);
-    await page.getByLabel('Password', { exact: false }).fill(admin.password);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL('/');
-
-    await page.getByRole('button', { name: 'New space' }).click();
-    await page.getByLabel('Name').fill('Quiet Room');
-    await page.getByLabel('Who can see it').selectOption('restricted');
-    await page.getByRole('button', { name: 'Create space' }).click();
-    await expect(page).toHaveURL('/s/quiet-room');
-
-    await newPage(page, 'Night shift', `The ${WORD} sleeps here`);
-    pageUrl = page.url();
+    // Sign-up, the restricted space and the empty page come through the API
+    // (wiki.spec.ts and ai.spec.ts click through those forms); the word is
+    // typed into the editor and saved, as a person would.
+    await signUp(page, admin);
+    await createSpace(page, { name: 'Quiet Room', key: 'quiet-room', visibility: 'restricted' });
+    pageUrl = (await createPage(page, 'quiet-room', { title: 'Night shift' })).path;
+    await page.goto(pageUrl);
+    await body(page).click();
+    await page.keyboard.type(`The ${WORD} sleeps here`);
+    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
 
     // The focus is still in the editor: Ctrl+K must reach the search field.
     await search(page, WORD);
@@ -69,9 +55,11 @@ test.describe.serial('search', () => {
   });
 
   test('page text that looks like HTML is shown as text, never as an element', async ({ page }) => {
-    await logIn(page, admin, '/s/quiet-room');
-    await newPage(page, `Odd ${TAG}`, NASTY);
-    const oddUrl = page.url();
+    await logIn(page, admin, null);
+    const oddUrl = (await createPage(page, 'quiet-room', { title: `Odd ${TAG}`, text: NASTY })).path;
+    await page.goto('/s/quiet-room');
+    // Ctrl+K only works once the app is on screen.
+    await expect(page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('link', { name: /^Odd / })).toBeVisible();
 
     let dialogs = 0;
     page.on('dialog', (d) => {

@@ -4,6 +4,7 @@
 // and have no way to upload.
 import { test, expect, type Page } from '../fixtures';
 import { addPerson, logIn } from '../login';
+import { afterNextPaint } from '../paint';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -39,21 +40,24 @@ async function slashPick(page: Page, query: string, pick: string, file: { name: 
   await (await chooser).setFiles(file);
 }
 
-/** Fire a paste or drop of one file at the editor, the way the browser would. */
-async function sendFile(page: Page, kind: 'paste' | 'drop', name: string, type: string, base64: string) {
-  await body(page).evaluate(
+/**
+ * Fire a paste or drop of one file at the editor, the way the browser would.
+ * Resolves to false if a handler took the event (the editor's upload calls
+ * preventDefault), true if nothing did.
+ */
+async function sendFile(page: Page, kind: 'paste' | 'drop', name: string, type: string, base64: string): Promise<boolean> {
+  return body(page).evaluate(
     (el, { kind, name, type, base64 }) => {
       const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
       const dt = new DataTransfer();
       dt.items.add(new File([bytes], name, { type }));
       if (kind === 'paste') {
-        el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-      } else {
-        const r = el.getBoundingClientRect();
-        el.dispatchEvent(
-          new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.bottom - 10 }),
-        );
+        return el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
       }
+      const r = el.getBoundingClientRect();
+      return el.dispatchEvent(
+        new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.bottom - 10 }),
+      );
     },
     { kind, name, type, base64 },
   );
@@ -160,8 +164,10 @@ test.describe.serial('image and file blocks', () => {
     page.on('request', (r) => {
       if (r.method() === 'POST' && r.url().includes('/attachments')) uploads++;
     });
-    await sendFile(page, 'paste', 'sneaky.png', 'image/png', PNG.toString('base64'));
-    await page.waitForTimeout(500);
+    // Nothing takes the paste (an editor's upload would), and once the next
+    // frame is painted there is still no upload and no new image.
+    expect(await sendFile(page, 'paste', 'sneaky.png', 'image/png', PNG.toString('base64'))).toBe(true);
+    await afterNextPaint(page);
     expect(uploads).toBe(0);
     await expect(images).toHaveCount(3);
 

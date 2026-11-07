@@ -65,3 +65,35 @@ the UI, not raw CPU.
 ## Who proves it
 Coder makes the change and records the 3 timed runs here. Tester then runs
 it 3 times on their own and records the output here. Only then does it count.
+
+## Item #101 (coder, 2026-11-07)
+- editor.spec.ts, video-links.spec.ts and search.spec.ts sign up, create
+  their spaces and pages through the API helpers in `e2e/login.ts`
+  (`signUp`, `createSpace`, `createPage`). The clicks left are the ones each
+  test is about: typing in the editor, slash menu, embeds, Ctrl+K search.
+  The sign-up form, the "New space" dialog (also "restricted"), "New page"
+  and the title field are still clicked through in wiki.spec.ts and ai.spec.ts.
+- The two fixed waits are gone. embeds.spec.ts (viewer pastes a file) and
+  video-links.spec.ts (viewer pastes a link) now check that no handler took
+  the paste (the event was not cancelled, which the editor does when it
+  uploads or inserts) and then wait for the next painted frame
+  (`afterNextPaint` in `e2e/paint.ts`) before checking nothing appeared.
+  No `waitForTimeout` is left in `e2e/tests`.
+- Full `npm run test:e2e`, 10:16 load 19.3 (19.3 at the end):
+  **32 passed (2.2m), 147.7 s wall, exit 0**. Not under 75 s; the box is at
+  load ~19-23 on 4 cores, so this item alone does not meet check 1.
+
+| spec file   | summed test time before (lead's table, load 5.9) | after (#101, load ~19) |
+|-------------|------|------|
+| editor      | 58.2s | 60.1s (setup test 10.9s) |
+| video-links | 36.8s | 22.3s |
+| search      | 34.6s | 14.6s |
+| embeds      | 16.2s | 30.5s |
+
+  embeds.spec.ts only changed its last few lines (the viewer test is 9.0s);
+  its 21.5s first test is untouched and slower at this load.
+- One of my three runs of the four changed files (load ~23) had 3 failures:
+  two `signUp` calls got 409 "already exists" right after `resetDatabase`,
+  and search's second test pressed Ctrl+K before the app was on screen. The
+  second is fixed (it waits for the page list first). The 409s did not come
+  back in the next two runs or the full run; I could not find the cause.
