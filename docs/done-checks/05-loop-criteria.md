@@ -330,3 +330,24 @@ files, 44 MB) that `install.sh` / `scripts/local-start.mjs` create.
   `test:ai`) and avoid typechecking the same packages twice, so it does far
   less disk work. **Owner/Orchestrator:** the machine's disk is saturated by
   work outside this project; no code change fixes that fully.
+
+## Coder, loop #3 round 3, 2026-11-07: `npm run check` (c3) in under a minute
+The lead's item (skip up-to-date rebuilds, no double typecheck) is in
+commit `820e3095`; this entry is its check.
+- `npm run check` is now `scripts/check.mjs`: rebuilds `packages/shared` and
+  `packages/editor-schema` only if their sources changed, typechecks each
+  package once (server once with its test config, which covers `src` and
+  `test`) with an incremental cache, and runs the 7 steps 3 at a time
+  (`CHECK_JOBS=n` to change). Server Vitest loads the app's modules once
+  (`isolate: false`, one fork) instead of once per file.
+- Timed here (4 cores, disk pressure low this time):
+  | Run | Real time | Result |
+  |---|---|---|
+  | lead, before | 7m00s (limit hit, exit 124) | — |
+  | warm typecheck cache | 48.9s | exit 0, 303/303 server, 11/11 editor-schema |
+  | cache cleared | 53.1s | exit 0, all 7 steps ok |
+  | planted failing test | 46.6s | exit 1, `check: FAILED test apps/server` (file removed after) |
+- Also `npm run test:ai` with no `ANTHROPIC_API_KEY`: 66/66 in 15.1s (c4's
+  server half).
+- If the checker still times out on c3, it is the machine's disk (see the
+  lead's note above), not the amount of work: CPU time is about 1m15s–1m55s.
