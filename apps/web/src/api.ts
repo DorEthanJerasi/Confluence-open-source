@@ -5,6 +5,8 @@ import type {
   ApiError,
   AskReply,
   AuthConfig,
+  Comment,
+  CommentList,
   Doc,
   LinkPreview,
   Page,
@@ -124,6 +126,16 @@ export const api = {
   summarisePage: (id: string) => request<PageSummary>('POST', `/api/pages/${enc(id)}/summary`),
   /** An answer from the pages the user can see, citing [n]; 502 ai_unavailable when the provider fails. */
   ask: (question: string) => request<AskReply>('POST', '/api/ai/ask', { question }),
+
+  /** Comment threads of a page: open ones oldest first, then resolved ones newest resolved first. */
+  comments: (pageId: string) => get<CommentList>(`/api/pages/${enc(pageId)}/comments`),
+  /** A new thread (on the page, or on one top-level block) or, with `parentId`, a reply. */
+  addComment: (pageId: string, b: { body: string; blockId?: string | null; parentId?: string | null }) =>
+    request<{ comment: Comment }>('POST', `/api/pages/${enc(pageId)}/comments`, b),
+  editComment: (id: string, body: string) => request<{ comment: Comment }>('PATCH', `/api/comments/${enc(id)}`, { body }),
+  deleteComment: (id: string) => request<null>('DELETE', `/api/comments/${enc(id)}`),
+  resolveComment: (id: string) => request<{ comment: Comment }>('POST', `/api/comments/${enc(id)}/resolve`),
+  reopenComment: (id: string) => request<{ comment: Comment }>('POST', `/api/comments/${enc(id)}/reopen`),
 };
 
 export function errorMessage(err: unknown): string {

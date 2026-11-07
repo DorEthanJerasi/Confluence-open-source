@@ -182,7 +182,7 @@ A check constraint stops a row being both a reply and resolved
       for the author only. Delete for the author and space admins, with a quiet
       confirm. Resolve and Reopen for editors and up. A viewer never sees
       Resolve. A control you cannot use is not shown at all.
-- [ ] Styles use only the design tokens (no raw colours, sizes or timings in the
+- [x] Styles use only the design tokens (no raw colours, sizes or timings in the
       new CSS). Light and dark both look right. Motion is soft and short and
       turns off under `prefers-reduced-motion`. Text and controls pass the
       contrast check (c6).

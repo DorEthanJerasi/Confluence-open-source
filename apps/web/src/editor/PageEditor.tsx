@@ -143,11 +143,14 @@ export function PageEditor({
   editable,
   saver,
   onReload,
+  onEditor,
 }: {
   page: Page;
   editable: boolean;
   saver: PageSaver;
   onReload: () => void;
+  /** Hands the editor to the page (the comment margin reads block positions from it). */
+  onEditor?: (editor: Editor | null) => void;
 }) {
   const state = useSaveState(saver);
   const timer = useRef<number | null>(null);
@@ -204,6 +207,11 @@ export function PageEditor({
     },
     [page.id, editable, saver],
   );
+
+  useEffect(() => {
+    onEditor?.(editor);
+    return () => onEditor?.(null);
+  }, [editor, onEditor]);
 
   // Save what is left when leaving the page; warn before closing the tab with unsaved text.
   useEffect(() => {

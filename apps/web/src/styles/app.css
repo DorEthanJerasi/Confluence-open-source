@@ -515,6 +515,16 @@ textarea.input {
   align-items: flex-start;
   margin-bottom: var(--space-6);
 }
+/* With a side panel open the column is narrow: the buttons move under the title instead of squeezing it. */
+.page-head-top {
+  flex-wrap: wrap;
+}
+.page-head-top > .grow {
+  flex-basis: calc(var(--space-9) * 3);
+}
+.page-head-top .btn {
+  white-space: nowrap;
+}
 .page-title {
   font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
@@ -955,7 +965,8 @@ textarea.input {
 }
 /* The history panel sits beside the page instead of over it on wide screens. */
 @media (min-width: 1000px) {
-  .space-main:has(.history-panel) {
+  .space-main:has(.history-panel),
+  .space-main:has(.comments-panel) {
     padding-right: var(--history-width);
   }
 }
@@ -1057,7 +1068,8 @@ textarea.input {
   background: var(--color-accent-soft);
   border-color: var(--color-accent-soft);
 }
-.history-panel {
+.history-panel,
+.comments-panel {
   position: fixed;
   top: 0;
   right: 0;
@@ -1080,7 +1092,8 @@ textarea.input {
     transform: translateX(var(--space-5));
   }
 }
-.history-panel.is-closing {
+.history-panel.is-closing,
+.comments-panel.is-closing {
   animation: panel-out var(--motion-base) var(--ease-exit) forwards;
 }
 @keyframes panel-out {

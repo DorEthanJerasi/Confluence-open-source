@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, History, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { FileText, History, MessageSquare, Plus, Sparkles, Trash2 } from 'lucide-react';
+import type { Editor } from '@tiptap/react';
 import type { Page } from '@stillwater/shared';
 import { SummaryCard, useAiEnabled } from '../ai/SummaryCard';
 import { api, ApiFailure } from '../api';
+import { BlockMargin } from '../comments/BlockMargin';
+import { CommentsPanel } from '../comments/CommentsPanel';
+import { blockElement, commentsKey, openThreads, scrollToBlock } from '../comments/blocks';
 import { PageEditor, SaveStatus } from '../editor/PageEditor';
 import { PageSaver } from '../editor/saver';
 import { HistoryPanel, VersionPreview, versionsKey } from '../history/HistoryPanel';
@@ -88,23 +92,75 @@ function PageView({ page }: { page: Page }) {
   const qc = useQueryClient();
   const { space, items, canEdit, newPage, deletePage } = useSpace();
   const [generation, setGeneration] = useState(0);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyClosing, setHistoryClosing] = useState(false);
+  // One side panel at a time: History or Comments.
+  const [panel, setPanel] = useState<'history' | 'comments' | null>(null);
+  const [panelClosing, setPanelClosing] = useState(false);
+  const historyOpen = panel === 'history';
+  const commentsOpen = panel === 'comments';
   const [viewing, setViewing] = useState<number | null>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [composeBlock, setComposeBlock] = useState<string | null>(null);
+  const [focusThread, setFocusThread] = useState<{ id: string; key: number } | null>(null);
+  const [flash, setFlash] = useState<{ blockId: string; key: number } | null>(null);
+  // Loaded with the page: the count on the button and the block markers need it.
+  const comments = useQuery({ queryKey: commentsKey(page.id), queryFn: () => api.comments(page.id) });
+  const threads = comments.data?.threads;
+  const openCount = openThreads(threads).length;
   const aiEnabled = useAiEnabled();
   // Each press of Summarise mounts a fresh card, which asks the server once.
   const [summaryRun, setSummaryRun] = useState(0);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const closeSummary = useCallback(() => setSummaryOpen(false), []);
   // Closing plays the panel's exit animation before it unmounts (see onClosed below).
-  const closeHistory = useCallback(() => {
-    setHistoryClosing(true);
+  const closePanel = useCallback(() => {
+    setPanelClosing(true);
   }, []);
-  const finishCloseHistory = useCallback(() => {
-    setHistoryOpen(false);
-    setHistoryClosing(false);
+  const finishClosePanel = useCallback(() => {
+    setPanel(null);
+    setPanelClosing(false);
     setViewing(null);
+    setComposeBlock(null);
   }, []);
+  // Opening one panel while the other is open swaps them straight away.
+  const openPanel = useCallback(
+    (which: 'history' | 'comments') => {
+      setPanelClosing(false);
+      setPanel(which);
+      if (which === 'history') setComposeBlock(null);
+      else {
+        setViewing(null);
+        // The panel shows fresh comments each time it opens.
+        void qc.invalidateQueries({ queryKey: commentsKey(page.id) });
+      }
+    },
+    [qc, page.id],
+  );
+  const openComments = useCallback(
+    (opts: { block?: string; thread?: string } = {}) => {
+      if (panel !== 'comments' || panelClosing) openPanel('comments');
+      setComposeBlock(opts.block ?? null);
+      if (opts.thread) setFocusThread({ id: opts.thread, key: Date.now() });
+    },
+    [panel, panelClosing, openPanel],
+  );
+  const jumpToBlock = useCallback(
+    (blockId: string) => {
+      const el = blockElement(editor, blockId);
+      if (!el) return;
+      scrollToBlock(el);
+      setFlash({ blockId, key: Date.now() });
+    },
+    [editor],
+  );
+  // Make sure a block typed a moment ago is stored before someone comments on it.
+  const saveBeforeBlockComment = useCallback(async () => {
+    if (!canEdit) return;
+    if (editor && document.activeElement && editor.view.dom.contains(document.activeElement)) editor.commands.blur();
+    await saver.settled();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, editor, generation]);
+  const doneComposing = useCallback(() => setComposeBlock(null), []);
 
   // One saver per page load; Reload after a conflict starts a fresh one.
   const saver = useMemo(
@@ -126,6 +182,8 @@ function PageView({ page }: { page: Page }) {
         if (change.title !== undefined) void qc.invalidateQueries({ queryKey: ['tree', page.spaceKey] });
         // Keep an open history list up to date with this save.
         void qc.invalidateQueries({ queryKey: versionsKey(page.id) });
+        // A save can remove a commented block ("on a removed block").
+        if (change.doc !== undefined) void qc.invalidateQueries({ queryKey: commentsKey(page.id) });
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [page.id, generation],
@@ -140,6 +198,7 @@ function PageView({ page }: { page: Page }) {
     await reload();
     setViewing(null);
     void qc.invalidateQueries({ queryKey: ['tree', page.spaceKey] });
+    void qc.invalidateQueries({ queryKey: commentsKey(page.id) });
   }
 
   const children = items.filter((i) => i.parentId === page.id);
@@ -175,10 +234,22 @@ function PageView({ page }: { page: Page }) {
         <div className="row">
           <button
             className={`btn btn-quiet${historyOpen ? ' is-on' : ''}`}
-            onClick={() => (historyOpen ? closeHistory() : setHistoryOpen(true))}
+            onClick={() => (historyOpen && !panelClosing ? closePanel() : openPanel('history'))}
             aria-expanded={historyOpen}
           >
             <History size={16} aria-hidden="true" /> History
+          </button>
+          <button
+            className={`btn btn-quiet${commentsOpen ? ' is-on' : ''}`}
+            onClick={() => (commentsOpen && !panelClosing ? closePanel() : openComments())}
+            aria-expanded={commentsOpen}
+          >
+            <MessageSquare size={16} aria-hidden="true" /> Comments
+            {openCount > 0 && (
+              <span className="count-badge" aria-label={`${openCount} open`}>
+                {openCount}
+              </span>
+            )}
           </button>
           {aiEnabled && (
             <button
@@ -210,15 +281,33 @@ function PageView({ page }: { page: Page }) {
           page={page}
           selected={viewing}
           onSelect={setViewing}
-          onClose={closeHistory}
-          closing={historyClosing}
-          onClosed={finishCloseHistory}
+          onClose={closePanel}
+          closing={panelClosing}
+          onClosed={finishClosePanel}
+        />
+      )}
+
+      {commentsOpen && (
+        <CommentsPanel
+          page={page}
+          role={space.myRole}
+          threads={threads}
+          loading={comments.isPending}
+          error={comments.error}
+          composeBlock={composeBlock}
+          focusThread={focusThread}
+          beforeBlockComment={saveBeforeBlockComment}
+          onComposeDone={doneComposing}
+          onJump={jumpToBlock}
+          onClose={closePanel}
+          closing={panelClosing}
+          onClosed={finishClosePanel}
         />
       )}
 
       {aiEnabled && summaryOpen && <SummaryCard key={summaryRun} pageId={page.id} onClose={closeSummary} />}
 
-      <div className="page-body">
+      <div className="page-body" ref={bodyRef}>
         {viewing !== null ? (
           <VersionPreview
             page={page}
@@ -232,7 +321,24 @@ function PageView({ page }: { page: Page }) {
         ) : !canEdit && isEmptyDoc(page) ? (
           <p className="muted">This page has no content yet.</p>
         ) : (
-          <PageEditor key={`${page.id}:${generation}`} page={page} editable={canEdit} saver={saver} onReload={reload} />
+          <PageEditor
+            key={`${page.id}:${generation}`}
+            page={page}
+            editable={canEdit}
+            saver={saver}
+            onReload={reload}
+            onEditor={setEditor}
+          />
+        )}
+        {viewing === null && (
+          <BlockMargin
+            editor={editor}
+            host={bodyRef}
+            threads={threads ?? []}
+            flash={flash}
+            onAdd={(block) => openComments({ block })}
+            onOpen={(thread) => openComments({ thread })}
+          />
         )}
       </div>
 
