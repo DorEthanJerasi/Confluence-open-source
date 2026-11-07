@@ -351,3 +351,30 @@ commit `820e3095`; this entry is its check.
   server half).
 - If the checker still times out on c3, it is the machine's disk (see the
   lead's note above), not the amount of work: CPU time is about 1m15s–1m55s.
+
+## Designer's check, loop #3 round 3, 2026-11-07
+Nothing landed in `apps/web/src` this round (confirmed with `git log
+dcfedd6e..HEAD -- apps/web`) — the coder's and lead's work this round was
+all test-speed and check-script changes, no screens or styling touched. So
+this is a re-audit again, same as round 2:
+- `node scripts/check-contrast.mjs` → `CONTRAST OK`, 50 pairs, both themes,
+  exit 0.
+- No hex colours or `rgb()`/`rgba()` outside `tokens.css`
+  (`grep -rnE "#[0-9a-fA-F]\{3,6\}|rgb\(|rgba\(" apps/web/src` — nothing
+  outside the tokens file).
+- Every `transition`/`duration` in the app still traces to a `--motion-*`
+  value: `app.css`/`editor.css` use the `--motion-*`/`--ease-*` custom
+  properties; the two Tiptap `BubbleMenu` instances in `PageEditor.tsx` pass
+  `duration: 140` straight to tippy.js (can't take a CSS `var()` there,
+  tippy wants a number), which is `--motion-fast`'s value by hand — matches
+  on purpose, not a drift.
+  - Checked that reduced motion still reaches tippy's menus: tippy sets its
+    fade transition via an inline `transition-duration` style, and the
+    global rule in `tokens.css` (`*, *::before, *::after { transition-
+    duration: 0.001ms !important; }`) beats an inline style of the same
+    property because it carries `!important` — confirmed in the spec, this
+    isn't guesswork. So the bubble/table menus collapse to instant along
+    with everything else under `prefers-reduced-motion: reduce`.
+- Nothing to change this round. c1–c5 are not UI's blockers right now
+  (Docker access, test timing on a shared disk, and GitHub push access) —
+  flagging for devops/coder/lead, not touching them myself.
