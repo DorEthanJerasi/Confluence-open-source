@@ -8,3 +8,12 @@ test-results/
 e2e/playwright-report/
 .npm-cache/
 .local-data/
+# mind: never commit (owner fix #216)
+.claude/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+.npmrc
