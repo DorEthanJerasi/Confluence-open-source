@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useMe } from './auth';
 import { Loading } from './ui';
@@ -5,12 +6,16 @@ import { AuthPage } from './screens/AuthPage';
 import { Shell } from './screens/Shell';
 import { Home } from './screens/Home';
 import { SpaceLayout, SpaceHome } from './screens/Space';
-import { PageScreen } from './screens/PageScreen';
 import { SpaceSettings } from './screens/SpaceSettings';
 import { AdminUsers } from './screens/AdminUsers';
 import { NotFound } from './screens/NotFound';
 import { SearchScreen } from './screens/SearchScreen';
 import { AskScreen } from './screens/AskScreen';
+
+// The page screen brings the editor (Tiptap, ProseMirror, code highlighting),
+// which is most of the app's code. Loading it only when a page is opened keeps
+// sign-in, home, search, settings and ask quick to start.
+const PageScreen = lazy(() => import('./screens/PageScreen').then((m) => ({ default: m.PageScreen })));
 
 export function App() {
   const { user } = useMe();
@@ -38,7 +43,14 @@ export function App() {
         <Route path="/ask" element={<AskScreen />} />
         <Route path="/s/:key" element={<SpaceLayout />}>
           <Route index element={<SpaceHome />} />
-          <Route path="p/:pageId" element={<PageScreen />} />
+          <Route
+            path="p/:pageId"
+            element={
+              <Suspense fallback={<Loading />}>
+                <PageScreen />
+              </Suspense>
+            }
+          />
           <Route path="settings" element={<SpaceSettings />} />
         </Route>
         <Route path="*" element={<NotFound />} />

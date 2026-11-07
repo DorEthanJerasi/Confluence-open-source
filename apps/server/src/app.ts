@@ -96,7 +96,17 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   const webDist = opts.config.webDist;
   const hasWeb = !!webDist && existsSync(join(webDist, 'index.html'));
   if (hasWeb) {
-    await app.register(fastifyStatic, { root: webDist, wildcard: false });
+    await app.register(fastifyStatic, {
+      root: webDist,
+      wildcard: false,
+      // Files in /assets have a content hash in their name, so a browser may
+      // keep them for good; everything else is checked again on each load.
+      cacheControl: false,
+      setHeaders: (res, path) => {
+        const hashed = /[\\/]assets[\\/][^\\/]+-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/.test(path);
+        res.setHeader('cache-control', hashed ? 'public, max-age=31536000, immutable' : 'no-cache');
+      },
+    });
   }
   app.setNotFoundHandler((req, reply) => {
     if (hasWeb && req.method === 'GET' && !req.url.startsWith('/api/')) {

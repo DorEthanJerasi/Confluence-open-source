@@ -13,10 +13,17 @@ export default defineConfig({
   globalSetup: './global-setup.ts',
   use: {
     // baseURL is set per worker in fixtures.ts.
-    // A failed test keeps its trace (actions, DOM snapshots, network), but
-    // without the screencast: recording screenshots of every passing test cost
-    // a lot of CPU on this busy box. Set E2E_TRACE_SCREENSHOTS=1 to get them back.
-    trace: { mode: 'retain-on-failure', screenshots: process.env.E2E_TRACE_SCREENSHOTS === '1', snapshots: true },
+    // No trace by default: recording one means a DOM snapshot on every action
+    // of every test, passing or not, and on this busy 4-core box that alone
+    // made the suite ~30% slower (161s -> 111s on 2026-11-07, at a higher load
+    // for the faster run). A failed test still leaves a screenshot. To debug a
+    // failure, rerun with E2E_TRACE=1 for the full trace (actions, DOM, network),
+    // and E2E_TRACE_SCREENSHOTS=1 to add the screencast.
+    trace:
+      process.env.E2E_TRACE === '1'
+        ? { mode: 'retain-on-failure', screenshots: process.env.E2E_TRACE_SCREENSHOTS === '1', snapshots: true }
+        : 'off',
+    screenshot: 'only-on-failure',
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 });
