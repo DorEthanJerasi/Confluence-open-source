@@ -94,13 +94,13 @@ A check constraint stops a row being both a reply and resolved
 ## 7a — Server
 
 ### Build
-- [ ] Drizzle table `pageComments` in `apps/server/src/db/schema.ts` and
+- [x] Drizzle table `pageComments` in `apps/server/src/db/schema.ts` and
       migration `apps/server/drizzle/0004_page_comments.sql` (with its meta
       snapshot), exactly as in the Table section.
-- [ ] `apps/server/src/comments/comments.ts` holds all comment logic. Every
+- [x] `apps/server/src/comments/comments.ts` holds all comment logic. Every
       function checks access through `requirePageRole`. There is no second
       permission rule.
-- [ ] Routes (signed out → 401 on all of them):
+- [x] Routes (signed out → 401 on all of them):
   - `GET /api/pages/:id/comments` returns
     `{ threads: [{ id, blockId, body, author: { id, name } | null, createdAt,
     editedAt, resolvedAt, resolvedBy: { id, name } | null, deleted,
@@ -124,36 +124,36 @@ A check constraint stops a row being both a reply and resolved
   - `/api/comments/:id` routes find the page from the comment and then check
     access as above. A comment on a page the user cannot read, or on a deleted
     page, gives 404.
-- [ ] Bodies are checked as in Decisions: empty or only spaces gives 400, more
+- [x] Bodies are checked as in Decisions: empty or only spaces gives 400, more
       than 4,000 characters gives 400. Unknown fields are refused.
-- [ ] No comment route writes `pages`, `page_versions` or `pages.version`.
+- [x] No comment route writes `pages`, `page_versions` or `pages.version`.
 
 ### Checks that must exist and pass — `apps/server/test/comments.test.ts` (Vitest, real Postgres)
-- [ ] Editor starts a page comment and a block comment. GET returns both, with
+- [x] Editor starts a page comment and a block comment. GET returns both, with
       the right `blockId`, author and times.
-- [ ] Viewer of the space replies to a thread and starts one of their own.
-- [ ] Reply to a reply → 400. Reply naming a root from another page → 400.
+- [x] Viewer of the space replies to a thread and starts one of their own.
+- [x] Reply to a reply → 400. Reply naming a root from another page → 400.
       `blockId` not in the page → 400.
-- [ ] Edit: the author can (sets `editedAt`). Another editor and a space admin get 403.
-- [ ] Delete: the author can. A space admin can delete someone else's comment. An
+- [x] Edit: the author can (sets `editedAt`). Another editor and a space admin get 403.
+- [x] Delete: the author can. A space admin can delete someone else's comment. An
       editor deleting someone else's gets 403. A deleted root with replies comes
       back as `deleted: true` with no body and no author. With no replies it is
       gone. The body is empty in the database afterwards.
-- [ ] Resolve and reopen: an editor can. A viewer gets 403. Resolving a reply
+- [x] Resolve and reopen: an editor can. A viewer gets 403. Resolving a reply
       gives 400. Resolved threads sort after open ones.
-- [ ] Non-member of a restricted space: 404 on GET, POST, PATCH, DELETE,
+- [x] Non-member of a restricted space: 404 on GET, POST, PATCH, DELETE,
       resolve. After they are added as a viewer, GET works. After they are
       removed, 404 again.
-- [ ] Deleted page: 404 on its comments. Page deleted for real (cascade): its
+- [x] Deleted page: 404 on its comments. Page deleted for real (cascade): its
       comments rows are gone.
-- [ ] Block removed from the page by a later save: the thread is still returned
+- [x] Block removed from the page by a later save: the thread is still returned
       with `blockMissing: true`.
-- [ ] A comment body of `<img src=x onerror=alert(1)>` comes back as the same text.
-- [ ] Adding, editing, resolving and deleting comments leaves `pages.version`,
+- [x] A comment body of `<img src=x onerror=alert(1)>` comes back as the same text.
+- [x] Adding, editing, resolving and deleting comments leaves `pages.version`,
       `pages.doc` and the `page_versions` row count unchanged. Restoring an
       older version leaves the comments unchanged.
-- [ ] Signed out → 401 on every route.
-- [ ] `npm run check` passes (this file is part of it).
+- [x] Signed out → 401 on every route.
+- [x] `npm run check` passes (this file is part of it).
 
 ---
 
