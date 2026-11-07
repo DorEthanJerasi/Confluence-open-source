@@ -7,7 +7,8 @@
 //
 // Usage:  node scripts/check-original.mjs [dir]     (default: repo root)
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -94,7 +95,48 @@ function walk(dir) {
   }
 }
 
-walk(ROOT);
+// The default (repo root) scan reads only the files git would ship: tracked
+// files plus new, not-ignored ones. Git-ignored local data such as the
+// embedded Postgres in .local-data/ (thousands of files) is never read, so the
+// scan stays fast on a busy disk. A directory given on the command line (a
+// build output such as apps/web/dist, which git ignores) is walked in full.
+function gitFiles() {
+  if (process.argv[2]) return null;
+  try {
+    const out = execFileSync('git', ['ls-files', '-z', '-co', '--exclude-standard'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split('\0').filter(Boolean);
+  } catch {
+    return null; // not a git checkout (e.g. an unpacked tarball): walk instead
+  }
+}
+
+const listed = gitFiles();
+if (listed) {
+  for (const rel of listed) {
+    const parts = rel.split('/');
+    if (parts.slice(0, -1).some((d) => SKIP_DIRS.has(d))) continue;
+    if (SKIP_FILES.has(rel)) continue;
+    const abs = join(ROOT, rel);
+    if (abs === SELF) continue;
+    for (const d of parts.slice(0, -1)) {
+      if (nameInFileRe.test(d)) problems.push(`${rel}: folder name uses a banned name`);
+    }
+    let st;
+    try {
+      st = lstatSync(abs);
+    } catch {
+      continue; // deleted in the working tree but still tracked
+    }
+    if (st.isFile()) scanFile(abs, rel);
+  }
+} else {
+  walk(ROOT);
+}
 
 if (problems.length) {
   console.error(`check-original: ${problems.length} problem(s) found\n`);

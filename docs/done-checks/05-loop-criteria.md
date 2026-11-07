@@ -304,3 +304,21 @@ What changed:
   The app itself still logs at `info` by default (`LOG_LEVEL` in
   `apps/server/src/index.ts`).
 Result: met, 32/32 in 1m40s–2m31s with no rebuild, under 4 minutes.
+
+## Lead, loop #3 round 3, 2026-11-07: why c5 timed out (exit 124)
+Found the cause by running the proof command myself: `node
+scripts/check-original.mjs` did not finish in 120s. It was stuck in a disk
+wait (process state `D`), and this machine's disk is saturated by work
+outside our sandbox (`/proc/pressure/io`: 95% "some", 69% "full"; root disk
+92% full). The scan made it worse: it walked every not-skipped folder,
+including the git-ignored embedded Postgres in `.local-data/pg` (1,321
+files, 44 MB) that `install.sh` / `scripts/local-start.mjs` create.
+- Fix: the default scan now reads only the files git would ship
+  (`git ls-files -co --exclude-standard`, so tracked plus new not-ignored
+  files). A folder passed on the command line (the `dist` builds, which git
+  ignores) is still walked in full; with no git it falls back to the walk.
+- Checked: repo scan 0.12s, `ORIGINAL OK`, exit 0; `apps/web/dist` 0.43s and
+  `apps/server/dist` 0.19s, both `ORIGINAL OK`. A planted untracked file
+  containing a banned name is still caught (exit 1), then removed.
+- Note for everyone: c2–c4 exit 124 in the same round is very likely the
+  same disk stall, not our code. Keep suites lean on disk I/O.
