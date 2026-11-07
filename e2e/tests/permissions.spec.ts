@@ -5,7 +5,7 @@
 // edit A until Ada removes her. Also: a sub-page sits under its parent in
 // the tree, and logging out and back in works.
 import { test, expect, type Browser, type Page } from '../fixtures';
-import { addPerson, logIn, logInWithForm } from '../login';
+import { addPerson, createPage, createSpace, logIn, logInWithForm, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const ada = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -30,16 +30,8 @@ async function session(browser: Browser, user: { email: string; password: string
 
 const sidebar = (page: Page) => page.getByRole('complementary', { name: 'Pages in this space' });
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
-const pageIdOf = (url: string) => new URL(url).pathname.split('/p/')[1];
-
-async function createSpace(page: Page, name: string, visibility: 'open' | 'restricted') {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'New space' }).click();
-  await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Who can see it').selectOption(visibility);
-  await page.getByRole('button', { name: 'Create space' }).click();
-}
-
+// Takes a full URL or a path (parentUrl is a path: the page is made through the API).
+const pageIdOf = (url: string) => new URL(url, 'http://x').pathname.split('/p/')[1];
 
 async function setTitle(page: Page, title: string) {
   await page.getByLabel('Page title').fill(title);
@@ -60,18 +52,16 @@ test.describe.serial('per-space permissions and nested pages', () => {
   test.beforeAll(resetDatabase);
 
   test('Ada sets up a members-only space with Eve as its editor, and an open space', async ({ page }) => {
-    await page.goto('/signup');
-    await page.getByLabel('Name').fill(ada.name);
-    await page.getByLabel('Email').fill(ada.email);
-    await page.getByLabel('Password', { exact: false }).fill(ada.password);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL('/');
-
+    // Accounts and spaces come from the API (the sign-up form and the "New
+    // space" dialog are proven in wiki.spec.ts and search.spec.ts); the clicks
+    // here are the space settings form, which is what this test is about.
+    await signUp(page, ada);
     await addPerson(page, eve, 'editor');
     await addPerson(page, otto, 'editor');
+    await createSpace(page, { ...A, visibility: 'restricted' });
+    await createSpace(page, { ...B, visibility: 'open' });
 
-    await createSpace(page, A.name, 'restricted');
-    await expect(page).toHaveURL(`/s/${A.key}`);
+    await page.goto(`/s/${A.key}`);
     await expect(sidebar(page).getByLabel('Members only')).toBeVisible();
 
     // Space settings: add Eve as an editor of A.
@@ -85,17 +75,18 @@ test.describe.serial('per-space permissions and nested pages', () => {
     // Otto is not offered as a member yet, and is not one.
     await expect(page.locator('.member-list')).not.toContainText(otto.name);
 
-    await createSpace(page, B.name, 'open');
-    await expect(page).toHaveURL(`/s/${B.key}`);
+    await page.goto(`/s/${B.key}`);
+    await expect(page.getByRole('heading', { name: B.name })).toBeVisible();
     await expect(sidebar(page).getByLabel('Members only')).toHaveCount(0);
   });
 
   test('a sub-page sits under its parent in the tree and reopens by its URL', async ({ page }) => {
-    await logIn(page, ada, `/s/${A.key}`);
-    await sidebar(page).getByRole('button', { name: 'New page' }).click();
-    await expect(page).toHaveURL(new RegExp(`/s/${A.key}/p/.+`));
-    await setTitle(page, PARENT);
-    parentUrl = page.url();
+    // The parent comes from the API; the sub-page is made with the Sub-page
+    // button, the click this test is about.
+    await logIn(page, ada, null);
+    parentUrl = (await createPage(page, A.key, { title: PARENT })).path;
+    await page.goto(parentUrl);
+    await expect(page.getByLabel('Page title')).toHaveValue(PARENT);
 
     await page.getByRole('button', { name: 'Sub-page', exact: true }).click();
     await expect(page).not.toHaveURL(parentUrl);

@@ -42,3 +42,54 @@ export async function addPerson(page: Page, user: Person, role: 'admin' | 'edito
   });
   expect(res.status(), `add ${user.email} as ${role}`).toBe(201);
 }
+
+/**
+ * Signs up through the same /api/auth/signup the sign-up form uses; the
+ * first account on a fresh database becomes the instance admin, and the
+ * session cookie lands in the browser. wiki.spec.ts still signs up through
+ * the form.
+ */
+export async function signUp(page: Page, user: Person): Promise<void> {
+  const res = await page.request.post('/api/auth/signup', {
+    data: { name: user.name, email: user.email, password: user.password },
+  });
+  expect(res.status(), `sign up ${user.email}`).toBe(201);
+}
+
+type NewSpace = {
+  name: string;
+  key: string;
+  visibility?: 'open' | 'restricted';
+  defaultRole?: 'admin' | 'editor' | 'viewer';
+};
+
+/** Creates a space the way the "New space" dialog does (same /api/spaces call). The page must be logged in as an editor or admin. */
+export async function createSpace(page: Page, space: NewSpace): Promise<void> {
+  const res = await page.request.post('/api/spaces', {
+    data: { name: space.name, key: space.key, visibility: space.visibility ?? 'open', defaultRole: space.defaultRole ?? 'viewer' },
+  });
+  expect(res.status(), `create space ${space.key}`).toBe(201);
+}
+
+/**
+ * Creates a page in a space through /api/spaces/:key/pages, the call behind
+ * the "New page" and "Sub-page" buttons, with its title and, if given, one
+ * paragraph of text already in it (one version, like a page typed and saved
+ * by its author). Returns the page's id and its URL path.
+ */
+export async function createPage(
+  page: Page,
+  spaceKey: string,
+  init: { title: string; text?: string; parentId?: string },
+): Promise<{ id: string; path: string }> {
+  const doc = {
+    type: 'doc',
+    content: init.text ? [{ type: 'paragraph', content: [{ type: 'text', text: init.text }] }] : [],
+  };
+  const res = await page.request.post(`/api/spaces/${spaceKey}/pages`, {
+    data: { title: init.title, parentId: init.parentId ?? null, doc },
+  });
+  expect(res.status(), `create page "${init.title}" in ${spaceKey}`).toBe(201);
+  const { page: created } = (await res.json()) as { page: { id: string } };
+  return { id: created.id, path: `/s/${spaceKey}/p/${created.id}` };
+}

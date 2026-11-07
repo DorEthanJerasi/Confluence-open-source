@@ -5,7 +5,7 @@
 // ones, typing after a restore saves with no conflict note, and a viewer gets
 // the list but no Restore button.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, logIn } from '../login';
+import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -54,28 +54,12 @@ test.describe.serial('history', () => {
   test.beforeAll(resetDatabase);
 
   test('two editors each save a version, and history lists both with the right names', async ({ page }) => {
-    await page.goto('/signup');
-    await page.getByLabel('Name').fill(admin.name);
-    await page.getByLabel('Email').fill(admin.email);
-    await page.getByLabel('Password', { exact: false }).fill(admin.password);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL('/');
-
-    await page.getByRole('button', { name: 'New space' }).click();
-    await page.getByLabel('Name').fill('Open Room');
-    await page.getByLabel('Default role').selectOption('editor');
-    await page.getByRole('button', { name: 'Create space' }).click();
-    await expect(page).toHaveURL('/s/open-room');
-
-    await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
-    await expect(page).toHaveURL(/\/p\/.+/);
-    await page.getByLabel('Page title').fill('Shared notes');
-    await page.getByLabel('Page title').blur();
-    await body(page).click();
-    await page.keyboard.type('first text');
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
-    pageUrl = page.url();
-
+    // The admin's account, the open space and the page with its first version
+    // come from the API (the same calls the forms make); the edit that this
+    // test is about, editor B's, is typed on screen.
+    await signUp(page, admin);
+    await createSpace(page, { name: 'Open Room', key: 'open-room', defaultRole: 'editor' });
+    pageUrl = (await createPage(page, 'open-room', { title: 'Shared notes', text: 'first text' })).path;
     await addPerson(page, editorB, 'editor');
     await addPerson(page, viewerC, 'viewer');
 
