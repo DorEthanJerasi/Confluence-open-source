@@ -1,0 +1,13 @@
+import EmbeddedPostgres from 'embedded-postgres';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+const dir = mkdtempSync(join(tmpdir(), 'sw-t-'));
+let t = Date.now();
+const lap = (s: string) => { console.log(s, Date.now() - t); t = Date.now(); };
+const pg = new EmbeddedPostgres({ databaseDir: join(dir, 'data'), user: 'u', password: 'p', port: 55444, persistent: false, onLog: () => {}, postgresFlags: process.env.FAST ? ['-c','fsync=off','-c','synchronous_commit=off','-c','full_page_writes=off'] : [] });
+await pg.initialise(); lap('initdb');
+await pg.start(); lap('start');
+for (let i = 0; i < 3; i++) await pg.createDatabase('d' + i); lap('createdb x3');
+await pg.stop(); lap('stop');
+rmSync(dir, { recursive: true, force: true });
