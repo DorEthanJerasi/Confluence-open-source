@@ -96,6 +96,9 @@ export default async function globalSetup() {
             PORT: String(appPort),
             PUBLIC_URL: `http://127.0.0.1:${appPort}`,
             ALLOW_SIGNUP: 'true',
+            // One log line per request costs CPU on a busy box and buries failures.
+            // Set E2E_SERVER_LOG=info to see every request again.
+            LOG_LEVEL: process.env.E2E_SERVER_LOG ?? 'warn',
             // Uploads go in the same temp dir, removed in teardown.
             UPLOAD_DIR: join(dir, `uploads-${i}`),
             // The AI suite runs against the deterministic stub, never the network.

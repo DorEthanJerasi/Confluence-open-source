@@ -4,7 +4,9 @@
 // one database per worker, and every worker talks only to its own pair.
 // Default is 3: on this 4-core box (often at load 15-25 from other work) 4
 // browsers starved each other into timeouts; 3 ran 32/32 in ~2.5 min once
-// trace screenshots were off (playwright.config.ts). Set E2E_WORKERS to change it.
+// trace screenshots were off (playwright.config.ts). 4 was tried again on
+// 2026-11-07: faster, but a test timed out at load ~23, so 3 stays the
+// default. Set E2E_WORKERS to change it.
 import { cpus } from 'node:os';
 
 export const workerCount = Math.max(

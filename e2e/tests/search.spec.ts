@@ -3,6 +3,7 @@
 // <mark>; a non-member of the restricted space gets "No results"; page text
 // that looks like HTML stays text; reload on /search?q=… keeps the results.
 import { test, expect, type Page } from '../fixtures';
+import { addPerson, logIn } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -11,14 +12,6 @@ const WORD = 'zephyrquill';
 const TAG = '<img src=x onerror=alert(1)>';
 const NASTY = `${TAG} marmoset`;
 let pageUrl = '';
-
-async function logIn(page: Page, user: { email: string; password: string }) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password', { exact: false }).fill(user.password);
-  await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL('/');
-}
 
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
 const results = (page: Page) => page.getByRole('list', { name: 'Search results' });
@@ -131,15 +124,7 @@ test.describe.serial('search', () => {
 
   test('someone who is not a member of the restricted space gets no results', async ({ page }) => {
     await logIn(page, admin);
-    await page.goto('/admin/users');
-    const dialog = page.getByRole('dialog', { name: 'Add a person' });
-    await page.getByRole('button', { name: 'Add a person' }).click();
-    await dialog.getByLabel('Name').fill(outsider.name);
-    await dialog.getByLabel('Email').fill(outsider.email);
-    await dialog.getByLabel('Starting password').fill(outsider.password);
-    await dialog.getByLabel('Role').selectOption('editor');
-    await dialog.getByRole('button', { name: 'Add person' }).click();
-    await expect(page.getByText(outsider.email)).toBeVisible();
+    await addPerson(page, outsider, 'editor');
 
     await page.context().clearCookies();
     await logIn(page, outsider);

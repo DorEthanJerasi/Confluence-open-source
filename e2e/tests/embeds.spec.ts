@@ -3,6 +3,7 @@
 // download; the stored doc holds only attachment ids; viewers see both blocks
 // and have no way to upload.
 import { test, expect, type Page } from '../fixtures';
+import { addPerson, logIn } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -15,14 +16,6 @@ const PNG = Buffer.from(
   'base64',
 );
 const PDF = Buffer.from('%PDF-1.4\n% a small test file for the download link\n'.repeat(40));
-
-async function logIn(page: Page, user: { email: string; password: string }) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password', { exact: false }).fill(user.password);
-  await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL('/');
-}
 
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
 
@@ -149,15 +142,7 @@ test.describe.serial('image and file blocks', () => {
 
   test('viewer sees image, caption and file, and has no upload control', async ({ page }) => {
     await logIn(page, admin);
-    await page.goto('/admin/users');
-    await page.getByRole('button', { name: 'Add a person' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Add a person' });
-    await dialog.getByLabel('Name').fill(viewer.name);
-    await dialog.getByLabel('Email').fill(viewer.email);
-    await dialog.getByLabel('Starting password').fill(viewer.password);
-    await dialog.getByLabel('Role').selectOption('viewer');
-    await dialog.getByRole('button', { name: 'Add person' }).click();
-    await expect(page.getByText(viewer.email)).toBeVisible();
+    await addPerson(page, viewer, 'viewer');
     await page.context().clearCookies();
 
     await logIn(page, viewer);

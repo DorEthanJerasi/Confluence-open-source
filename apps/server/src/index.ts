@@ -12,7 +12,8 @@ async function main(): Promise<void> {
   const app = await buildApp({
     db,
     config: env,
-    logger: true,
+    // LOG_LEVEL (default info) lets the e2e run keep its servers quiet: 'warn' skips the per-request lines.
+    logger: { level: process.env.LOG_LEVEL?.trim() || 'info' },
     health: async () => {
       await pool.query('select 1');
     },

@@ -274,3 +274,33 @@ the outside checker uses — it hit exit 124 on this exact suite before.
 Flagging to the coder: worth checking whether anything in the suite or
 its setup (per-test server/Postgres restarts, `install-browsers` check
 overhead, etc.) got slower, independent of machine load.
+
+## Coder, item #99, 2026-11-07: test:e2e under 4 minutes
+Timed with `time npm run test:e2e` on this 4-core box (load 9–23 from
+other work during the runs). Builds were up to date except in run 1.
+
+| Run | Change | Workers | Load at start | Tests | Real time |
+|---|---|---|---|---|---|
+| before | (tester's run, loop #3) | 3 | ~10 | 32/32 | 6m48.8s |
+| 1 | log in through the API, quiet server logs (rebuilt web + server) | 3 | 9.3 | 32/32 | 4m09.7s |
+| 2 | same, no rebuild | 3 | 15.8 | 32/32 | 3m02.6s |
+| 3 | same | 4 | 14.1 | 32/32 | 2m14.6s |
+| 4 | same | 4 | 22.8 | **31/32, 1 timeout** | 2m56.2s |
+| 5 | + add people through the API | 3 | 11.3 | 32/32 | **2m31.0s** |
+| 6 | same, repeat | 3 | 17.0 | 32/32 | **1m40.4s** |
+
+What changed:
+- Spec files already ran in parallel, one per worker, each worker with its
+  own server and database. Workers stay at 3 (`e2e/workers.ts`): 4 was
+  faster but timed out a test at load ~23 (run 4), so it is not safe as the
+  default here. `E2E_WORKERS=4` still works on a quieter machine.
+- Per-test setup cut (`e2e/login.ts`): `logIn` posts to `/api/auth/login`
+  and `addPerson` posts to `/api/users` instead of filling in the forms.
+  The forms are still tested: `wiki.spec.ts` signs up, logs in and adds a
+  person through the real screens, and the log-out test in
+  `permissions.spec.ts` logs in through the form.
+- The test servers log only warnings (`LOG_LEVEL=warn`, set in
+  `e2e/global-setup.ts`; `E2E_SERVER_LOG=info` brings every line back).
+  The app itself still logs at `info` by default (`LOG_LEVEL` in
+  `apps/server/src/index.ts`).
+Result: met, 32/32 in 1m40s–2m31s with no rebuild, under 4 minutes.

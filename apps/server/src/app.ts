@@ -27,7 +27,8 @@ export interface BuildOptions {
   config: Config;
   /** Extra health check, e.g. a DB round trip. */
   health?: () => Promise<void>;
-  logger?: boolean;
+  /** true/false, or a level such as 'warn' (index.ts reads LOG_LEVEL). */
+  logger?: boolean | { level: string };
   /** Where uploads are kept; default is local disk at config.uploadDir. */
   storage?: FileStorage;
   /** Link-preview fetch settings; tests use them to reach a local stub server. */

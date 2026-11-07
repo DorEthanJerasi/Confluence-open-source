@@ -13,19 +13,12 @@
 // page.route on /api/ai/status), there is no Summarise button and no Ask
 // entry in the top bar, and /ask shows the not-set-up note.
 import { test, expect, type Page } from '../fixtures';
+import { addPerson, logIn } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
 const outsider = { name: 'Otto Outsider', email: 'otto@stillwater.test', password: 'battery horse correct' };
 const WORD = 'glimmerfinch';
-
-async function logIn(page: Page, user: { email: string; password: string }) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password', { exact: false }).fill(user.password);
-  await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL('/');
-}
 
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
 const askField = (page: Page) => page.getByLabel('Your question');
@@ -155,15 +148,7 @@ test.describe.serial('ask your docs', () => {
     await expect(page).toHaveURL('/s/quiet-room');
     await newPage(page, 'Private notes', 'The hushwarbler nests only here.');
 
-    await page.goto('/admin/users');
-    const dialog = page.getByRole('dialog', { name: 'Add a person' });
-    await page.getByRole('button', { name: 'Add a person' }).click();
-    await dialog.getByLabel('Name').fill(outsider.name);
-    await dialog.getByLabel('Email').fill(outsider.email);
-    await dialog.getByLabel('Starting password').fill(outsider.password);
-    await dialog.getByLabel('Role').selectOption('viewer');
-    await dialog.getByRole('button', { name: 'Add person' }).click();
-    await expect(page.getByText(outsider.email)).toBeVisible();
+    await addPerson(page, outsider, 'viewer');
 
     await page.context().clearCookies();
     await logIn(page, outsider);

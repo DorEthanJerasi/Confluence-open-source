@@ -5,6 +5,7 @@
 // ones, typing after a restore saves with no conflict note, and a viewer gets
 // the list but no Restore button.
 import { test, expect, type Page } from '../fixtures';
+import { addPerson, logIn } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -17,30 +18,11 @@ let firstVersion = 0;
 let secondVersion = 0;
 let restoreVersion = 0;
 
-async function logIn(page: Page, user: { email: string; password: string }) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password', { exact: false }).fill(user.password);
-  await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL('/');
-}
-
 async function switchUser(page: Page, user: { email: string; password: string }) {
   await page.context().clearCookies();
   await logIn(page, user);
 }
 
-async function addPerson(page: Page, user: { name: string; email: string; password: string }, role: 'editor' | 'viewer') {
-  await page.goto('/admin/users');
-  const dialog = page.getByRole('dialog', { name: 'Add a person' });
-  await page.getByRole('button', { name: 'Add a person' }).click();
-  await dialog.getByLabel('Name').fill(user.name);
-  await dialog.getByLabel('Email').fill(user.email);
-  await dialog.getByLabel('Starting password').fill(user.password);
-  await dialog.getByLabel('Role').selectOption(role);
-  await dialog.getByRole('button', { name: 'Add person' }).click();
-  await expect(page.getByText(user.email)).toBeVisible();
-}
 
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Page history' });

@@ -5,6 +5,7 @@
 // edit A until Ada removes her. Also: a sub-page sits under its parent in
 // the tree, and logging out and back in works.
 import { test, expect, type Browser, type Page } from '../fixtures';
+import { addPerson, logIn, logInWithForm } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const ada = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -18,14 +19,6 @@ const CHILD = 'Buoy colours';
 
 let parentUrl = '';
 let childUrl = '';
-
-async function logIn(page: Page, user: { email: string; password: string }) {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password', { exact: false }).fill(user.password);
-  await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL('/');
-}
 
 /** A fresh browser (own cookies) logged in as `user`. */
 async function session(browser: Browser, user: { email: string; password: string }) {
@@ -47,17 +40,6 @@ async function createSpace(page: Page, name: string, visibility: 'open' | 'restr
   await page.getByRole('button', { name: 'Create space' }).click();
 }
 
-async function addPerson(page: Page, user: typeof eve, role: 'viewer' | 'editor') {
-  await page.goto('/admin/users');
-  await page.getByRole('button', { name: 'Add a person' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Add a person' });
-  await dialog.getByLabel('Name').fill(user.name);
-  await dialog.getByLabel('Email').fill(user.email);
-  await dialog.getByLabel('Starting password').fill(user.password);
-  await dialog.getByLabel('Role').selectOption(role);
-  await dialog.getByRole('button', { name: 'Add person' }).click();
-  await expect(page.getByText(user.email)).toBeVisible();
-}
 
 async function setTitle(page: Page, title: string) {
   await page.getByLabel('Page title').fill(title);
@@ -224,7 +206,7 @@ test.describe.serial('per-space permissions and nested pages', () => {
   });
 
   test('logging out ends the session, and logging back in restores it', async ({ page }) => {
-    await logIn(page, otto);
+    await logInWithForm(page, otto);
     await expect(page.locator('.who-name')).toHaveText(otto.name);
 
     await page.getByRole('button', { name: 'Log out' }).click();
@@ -236,7 +218,7 @@ test.describe.serial('per-space permissions and nested pages', () => {
     const me = await page.request.get('/api/spaces');
     expect(me.status()).toBe(401);
 
-    await logIn(page, otto);
+    await logInWithForm(page, otto);
     await expect(page.locator('.who-name')).toHaveText(otto.name);
     await page.goto(`/s/${B.key}`);
     await expect(page.getByRole('heading', { name: B.name })).toBeVisible();
