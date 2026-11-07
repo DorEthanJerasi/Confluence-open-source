@@ -2,6 +2,7 @@
 // from this file with `npm run db:generate -w apps/server` and committed.
 import { sql } from 'drizzle-orm';
 import {
+  check,
   customType,
   index,
   integer,
@@ -159,6 +160,34 @@ export const attachments = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('attachments_page_idx').on(t.pageId), index('attachments_space_idx').on(t.spaceId)],
+);
+
+// Page comments (done-check 07). Kept out of pages.doc and page_versions on
+// purpose: comments anchor to a top-level block id (or to the whole page when
+// block_id is null), never to a position, so a later Yjs document holds only
+// page content and comments need no change. One level of replies: a reply's
+// parent_id is a root; only roots are resolved. Deleting is soft and clears body.
+export const pageComments = pgTable(
+  'page_comments',
+  {
+    id: id(),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id').references((): AnyPgColumn => pageComments.id, { onDelete: 'cascade' }),
+    blockId: text('block_id'),
+    authorId: uuid('author_id').references(() => users.id, { onDelete: 'set null' }),
+    body: text('body').notNull().default(''),
+    createdAt: createdAt(),
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolvedBy: uuid('resolved_by').references(() => users.id, { onDelete: 'set null' }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('page_comments_page_idx').on(t.pageId, t.createdAt),
+    check('page_comments_reply_not_resolved', sql`${t.parentId} is null or ${t.resolvedAt} is null`),
+  ],
 );
 
 // Open Graph data fetched by the server for link preview cards, cached by URL.

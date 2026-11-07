@@ -186,6 +186,69 @@ export const versionListQuery = z.object({ before: z.coerce.number().int().min(1
 /** POST /api/pages/:id/versions/:version/restore. */
 export const restoreVersionBody = z.object({ baseVersion: z.number().int().min(1) });
 
+// ---------- Page comments (docs/done-checks/07-comments.md) ----------
+
+/** Longest comment body, in characters (after trimming). */
+export const COMMENT_MAX_LENGTH = 4000;
+
+const commentBodyText = z
+  .string()
+  .trim()
+  .min(1, 'Write something first')
+  .max(COMMENT_MAX_LENGTH, `Keep comments under ${COMMENT_MAX_LENGTH} characters`);
+
+/** POST /api/pages/:id/comments. `blockId` is ignored when `parentId` is set (a reply takes its thread's block). */
+export const createCommentBody = z
+  .object({
+    body: commentBodyText,
+    blockId: z.string().min(1).max(100).nullable().optional(),
+    parentId: z.string().uuid().nullable().optional(),
+  })
+  .strict();
+
+/** PATCH /api/comments/:id. */
+export const editCommentBody = z.object({ body: commentBodyText }).strict();
+
+export interface CommentPerson {
+  id: string;
+  name: string;
+}
+
+/** A reply in a thread (one level only). */
+export interface CommentReply {
+  id: string;
+  body: string;
+  author: CommentPerson | null;
+  createdAt: string;
+  editedAt: string | null;
+}
+
+/** A thread: a root comment on the page (blockId null) or on one top-level block, with its replies. */
+export interface CommentThread extends CommentReply {
+  blockId: string | null;
+  resolvedAt: string | null;
+  resolvedBy: CommentPerson | null;
+  /** The root was deleted but live replies remain: body is '' and author is null. */
+  deleted: boolean;
+  /** blockId is set but that block is no longer in the current page. */
+  blockMissing: boolean;
+  replies: CommentReply[];
+}
+
+/** GET /api/pages/:id/comments: open threads oldest first, then resolved threads newest resolved first. */
+export interface CommentList {
+  threads: CommentThread[];
+}
+
+/** One comment as returned by create, edit, resolve and reopen. */
+export interface Comment extends CommentReply {
+  pageId: string;
+  parentId: string | null;
+  blockId: string | null;
+  resolvedAt: string | null;
+  resolvedBy: CommentPerson | null;
+}
+
 /** An uploaded file, as returned by POST /api/pages/:id/attachments. */
 export interface Attachment {
   id: string;
