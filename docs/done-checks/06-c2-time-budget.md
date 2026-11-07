@@ -169,3 +169,32 @@ in a spec file, same as before #100/#101. Count is still 32 tests.
 - The speed work in #100/#101 helped (147.7 s → best case 88.3 s) but the
   suite is still 1.2x to 1.8x over the 75 s target on this box, and under
   load it can now fail outright, not just run slow.
+
+## Item #103 (coder, 2026-11-07) — on-screen checks may wait 10 s
+
+**Change:** `e2e/playwright.config.ts` now sets `expect: { timeout: 10_000 }`,
+so each on-screen check (`expect(...)`) waits up to 10 s instead of
+Playwright's default 5 s. The 30 s limit per test, the worker count
+(`e2e/workers.ts`) and `retries: 0` are unchanged.
+
+**Why:** run 2 of #102 failed only because the page title field took longer
+than 5 s to appear at load ~21 (`permissions.spec.ts:150`). This box is
+shared, and most of its load comes from work outside this project, so a
+page can be slow to paint without anything being wrong with the app. A
+check still passes the moment the screen is right, so a longer limit costs
+nothing when the page is quick; it only gives a slow paint room before the
+test is called failed. It does not hide a real bug: a field that never
+appears still fails, just 5 s later.
+
+**Two full runs in a row** (`/usr/bin/time npm run test:e2e`, load is the
+1-minute figure from `/proc/loadavg` at the start and end of each run):
+
+| run | load at start | load at end | wall clock | result |
+|-----|---------------|-------------|------------|--------|
+| 1   | 20.35         | 30.93       | 177.4 s    | **32 passed**, exit 0 |
+| 2   | 30.93         | 26.38       | 92.6 s     | **32 passed**, exit 0 |
+
+No failed, flaky or skipped tests in either run, no retries. Check 2
+(32 passed, exit 0) held in both runs, at higher load than #102's failing
+run. Check 1 (under 75 s) is still not met: the load here was 20 to 31 on
+4 cores, and the time follows the load.
