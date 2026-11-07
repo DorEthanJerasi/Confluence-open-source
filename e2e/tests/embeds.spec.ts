@@ -141,12 +141,11 @@ test.describe.serial('image and file blocks', () => {
   });
 
   test('viewer sees image, caption and file, and has no upload control', async ({ page }) => {
-    await logIn(page, admin);
+    await logIn(page, admin, null);
     await addPerson(page, viewer, 'viewer');
     await page.context().clearCookies();
 
-    await logIn(page, viewer);
-    await page.goto(pageUrl);
+    await logIn(page, viewer, pageUrl);
     const images = body(page).locator('figure.embed-image img');
     await expect(images).toHaveCount(3);
     await expect.poll(() => images.first().evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);

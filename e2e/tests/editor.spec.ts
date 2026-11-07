@@ -45,8 +45,7 @@ test.describe.serial('editor', () => {
 
   test('slash filter, every block, code highlight, table, ids', async ({ page }) => {
     test.setTimeout(90_000);
-    await logIn(page, admin);
-    await page.goto(pageUrl);
+    await logIn(page, admin, pageUrl);
     await body(page).click();
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
@@ -144,11 +143,10 @@ test.describe.serial('editor', () => {
   });
 
   test('viewer sees content, no editable surface', async ({ page }) => {
-    await logIn(page, admin);
+    await logIn(page, admin, null);
     await addPerson(page, viewer, 'viewer');
     await page.context().clearCookies();
-    await logIn(page, viewer);
-    await page.goto(pageUrl);
+    await logIn(page, viewer, pageUrl);
     await expect(body(page)).toContainText('Hello calm world');
     await expect(body(page)).toHaveAttribute('contenteditable', 'false');
     await expect(page.getByRole('textbox', { name: 'Page content' })).toHaveCount(0);
@@ -178,8 +176,7 @@ test.describe.serial('editor', () => {
 
   test('slash menu has no animation with reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await logIn(page, admin);
-    await page.goto(pageUrl);
+    await logIn(page, admin, pageUrl);
     await body(page).click();
     await page.keyboard.press('Control+End');
     await page.keyboard.press('Enter');

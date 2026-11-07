@@ -20,11 +20,11 @@ const CHILD = 'Buoy colours';
 let parentUrl = '';
 let childUrl = '';
 
-/** A fresh browser (own cookies) logged in as `user`. */
+/** A fresh browser (own cookies) logged in as `user`; the caller opens the first page. */
 async function session(browser: Browser, user: { email: string; password: string }) {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await logIn(page, user);
+  await logIn(page, user, null);
   return { context, page };
 }
 
@@ -91,8 +91,7 @@ test.describe.serial('per-space permissions and nested pages', () => {
   });
 
   test('a sub-page sits under its parent in the tree and reopens by its URL', async ({ page }) => {
-    await logIn(page, ada);
-    await page.goto(`/s/${A.key}`);
+    await logIn(page, ada, `/s/${A.key}`);
     await sidebar(page).getByRole('button', { name: 'New page' }).click();
     await expect(page).toHaveURL(new RegExp(`/s/${A.key}/p/.+`));
     await setTitle(page, PARENT);

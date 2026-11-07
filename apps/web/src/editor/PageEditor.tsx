@@ -1,7 +1,7 @@
 // The page body: the Tiptap editor for space editors, the same schema
 // rendered read-only for viewers. Autosaves ~1 s after typing stops.
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { BubbleMenu, EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
+import { BubbleMenu, EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
 import { NodeSelection } from '@tiptap/pm/state';
 import { getExtensions } from '@stillwater/editor-schema';
@@ -55,13 +55,23 @@ function TableMenu({ editor }: { editor: Editor }) {
   );
 }
 
+const MARKS = ['bold', 'italic', 'strike', 'code', 'link'] as const;
+
 function MarksMenu({ editor }: { editor: Editor }) {
-  const mark = (name: string, label: string, Icon: typeof Bold, run: () => boolean) => (
+  // The editor no longer re-renders its parent on every keystroke (see
+  // PageEditor), so this menu follows the selection itself, and only
+  // re-renders when a mark turns on or off.
+  const active = useEditorState({
+    editor,
+    selector: ({ editor: e }) => MARKS.map((m) => e.isActive(m)).join(','),
+  }).split(',');
+  const isOn = (name: (typeof MARKS)[number]) => active[MARKS.indexOf(name)] === 'true';
+  const mark = (name: (typeof MARKS)[number], label: string, Icon: typeof Bold, run: () => boolean) => (
     <button
       type="button"
-      className={`bubble-btn icon${editor.isActive(name) ? ' is-on' : ''}`}
+      className={`bubble-btn icon${isOn(name) ? ' is-on' : ''}`}
       aria-label={label}
-      aria-pressed={editor.isActive(name)}
+      aria-pressed={isOn(name)}
       title={label}
       onMouseDown={(e) => e.preventDefault()}
       onClick={run}
@@ -169,6 +179,11 @@ export function PageEditor({
       ],
       content: page.doc as JSONContent,
       editable,
+      // Tiptap would otherwise re-render this whole component (and both menus)
+      // on every keystroke and caret move. Nothing here reads editor state
+      // while rendering: the marks menu and the card offer subscribe on their
+      // own, and the save status comes from the saver.
+      shouldRerenderOnTransaction: false,
       editorProps: {
         attributes: {
           class: 'doc',

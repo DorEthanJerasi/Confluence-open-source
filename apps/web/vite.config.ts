@@ -12,5 +12,7 @@ export default defineConfig({
       '/health': { target: process.env.API_URL ?? 'http://localhost:3000' },
     },
   },
-  build: { outDir: 'dist', sourcemap: false },
+  // No gzip size report: it compresses every chunk again just to print sizes,
+  // which costs seconds on a busy box at every build (test:e2e builds first).
+  build: { outDir: 'dist', sourcemap: false, reportCompressedSize: false },
 });

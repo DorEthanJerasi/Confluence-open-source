@@ -164,8 +164,7 @@ test.describe.serial('ask your docs', () => {
   test('with AI off, Summarise and the Ask entry are both hidden, and /ask shows the not-set-up note', async ({ page }) => {
     await page.route('**/api/ai/status', (r) => r.fulfill({ json: { enabled: false } }));
 
-    await logIn(page, admin);
-    await page.goto('/s/open-room');
+    await logIn(page, admin, '/s/open-room');
     await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('link', { name: 'Garden notes' }).click();
     await expect(page.getByRole('button', { name: 'Summarise' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Ask' })).toHaveCount(0);

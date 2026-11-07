@@ -108,6 +108,8 @@ export function VersionDoc({ version, current }: { version: Doc; current: Doc })
       content: doc as JSONContent,
       editable: false,
       editorProps: { attributes: { class: 'doc', 'aria-label': 'Version content' } },
+      // Read-only: nothing changes after the first render.
+      shouldRerenderOnTransaction: false,
     },
     [doc, kinds],
   );

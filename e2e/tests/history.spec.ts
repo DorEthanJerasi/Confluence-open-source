@@ -18,9 +18,10 @@ let firstVersion = 0;
 let secondVersion = 0;
 let restoreVersion = 0;
 
+/** Log in as `user` instead, landing straight on the shared page. */
 async function switchUser(page: Page, user: { email: string; password: string }) {
   await page.context().clearCookies();
-  await logIn(page, user);
+  await logIn(page, user, pageUrl);
 }
 
 
@@ -79,7 +80,6 @@ test.describe.serial('history', () => {
     await addPerson(page, viewerC, 'viewer');
 
     await switchUser(page, editorB);
-    await page.goto(pageUrl);
     await replaceText(page, 'second text');
 
     await openHistory(page);
@@ -95,7 +95,6 @@ test.describe.serial('history', () => {
 
   test('opening the earlier version shows it read-only with the changed block marked', async ({ page }) => {
     await switchUser(page, editorB);
-    await page.goto(pageUrl);
     await openHistory(page);
     await row(page, firstVersion).click();
 
@@ -108,7 +107,6 @@ test.describe.serial('history', () => {
 
   test('restoring the old version puts its text back, and it survives a reload', async ({ page }) => {
     await switchUser(page, editorB);
-    await page.goto(pageUrl);
     await openHistory(page);
     await row(page, firstVersion).click();
 
@@ -134,7 +132,6 @@ test.describe.serial('history', () => {
 
   test('typing after the restore saves cleanly, with no conflict note', async ({ page }) => {
     await switchUser(page, editorB);
-    await page.goto(pageUrl);
     await body(page).click();
     await page.keyboard.press('End');
     await page.keyboard.type(' and more');
@@ -144,7 +141,6 @@ test.describe.serial('history', () => {
 
   test('a viewer sees the versions but no Restore button, in light and dark', async ({ page }) => {
     await switchUser(page, viewerC);
-    await page.goto(pageUrl);
     await openHistory(page);
     const rows = panel(page).locator('.version-row');
     await expect(rows.first()).toBeVisible();

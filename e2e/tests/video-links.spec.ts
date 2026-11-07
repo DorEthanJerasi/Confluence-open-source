@@ -183,12 +183,11 @@ test.describe.serial('video and link cards', () => {
 
   test('viewer sees the video, players and cards, and cannot change them', async ({ page }) => {
     await blockPlayers(page);
-    await logIn(page, admin);
+    await logIn(page, admin, null);
     await addPerson(page, viewer, 'viewer');
     await page.context().clearCookies();
 
-    await logIn(page, viewer);
-    await page.goto(pageUrl);
+    await logIn(page, viewer, pageUrl);
     const video = body(page).locator('.embed-video video');
     await expect(video).toHaveCount(1);
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.videoWidth)).toBe(16);

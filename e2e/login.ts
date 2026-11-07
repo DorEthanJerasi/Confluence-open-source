@@ -10,11 +10,19 @@ import { expect, type Page } from './fixtures';
 
 type Login = { email: string; password: string };
 
-export async function logIn(page: Page, user: Login): Promise<void> {
+/**
+ * Logs in through the API, then opens `to` (home by default). Pass the page
+ * the test is about to open anyway, so the app starts once instead of twice
+ * (home, then that page): on this busy box each start of the app costs a
+ * second or more. Pass null to stay put, e.g. when the next step is
+ * addPerson, which only needs the session cookie.
+ */
+export async function logIn(page: Page, user: Login, to: string | null = '/'): Promise<void> {
   const res = await page.request.post('/api/auth/login', { data: { email: user.email, password: user.password } });
   expect(res.ok(), `log in as ${user.email}: HTTP ${res.status()}`).toBe(true);
-  await page.goto('/');
-  await expect(page).toHaveURL('/');
+  if (to === null) return;
+  await page.goto(to);
+  if (to === '/') await expect(page).toHaveURL('/');
 }
 
 export async function logInWithForm(page: Page, user: Login): Promise<void> {

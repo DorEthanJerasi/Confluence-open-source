@@ -69,8 +69,7 @@ test.describe.serial('search', () => {
   });
 
   test('page text that looks like HTML is shown as text, never as an element', async ({ page }) => {
-    await logIn(page, admin);
-    await page.goto('/s/quiet-room');
+    await logIn(page, admin, '/s/quiet-room');
     await newPage(page, `Odd ${TAG}`, NASTY);
     const oddUrl = page.url();
 
@@ -97,8 +96,7 @@ test.describe.serial('search', () => {
   });
 
   test('reload on /search?q=… shows the same results, in light and dark', async ({ page }) => {
-    await logIn(page, admin);
-    await page.goto(`/search?q=${WORD}`);
+    await logIn(page, admin, `/search?q=${WORD}`);
     await expect(results(page).getByRole('link')).toHaveCount(1);
     await expect(page.getByRole('searchbox', { name: 'Search pages' })).toHaveValue(WORD);
     await page.reload();
@@ -123,7 +121,7 @@ test.describe.serial('search', () => {
   });
 
   test('someone who is not a member of the restricted space gets no results', async ({ page }) => {
-    await logIn(page, admin);
+    await logIn(page, admin, null);
     await addPerson(page, outsider, 'editor');
 
     await page.context().clearCookies();
