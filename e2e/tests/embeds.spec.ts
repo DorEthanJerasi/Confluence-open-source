@@ -2,7 +2,7 @@
 // from the slash menu, paste and drag-drop; caption; file name, size and
 // download; the stored doc holds only attachment ids; viewers see both blocks
 // and have no way to upload.
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../fixtures';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };

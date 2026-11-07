@@ -6,7 +6,7 @@
 // No test touches the internet: the YouTube/Vimeo player requests are blocked,
 // the refused card uses this test server's own (loopback) address, which the
 // server's guard refuses, and the full card uses a stubbed /api/link-preview reply.
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../fixtures';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };

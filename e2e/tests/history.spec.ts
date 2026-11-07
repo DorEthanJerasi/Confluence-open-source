@@ -4,7 +4,7 @@
 // text back and survives a reload, the restore entry sits above the earlier
 // ones, typing after a restore saves with no conflict note, and a viewer gets
 // the list but no Restore button.
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../fixtures';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };

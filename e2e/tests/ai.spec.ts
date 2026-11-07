@@ -12,7 +12,7 @@
 // gets the fixed "couldn't find" answer with no sources; with AI off (via
 // page.route on /api/ai/status), there is no Summarise button and no Ask
 // entry in the top bar, and /ask shows the not-set-up note.
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../fixtures';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };

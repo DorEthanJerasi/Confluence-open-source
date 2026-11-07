@@ -4,7 +4,7 @@
 // A does not exist for him, in the list, by URL or through the API. Eve can
 // edit A until Ada removes her. Also: a sub-page sits under its parent in
 // the tree, and logging out and back in works.
-import { test, expect, type Browser, type Page } from '@playwright/test';
+import { test, expect, type Browser, type Page } from '../fixtures';
 import { resetDatabase } from '../reset-db';
 
 const ada = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };

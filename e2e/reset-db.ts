@@ -1,13 +1,16 @@
 // Empties every app table so each spec file starts from a blank instance:
 // no users (so its first sign-up becomes admin again), no spaces, no pages.
-// global-setup.ts puts the throwaway database's URL in E2E_DATABASE_URL.
+// Each worker has its own database (global-setup.ts puts worker <n>'s URL in
+// E2E_DATABASE_URL_<n>), so this only touches the calling worker's data.
 // Drizzle's migration record lives in the "drizzle" schema, so the schema
 // itself stays migrated; only rows in "public" are removed.
 import pg from 'pg';
+import { dbUrlEnvFor } from './workers';
 
 export async function resetDatabase(): Promise<void> {
-  const url = process.env.E2E_DATABASE_URL;
-  if (!url) throw new Error('e2e: E2E_DATABASE_URL is not set (global-setup.ts sets it)');
+  const index = Number(process.env.TEST_PARALLEL_INDEX ?? 0);
+  const url = process.env[dbUrlEnvFor(index)];
+  if (!url) throw new Error(`e2e: ${dbUrlEnvFor(index)} is not set (global-setup.ts sets it)`);
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   try {

@@ -1,7 +1,7 @@
 // First real e2e pass: sign up, create a space and a page, reopen it and
 // see the content again, and prove a viewer cannot edit. Runs against a
 // real server + Postgres (see ../global-setup.ts), not a mock.
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../fixtures';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -28,7 +28,7 @@ async function logIn(page: Page, user: { email: string; password: string }) {
 }
 
 test.describe.serial('wiki basics', () => {
-  // Both spec files share one server; start this file from an empty database.
+  // Spec files that land on the same worker share its server; start this file from an empty database.
   test.beforeAll(resetDatabase);
 
   test('the first person to sign up becomes admin and can create a space and a page', async ({ page }) => {

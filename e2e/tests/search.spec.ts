@@ -2,7 +2,7 @@
 // a word typed into a page is found through Ctrl+K and highlighted with
 // <mark>; a non-member of the restricted space gets "No results"; page text
 // that looks like HTML stays text; reload on /search?q=… keeps the results.
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../fixtures';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
