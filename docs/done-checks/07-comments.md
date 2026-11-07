@@ -192,17 +192,17 @@ A check constraint stops a row being both a reply and resolved
 ### Checks that must exist and pass — `e2e/tests/comments.spec.ts` (Playwright)
 Set-up (people, space, page with two paragraphs) goes through the API helpers
 in `e2e/login.ts`. At most 3 tests, so the suite's time barely grows.
-- [ ] An editor comments on the second paragraph and on the page. The marker
+- [x] An editor comments on the second paragraph and on the page. The marker
       appears on that block, and the count on the Comments button is 2. After a
       reload both are still there.
-- [ ] A viewer of the space opens the page, sees both threads, replies to the
+- [x] A viewer of the space opens the page, sees both threads, replies to the
       block thread and sees no Resolve, Edit or Delete on the editor's comments.
       The editor then resolves that thread. It moves under "Resolved", the
       block marker goes, and the count drops to 1. Reopen brings it back.
-- [ ] The author edits their own comment (shows "edited") and deletes it. A
+- [x] The author edits their own comment (shows "edited") and deletes it. A
       deleted root with a reply shows "Comment deleted" with the reply still
       under it. This is also checked once in dark mode.
-- [ ] `npm run test:e2e` passes in full: 32 + the new tests, no retries, no skips,
+- [x] `npm run test:e2e` passes in full: 32 + the new tests, no retries, no skips,
       no `.only`.
 
 ---
