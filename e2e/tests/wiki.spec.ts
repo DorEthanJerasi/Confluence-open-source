@@ -2,6 +2,7 @@
 // see the content again, and prove a viewer cannot edit. Runs against a
 // real server + Postgres (see ../global-setup.ts), not a mock.
 import { test, expect, type Page } from '../fixtures';
+import { pickBlankPage } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -41,6 +42,7 @@ test.describe.serial('wiki basics', () => {
     await expect(page.getByRole('heading', { name: spaceName })).toBeVisible();
 
     await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
+    await pickBlankPage(page);
     await expect(page).toHaveURL(/\/s\/ocean-notes\/p\/.+/);
     await page.getByLabel('Page title').fill(pageTitle);
     await page.getByLabel('Page title').blur();

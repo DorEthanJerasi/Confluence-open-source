@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { roleAtLeast, type Role, type Visibility } from '@stillwater/shared';
 import { api } from '../api';
 import { ErrorNote, Field, Loading, Modal, ROLE_LABEL, RoleSelect } from '../ui';
+import { TemplatesTab } from '../templates/TemplatesTab';
 import { useSpace } from './Space';
 
 function Details() {
@@ -193,6 +194,23 @@ function DangerZone() {
   );
 }
 
+/** General and Templates; viewers get no tabs (they have no Templates tab). */
+function SettingsTabs() {
+  const { space, canEdit } = useSpace();
+  if (!canEdit) return null;
+  const tab = ({ isActive }: { isActive: boolean }) => `tab${isActive ? ' is-on' : ''}`;
+  return (
+    <nav className="tabs" aria-label="Space settings">
+      <NavLink end to={`/s/${space.key}/settings`} className={tab}>
+        General
+      </NavLink>
+      <NavLink to={`/s/${space.key}/settings/templates`} className={tab}>
+        Templates
+      </NavLink>
+    </nav>
+  );
+}
+
 export function SpaceSettings() {
   const { space } = useSpace();
   const isAdmin = roleAtLeast(space.myRole, 'admin');
@@ -201,11 +219,27 @@ export function SpaceSettings() {
       <div className="page-head">
         <h1 className="page-title">Space settings</h1>
       </div>
+      <SettingsTabs />
       <div className="stack stack-lg">
         {isAdmin && <Details key={space.id + space.name} />}
         <Members canManage={isAdmin} />
         {isAdmin && <DangerZone />}
       </div>
+    </div>
+  );
+}
+
+/** /s/:key/settings/templates: editors and up; anyone else goes back to the general tab. */
+export function SpaceTemplatesSettings() {
+  const { space, canEdit } = useSpace();
+  if (!canEdit) return <Navigate to={`/s/${space.key}/settings`} replace />;
+  return (
+    <div className="content content-wide fade-in">
+      <div className="page-head">
+        <h1 className="page-title">Space settings</h1>
+      </div>
+      <SettingsTabs />
+      <TemplatesTab spaceKey={space.key} />
     </div>
   );
 }

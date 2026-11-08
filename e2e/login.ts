@@ -93,3 +93,14 @@ export async function createPage(
   const { page: created } = (await res.json()) as { page: { id: string } };
   return { id: created.id, path: `/s/${spaceKey}/p/${created.id}` };
 }
+
+/**
+ * Every "New page" and "Sub-page" control opens the template picker first
+ * (done-check 08). "Blank page" is chosen and focused when it opens; this
+ * makes the blank page, as those buttons did before templates.
+ */
+export async function pickBlankPage(page: Page): Promise<void> {
+  const picker = page.getByRole('dialog', { name: 'New page' });
+  await expect(picker.getByRole('option', { name: /Blank page/ })).toBeFocused();
+  await picker.getByRole('button', { name: 'Create page' }).click();
+}

@@ -1407,3 +1407,190 @@ textarea.input {
     flex-direction: column;
   }
 }
+
+/* ---- Page templates (done-check 08, 8b): picker, Save as template, Templates tab ---- */
+
+.modal-wide {
+  max-width: calc(var(--space-9) * 9);
+}
+
+.picker-under {
+  margin-top: calc(var(--space-3) * -1);
+  font-size: var(--text-sm);
+}
+.picker {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--space-5);
+  min-height: calc(var(--space-9) * 3);
+}
+.picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: calc(var(--space-9) * 4);
+  overflow-y: auto;
+}
+.picker-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+.picker-option:hover {
+  background: var(--color-bg-subtle);
+}
+.picker-option.is-on {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-soft);
+}
+.picker-option-icon {
+  display: inline-flex;
+  padding-top: var(--space-1);
+  color: var(--color-text-muted);
+}
+.picker-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.picker-option-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+.picker-option-desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+.picker-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+.picker-preview-name {
+  font-weight: var(--weight-semibold);
+}
+.picker-preview-body {
+  max-height: calc(var(--space-9) * 4);
+  overflow-y: auto;
+  animation: fade-in var(--motion-base) var(--ease-enter);
+}
+.picker-preview-blank {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  text-align: center;
+}
+/* The preview is a smaller read-only page: same block styles, quieter size. */
+.template-preview-doc .doc {
+  font-size: var(--text-sm);
+}
+.template-preview-modal {
+  max-height: calc(var(--space-9) * 5);
+}
+
+.template-saved {
+  margin-bottom: var(--space-4);
+}
+
+/* Settings tabs */
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+.tab {
+  padding: var(--space-2) var(--space-4);
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+.tab:hover {
+  color: var(--color-text);
+}
+.tab.is-on {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+
+/* Templates tab */
+.template-tab-head {
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.template-group {
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.template-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.template-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+.template-row + .template-row {
+  border-top: 1px solid var(--color-border);
+}
+.template-row-icon {
+  display: inline-flex;
+  color: var(--color-text-muted);
+}
+.template-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.template-row-name {
+  font-weight: var(--weight-medium);
+}
+.template-editor-body {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  min-height: calc(var(--space-9) * 2);
+}
+
+@media (max-width: 640px) {
+  .picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

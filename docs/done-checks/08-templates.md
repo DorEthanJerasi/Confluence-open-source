@@ -238,6 +238,36 @@ says "No schema changes, nothing to migrate".
 - [ ] Nothing in the new code, text or built-in templates uses another
       product's names or assets (the originality scan, c5, passes).
 
+### Builder's record for 8b screens (p12-coder, item #113, 2026-11-09)
+Boxes above are left for the lead to tick after their own look. What is built:
+- Picker: `apps/web/src/templates/TemplatePicker.tsx`, opened by every "New
+  page" (sidebar, space home) and "Add a sub-page" / "Sub-page" control
+  through `newPage` in `screens/Space.tsx`. Blank page first and focused;
+  arrows, Enter, double-click, Escape; preview is the read-only editor
+  (`templates/TemplateDoc.tsx`, loaded lazily). Button reads "Create page"
+  for Blank, "Use template" otherwise.
+- Save as template: `templates/SaveAsTemplate.tsx`, a button in the page header
+  for editors and up; it waits for pending autosave first, shows the server's
+  message on a name clash, and a quiet "Saved as template" note after.
+- Templates tab: `/s/:key/settings/templates` (`templates/TemplatesTab.tsx`,
+  tabs in `screens/SpaceSettings.tsx`). Built-ins: Preview only. Space
+  templates: Edit (same block editor, slash menu, Save button, 409 → Reload
+  offer) and Delete (confirm). New template starts blank.
+- Viewers: no picker, no Save as template, no Templates tab; the tab's URL
+  sends them back to the General tab.
+- `Modal` in `ui.tsx` now traps Tab/Shift+Tab, focuses once on open and gives
+  focus back on close (every dialog gets this).
+- Open point for the lead: **uploading a new image or file inside the
+  template editor is refused with a note** ("add it to a page, then save that
+  page as a template"), because `attachments.page_id` is NOT NULL and there is
+  no page to keep the file on. Images and files that come in from a page
+  (Save as template) show and copy fine. Allowing uploads straight into a
+  template needs a schema decision (nullable `page_id` or a template id on
+  attachments), which is the lead's call.
+- The existing e2e specs that click "New page"/"Sub-page" now go through the
+  picker's Blank page (`pickBlankPage` in `e2e/login.ts`). The new
+  `templates.spec.ts` is item #115.
+
 ### Checks that must exist and pass — `e2e/tests/templates.spec.ts` (Playwright)
 Set-up (people, space, a page with a heading and a table) goes through the API
 helpers in `e2e/login.ts`. At most 3 tests, so the suite's time barely grows.

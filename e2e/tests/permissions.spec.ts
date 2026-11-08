@@ -5,7 +5,7 @@
 // edit A until Ada removes her. Also: a sub-page sits under its parent in
 // the tree, and logging out and back in works.
 import { test, expect, type Browser, type Page } from '../fixtures';
-import { addPerson, createPage, createSpace, logIn, logInWithForm, signUp } from '../login';
+import { addPerson, createPage, createSpace, logIn, logInWithForm, pickBlankPage, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const ada = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -89,6 +89,7 @@ test.describe.serial('per-space permissions and nested pages', () => {
     await expect(page.getByLabel('Page title')).toHaveValue(PARENT);
 
     await page.getByRole('button', { name: 'Sub-page', exact: true }).click();
+    await pickBlankPage(page);
     await expect(page).not.toHaveURL(parentUrl);
     await expect(page).toHaveURL(new RegExp(`/s/${A.key}/p/.+`));
     await setTitle(page, CHILD);

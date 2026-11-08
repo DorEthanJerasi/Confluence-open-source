@@ -13,7 +13,7 @@
 // page.route on /api/ai/status), there is no Summarise button and no Ask
 // entry in the top bar, and /ask shows the not-set-up note.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, logIn } from '../login';
+import { addPerson, logIn, pickBlankPage } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -26,6 +26,7 @@ const answer = (page: Page) => page.getByRole('region', { name: 'Answer' });
 
 async function newPage(page: Page, title: string, text: string) {
   await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
+  await pickBlankPage(page);
   await expect(page).toHaveURL(/\/p\/.+/);
   await page.getByLabel('Page title').fill(title);
   await page.getByLabel('Page title').blur();
@@ -60,6 +61,7 @@ test.describe.serial('ai summarise', () => {
     await expect(page).toHaveURL('/s/open-room');
 
     await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
+    await pickBlankPage(page);
     await expect(page).toHaveURL(/\/p\/.+/);
     await page.getByLabel('Page title').fill('Quiet page');
     await page.getByLabel('Page title').blur();

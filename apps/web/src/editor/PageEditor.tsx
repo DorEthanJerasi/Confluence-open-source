@@ -28,7 +28,7 @@ export function SaveStatus({ saver }: { saver: PageSaver }) {
   );
 }
 
-function TableMenu({ editor }: { editor: Editor }) {
+export function TableMenu({ editor }: { editor: Editor }) {
   const btn = (label: string, run: () => boolean) => (
     <button type="button" className="bubble-btn" onMouseDown={(e) => e.preventDefault()} onClick={run}>
       {label}
@@ -57,7 +57,7 @@ function TableMenu({ editor }: { editor: Editor }) {
 
 const MARKS = ['bold', 'italic', 'strike', 'code', 'link'] as const;
 
-function MarksMenu({ editor }: { editor: Editor }) {
+export function MarksMenu({ editor }: { editor: Editor }) {
   // The editor no longer re-renders its parent on every keystroke (see
   // PageEditor), so this menu follows the selection itself, and only
   // re-renders when a mark turns on or off.

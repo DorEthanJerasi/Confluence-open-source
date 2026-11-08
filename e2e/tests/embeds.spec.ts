@@ -3,7 +3,7 @@
 // download; the stored doc holds only attachment ids; viewers see both blocks
 // and have no way to upload.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, logIn } from '../login';
+import { addPerson, logIn, pickBlankPage } from '../login';
 import { afterNextPaint } from '../paint';
 import { resetDatabase } from '../reset-db';
 
@@ -78,6 +78,7 @@ test.describe.serial('image and file blocks', () => {
     await page.getByLabel('Name').fill('Harbour');
     await page.getByRole('button', { name: 'Create space' }).click();
     await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
+    await pickBlankPage(page);
     await expect(page).toHaveURL(/\/p\/.+/);
     pageUrl = page.url();
 

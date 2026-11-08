@@ -186,12 +186,21 @@ function blockFor(a: Attachment, kind: UploadKind): JSONContent {
 }
 
 export interface UploadOptions {
+  /** The page that keeps uploaded files; empty in the template editor, where uploads are refused with a note. */
   pageId: string;
   onNote: (note: UploadNote | null) => void;
 }
 
 /** Upload each file in turn and put its block at `pos`, one after another. */
 async function uploadAll(editor: Editor, files: File[], pos: number, kind: UploadKind | 'auto', opts: UploadOptions) {
+  // A template has no page to keep files on (attachments belong to a page).
+  if (!opts.pageId) {
+    opts.onNote({
+      tone: 'error',
+      text: 'Files cannot be uploaded into a template yet. Add them to a page, then save that page as a template.',
+    });
+    return;
+  }
   let at = pos;
   let failed = false;
   for (const file of files) {

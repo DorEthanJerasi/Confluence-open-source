@@ -6,7 +6,7 @@ import { AuthPage } from './screens/AuthPage';
 import { Shell } from './screens/Shell';
 import { Home } from './screens/Home';
 import { SpaceLayout, SpaceHome } from './screens/Space';
-import { SpaceSettings } from './screens/SpaceSettings';
+import { SpaceSettings, SpaceTemplatesSettings } from './screens/SpaceSettings';
 import { AdminUsers } from './screens/AdminUsers';
 import { NotFound } from './screens/NotFound';
 import { SearchScreen } from './screens/SearchScreen';
@@ -52,6 +52,7 @@ export function App() {
             }
           />
           <Route path="settings" element={<SpaceSettings />} />
+          <Route path="settings/templates" element={<SpaceTemplatesSettings />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

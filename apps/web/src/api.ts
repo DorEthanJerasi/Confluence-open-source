@@ -11,6 +11,7 @@ import type {
   LinkPreview,
   Page,
   PageSummary,
+  PageTemplate,
   PageTreeItem,
   PageVersion,
   PageVersionList,
@@ -18,6 +19,7 @@ import type {
   SearchResult,
   Space,
   SpaceMember,
+  TemplateSummary,
   User,
   Visibility,
 } from '@stillwater/shared';
@@ -95,7 +97,8 @@ export const api = {
     request<{ ok: true }>('DELETE', `/api/spaces/${enc(key)}/members/${enc(userId)}`),
 
   tree: (key: string) => get<{ pages: PageTreeItem[] }>(`/api/spaces/${enc(key)}/pages`),
-  createPage: (key: string, b: { title: string; parentId: string | null }) =>
+  /** With `templateId` the new page starts as a copy of that template (fresh block ids). */
+  createPage: (key: string, b: { title: string; parentId: string | null; templateId?: string }) =>
     request<{ page: Page }>('POST', `/api/spaces/${enc(key)}/pages`, b),
   page: (id: string) => get<{ page: Page }>(`/api/pages/${enc(id)}`),
   savePage: (id: string, b: { baseVersion: number; title?: string; doc?: Doc }) =>
@@ -119,6 +122,17 @@ export const api = {
   restoreVersion: (id: string, version: number, baseVersion: number) =>
     request<{ version: number }>('POST', `/api/pages/${enc(id)}/versions/${version}/restore`, { baseVersion }),
   deletePage: (id: string) => request<{ ok: true; deleted: number }>('DELETE', `/api/pages/${enc(id)}`),
+
+  /** Templates usable in this space (editors and up): built-ins first, then the space's own. No bodies. */
+  templates: (key: string) => get<{ templates: TemplateSummary[] }>(`/api/spaces/${enc(key)}/templates`),
+  template: (key: string, id: string) => get<{ template: PageTemplate }>(`/api/spaces/${enc(key)}/templates/${enc(id)}`),
+  /** From a body, or from a page of this space (`fromPageId`), never both. A name clash is 409. */
+  createTemplate: (key: string, b: { name: string; description?: string } & ({ doc: Doc } | { fromPageId: string })) =>
+    request<{ template: PageTemplate }>('POST', `/api/spaces/${enc(key)}/templates`, b),
+  /** A stale `baseVersion` is 409; built-ins are 403. */
+  updateTemplate: (key: string, id: string, b: { baseVersion: number; name?: string; description?: string; doc?: Doc }) =>
+    request<{ template: PageTemplate }>('PATCH', `/api/spaces/${enc(key)}/templates/${enc(id)}`, b),
+  deleteTemplate: (key: string, id: string) => request<null>('DELETE', `/api/spaces/${enc(key)}/templates/${enc(id)}`),
 
   /** Whether the host has AI on. Only `{ enabled }`; never a key, provider or model. */
   aiStatus: () => get<AiStatus>('/api/ai/status'),

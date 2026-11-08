@@ -6,13 +6,14 @@ import { roleAtLeast, type PageTreeItem, type Space } from '@stillwater/shared';
 import { api, ApiFailure } from '../api';
 import { buildTree, pageTitle, subtreeIds, type TreeNode } from '../tree';
 import { ErrorNote, Field, Loading, Modal, ROLE_LABEL } from '../ui';
+import { TemplatePicker } from '../templates/TemplatePicker';
 import { NotFound } from './NotFound';
 
 export interface SpaceCtx {
   space: Space;
   items: PageTreeItem[];
   canEdit: boolean;
-  /** Open the page-creation flow under `parentId` (null = top level). */
+  /** Open the template picker for a new page under `parentId` (null = top level). */
   newPage: (parentId: string | null) => void;
   /** Ask, then soft-delete a page and its sub-pages. */
   deletePage: (id: string) => void;
@@ -26,10 +27,13 @@ function useTreeActions(spaceKey: string) {
   const navigate = useNavigate();
   const refresh = () => qc.invalidateQueries({ queryKey: ['tree', spaceKey] });
 
+  // The picker closes itself (onDone) before the new page opens, so focus lands on its title.
   const create = useMutation({
-    mutationFn: (parentId: string | null) => api.createPage(spaceKey, { title: '', parentId }),
-    onSuccess: async ({ page }) => {
+    mutationFn: (v: { parentId: string | null; templateId: string | null; onDone: () => void }) =>
+      api.createPage(spaceKey, { title: '', parentId: v.parentId, ...(v.templateId ? { templateId: v.templateId } : {}) }),
+    onSuccess: async ({ page }, v) => {
       await refresh();
+      v.onDone();
       navigate(`/s/${spaceKey}/p/${page.id}`, { state: { focusTitle: true } });
     },
   });
@@ -206,6 +210,8 @@ export function SpaceLayout() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState<PageTreeItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // The template picker is open for a new page under this parent (null = top level).
+  const [picking, setPicking] = useState<{ parentId: string | null } | null>(null);
 
   const items = treeQ.data?.pages ?? [];
 
@@ -241,7 +247,7 @@ export function SpaceLayout() {
     canEdit,
     newPage: (parentId) => {
       if (parentId) setExpanded((prev) => new Set(prev).add(parentId));
-      actions.create.mutate(parentId);
+      setPicking({ parentId });
     },
     deletePage: (id) => setConfirmDelete(id),
   };
@@ -293,7 +299,7 @@ export function SpaceLayout() {
             ))}
           </ul>
         )}
-        <ErrorNote error={actions.move.error ?? actions.create.error ?? actions.remove.error} />
+        <ErrorNote error={actions.move.error ?? actions.remove.error} />
         <div className="sidebar-foot">
           <NavLink to={`/s/${space.key}/settings`} className="sidebar-foot-link">
             <Settings size={15} aria-hidden="true" /> Space settings
@@ -304,6 +310,16 @@ export function SpaceLayout() {
       <main className="space-main">
         <Outlet context={ctx} />
       </main>
+      {picking && canEdit && (
+        <TemplatePicker
+          spaceKey={space.key}
+          parentTitle={picking.parentId ? pageTitle(items.find((i) => i.id === picking.parentId)?.title ?? '') : null}
+          onClose={() => setPicking(null)}
+          onCreate={(templateId) =>
+            actions.create.mutateAsync({ parentId: picking.parentId, templateId, onDone: () => setPicking(null) })
+          }
+        />
+      )}
       {moving && (
         <MoveDialog
           item={moving}

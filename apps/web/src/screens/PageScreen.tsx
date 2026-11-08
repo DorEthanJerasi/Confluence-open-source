@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, History, MessageSquare, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
 import type { Page } from '@stillwater/shared';
 import { SummaryCard, useAiEnabled } from '../ai/SummaryCard';
@@ -12,6 +12,7 @@ import { blockElement, commentsKey, openThreads, scrollToBlock } from '../commen
 import { PageEditor, SaveStatus } from '../editor/PageEditor';
 import { PageSaver } from '../editor/saver';
 import { HistoryPanel, VersionPreview, versionsKey } from '../history/HistoryPanel';
+import { SaveAsTemplateDialog } from '../templates/SaveAsTemplate';
 import { timeAgo } from '../time';
 import { pageTitle } from '../tree';
 import { ErrorNote, Loading } from '../ui';
@@ -27,6 +28,8 @@ function TitleEditor({ page, editable, saver }: { page: Page; editable: boolean;
 
   useEffect(() => setValue(page.title), [page.id, page.title]);
   useEffect(() => {
+    // A dialog opened in the meantime (e.g. the template picker) keeps its focus.
+    if (document.activeElement?.closest('[role="dialog"]')) return;
     if ((location.state as { focusTitle?: boolean } | null)?.focusTitle) ref.current?.focus();
   }, [page.id, location.state]);
 
@@ -112,6 +115,14 @@ function PageView({ page }: { page: Page }) {
   const [summaryRun, setSummaryRun] = useState(0);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const closeSummary = useCallback(() => setSummaryOpen(false), []);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState<string | null>(null);
+  // The confirmation fades on its own after a few seconds.
+  useEffect(() => {
+    if (!templateSaved) return;
+    const t = window.setTimeout(() => setTemplateSaved(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [templateSaved]);
   // Closing plays the panel's exit animation before it unmounts (see onClosed below).
   const closePanel = useCallback(() => {
     setPanelClosing(true);
@@ -153,8 +164,8 @@ function PageView({ page }: { page: Page }) {
     },
     [editor],
   );
-  // Make sure a block typed a moment ago is stored before someone comments on it.
-  const saveBeforeBlockComment = useCallback(async () => {
+  // Make sure what was typed a moment ago is stored before a block comment or "Save as template" reads it.
+  const flushEdits = useCallback(async () => {
     if (!canEdit) return;
     if (editor && document.activeElement && editor.view.dom.contains(document.activeElement)) editor.commands.blur();
     await saver.settled();
@@ -265,6 +276,9 @@ function PageView({ page }: { page: Page }) {
           )}
           {canEdit && (
             <>
+              <button className="btn btn-quiet" onClick={() => setSavingTemplate(true)}>
+                <LayoutTemplate size={16} aria-hidden="true" /> Save as template
+              </button>
               <button className="btn btn-quiet" onClick={() => newPage(page.id)}>
                 <Plus size={16} aria-hidden="true" /> Sub-page
               </button>
@@ -275,6 +289,25 @@ function PageView({ page }: { page: Page }) {
           )}
         </div>
       </div>
+
+      {templateSaved && (
+        <p className="note template-saved fade-in" role="status">
+          Saved as template “{templateSaved}”. It is in the picker for new pages in this space.
+        </p>
+      )}
+      {canEdit && savingTemplate && (
+        <SaveAsTemplateDialog
+          spaceKey={space.key}
+          pageId={page.id}
+          pageTitle={page.title}
+          beforeSave={flushEdits}
+          onClose={() => setSavingTemplate(false)}
+          onSaved={(name) => {
+            setSavingTemplate(false);
+            setTemplateSaved(name);
+          }}
+        />
+      )}
 
       {historyOpen && (
         <HistoryPanel
@@ -296,7 +329,7 @@ function PageView({ page }: { page: Page }) {
           error={comments.error}
           composeBlock={composeBlock}
           focusThread={focusThread}
-          beforeBlockComment={saveBeforeBlockComment}
+          beforeBlockComment={flushEdits}
           onComposeDone={doneComposing}
           onJump={jumpToBlock}
           onClose={closePanel}
