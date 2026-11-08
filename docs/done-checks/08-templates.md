@@ -288,9 +288,11 @@ Build boxes above ticked after my own run on `a55c3c62` (Node 22):
   As a viewer: no New page, Sub-page, Save as template or Templates tab; the
   tab's URL goes back to General; the API gives 403. Light and dark
   screenshots of the picker and template editor look calm and readable.
-- Open point (uploads straight into a template) stays open; it does not block
-  8b, since images and files come in through "Save as template". Decided
-  with the e2e item, not here.
+- Uploads straight into a template: **decided 2026-11-09, keep the refusal
+  note; no schema change.** Images and files reach a template through "Save
+  as template", which is enough for this feature, and keeping
+  `attachments.page_id` NOT NULL leaves the storage model as it is. If teams
+  ask for it later it becomes its own feature with its own done-check.
 The e2e boxes wait for `templates.spec.ts` (item #115).
 
 ### Checks that must exist and pass — `e2e/tests/templates.spec.ts` (Playwright)
