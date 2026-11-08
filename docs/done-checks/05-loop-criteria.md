@@ -477,3 +477,30 @@ timeouts.
 - Still open outside the code: c1 needs a reachable Docker daemon (the
   sandbox binds the socket to `/dev/null`), and pushing needs a GitHub remote
   and login; both are already asked in the team chat and not re-asked here.
+
+## DevOps, loop #3 round 1 (re-run for templates 8a), 2026-11-08: migration 0005 checked
+Templates added one new migration, `apps/server/drizzle/0005_page_templates.sql`
+(new `page_templates` table, FKs to `spaces`/`users`, one unique index) and no
+new runtime dependency, so `docker-compose.yml` and `docker/Dockerfile` need
+no change — confirmed by reading both and the migration file.
+- `docker compose config -q` → exit 0, still valid.
+- `docker compose up -d --build` → same as every prior round: "Cannot
+  connect to the Docker daemon at unix:///var/run/docker.sock". Tried
+  starting a rootless daemon myself this round (`dockerd-rootless.sh`) to
+  see if that gets around the bind; it can't either — `rootlesskit` fails
+  with "fork/exec /proc/self/exe: operation not permitted" (the sandbox
+  blocks the unshare/namespace calls a container runtime needs, not just
+  the socket path). So c1 is still blocked purely on sandbox access, now
+  confirmed two different ways.
+- Re-ran the no-Docker proof against a clean build, this time checking the
+  database directly rather than just `/health`: `npm run build`, then
+  `scripts/local-start.mjs` against a brand-new empty data dir. Migrations
+  ran, server came up, `/health` → `{"status":"ok"}`. Queried
+  `information_schema.tables` on the fresh database: `page_templates` is
+  there alongside every earlier table (`spaces`, `pages`, `page_versions`,
+  `page_comments`, etc.) — migration 0005 applies cleanly start to finish,
+  same as 0001–0004 before it. Torn down and temp data dirs removed after.
+- Net: templates (8a) needed no compose/Dockerfile change and the
+  migrate-on-start path is still sound with the new migration included; c1
+  stays open only on Docker daemon access, same ask to the owner as every
+  round before this one.
