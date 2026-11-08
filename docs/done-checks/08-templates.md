@@ -200,6 +200,11 @@ Built in `73453ed0`; checked this turn with Node 22.11.0, embedded Postgres:
   of 11, originality scan and contrast check ok.
 Waiting for the lead's own run before 8b counts as started.
 
+Re-checked for item #112 (p12-coder, 2026-11-09), no code changed since
+`96cc33f1`: `npm run check` exit 0, all 7 steps ok, templates.test.ts 17 of 17
+and server 335 of 335 against embedded Postgres; `drizzle-kit generate` still
+says "No schema changes, nothing to migrate".
+
 ---
 
 ## 8b — Screen
