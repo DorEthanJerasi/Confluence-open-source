@@ -112,11 +112,15 @@ export const EMPTY_DOC: Doc = { type: 'doc', content: [] };
 
 const pageTitle = z.string().trim().max(200);
 
-export const createPageBody = z.object({
-  title: pageTitle.default(''),
-  parentId: z.string().uuid().nullable().default(null),
-  doc: docSchema.optional(),
-});
+export const createPageBody = z
+  .object({
+    title: pageTitle.default(''),
+    parentId: z.string().uuid().nullable().default(null),
+    doc: docSchema.optional(),
+    /** A built-in (`builtin:<slug>`) or a template of this space; the page starts as a copy of it. */
+    templateId: z.string().min(1).max(100).optional(),
+  })
+  .refine((v) => !(v.doc !== undefined && v.templateId !== undefined), 'Send either a doc or a templateId, not both');
 
 export const savePageBody = z
   .object({ baseVersion: z.number().int().min(1), title: pageTitle.optional(), doc: docSchema.optional() })
@@ -185,6 +189,63 @@ export const versionListQuery = z.object({ before: z.coerce.number().int().min(1
 
 /** POST /api/pages/:id/versions/:version/restore. */
 export const restoreVersionBody = z.object({ baseVersion: z.number().int().min(1) });
+
+// ---------- Page templates (docs/done-checks/08-templates.md) ----------
+
+export const TEMPLATE_NAME_MAX = 80;
+export const TEMPLATE_DESCRIPTION_MAX = 200;
+/** Ids of the templates shipped with the app start with this. */
+export const BUILTIN_TEMPLATE_PREFIX = 'builtin:';
+
+const templateName = z
+  .string()
+  .trim()
+  .min(1, 'Give the template a name')
+  .max(TEMPLATE_NAME_MAX, `Keep the name under ${TEMPLATE_NAME_MAX} characters`);
+const templateDescription = z
+  .string()
+  .trim()
+  .max(TEMPLATE_DESCRIPTION_MAX, `Keep the description under ${TEMPLATE_DESCRIPTION_MAX} characters`);
+
+/** POST /api/spaces/:key/templates: from a doc, or from a page of the same space (exactly one). */
+export const createTemplateBody = z
+  .object({
+    name: templateName,
+    description: templateDescription.default(''),
+    doc: docSchema.optional(),
+    fromPageId: z.string().uuid().optional(),
+  })
+  .strict()
+  .refine((v) => (v.doc === undefined) !== (v.fromPageId === undefined), 'Send either a doc or a fromPageId');
+
+/** PATCH /api/spaces/:key/templates/:id. A stale baseVersion is refused with 409. */
+export const updateTemplateBody = z
+  .object({
+    baseVersion: z.number().int().min(1),
+    name: templateName.optional(),
+    description: templateDescription.optional(),
+    doc: docSchema.optional(),
+  })
+  .strict()
+  .refine((v) => v.name !== undefined || v.description !== undefined || v.doc !== undefined, 'Nothing to save');
+
+/** One entry of GET /api/spaces/:key/templates (no doc). Built-ins first, then the space's own by name. */
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  builtIn: boolean;
+  /** null for built-ins. */
+  updatedAt: string | null;
+  updatedBy: { id: string; name: string } | null;
+}
+
+/** GET /api/spaces/:key/templates/:id, and what create and edit return. */
+export interface PageTemplate extends TemplateSummary {
+  version: number;
+  doc: Doc;
+  createdAt: string | null;
+}
 
 // ---------- Page comments (docs/done-checks/07-comments.md) ----------
 

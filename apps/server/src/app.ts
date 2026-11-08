@@ -19,6 +19,7 @@ import { linkPreviewRoutes } from './routes/linkPreview.js';
 import { searchRoutes } from './routes/search.js';
 import { aiPageRoutes, aiRoutes } from './routes/ai.js';
 import { commentRoutes, pageCommentRoutes } from './routes/comments.js';
+import { templateRoutes } from './routes/templates.js';
 import { createProvider, guardProvider, type AiProvider } from './ai/provider.js';
 import type { SafeFetchOptions } from './embeds/safeFetch.js';
 import { DiskStorage, type FileStorage } from './files/storage.js';
@@ -86,6 +87,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(userRoutes, { prefix: '/api/users' });
   await app.register(spaceRoutes, { prefix: '/api/spaces' });
+  await app.register(templateRoutes, { prefix: '/api/spaces' });
   await app.register(pageRoutes, { prefix: '/api/pages' });
   await app.register(aiPageRoutes, { prefix: '/api/pages' });
   await app.register(pageCommentRoutes, { prefix: '/api/pages' });

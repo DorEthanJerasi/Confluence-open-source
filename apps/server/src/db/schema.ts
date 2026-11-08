@@ -199,3 +199,27 @@ export const linkPreviews = pgTable('link_previews', {
   siteName: text('site_name'),
   fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Page templates (docs/done-checks/08-templates.md). A template body is the
+// same ProseMirror JSON as pages.doc, checked by the same normalizeDoc. Only a
+// space's own templates live here; the built-ins are in code
+// (src/templates/builtin.ts). A page made from a template is a copy, so no
+// page points back here. No ydoc_state: templates are never co-edited.
+export const pageTemplates = pgTable(
+  'page_templates',
+  {
+    id: id(),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => spaces.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    doc: jsonb('doc').$type<Doc>().notNull(),
+    version: integer('version').notNull().default(1),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('page_templates_space_name_idx').on(t.spaceId, sql`lower(${t.name})`)],
+);

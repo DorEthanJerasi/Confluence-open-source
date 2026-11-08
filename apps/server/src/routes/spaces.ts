@@ -15,6 +15,7 @@ import { effectiveRole, requireSpaceByKey, visibleSpaceIds, type SpaceRow } from
 import { requireInstanceRole, requireUser } from '../auth/guard.js';
 import { badRequest, conflict, notFound, parse, uuidParam } from '../http.js';
 import { byPosition, createPage, getPageView } from '../pages/pages.js';
+import { pageDocFromTemplate } from '../templates/templates.js';
 
 export function toSpace(row: SpaceRow, myRole: Role): Space {
   return {
@@ -157,8 +158,10 @@ export async function spaceRoutes(app: FastifyInstance) {
   app.post<KeyParams>('/:key/pages', async (req, reply) => {
     const user = requireUser(req);
     const { space } = await requireSpaceByKey(db, user, req.params.key, 'editor');
-    const body = parse(createPageBody, req.body);
-    const id = await createPage(db, { spaceId: space.id, userId: user.id, ...body });
+    const { templateId, ...body } = parse(createPageBody, req.body);
+    // From a template: the page starts as a copy of it, with fresh block ids (done-check 08).
+    const doc = templateId !== undefined ? await pageDocFromTemplate(db, space, templateId) : body.doc;
+    const id = await createPage(db, { spaceId: space.id, userId: user.id, ...body, doc });
     return reply.status(201).send({ page: await getPageView(db, user, id) });
   });
 }
