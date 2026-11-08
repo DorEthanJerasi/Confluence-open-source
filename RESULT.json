@@ -1,0 +1,76 @@
+{
+  "items": [
+    {
+      "title": "Stillwater - the team wiki app",
+      "kind": "app",
+      "path": "apps",
+      "note": "Web screens (apps/web) and server API (apps/server): sign-up and log-in, admin/editor/viewer roles, per-space permissions, spaces with nested pages, block editor with slash commands and embeds, permission-aware search, page history with restore, page comments, AI summarise and ask-your-docs."
+    },
+    {
+      "title": "Shared code and editor document schema",
+      "kind": "code",
+      "path": "packages",
+      "note": "packages/shared (types used by both sides) and packages/editor-schema (the editor's document JSON shape, kept ready for real-time co-editing later)."
+    },
+    {
+      "title": "Self-host setup: docker compose with Postgres",
+      "kind": "code",
+      "path": "docker-compose.yml",
+      "note": "docker compose up starts the app and Postgres; the image is built from docker/Dockerfile and runs migrations on start."
+    },
+    {
+      "title": "Install and run without Docker",
+      "kind": "code",
+      "path": "install.sh",
+      "note": "Installs and starts the wiki in the foreground on $PORT with a local Postgres; plain steps in INSTALL.md."
+    },
+    {
+      "title": "Install guide",
+      "kind": "document",
+      "path": "INSTALL.md",
+      "note": "Plain steps for docker compose and for install.sh, including where to set the AI key."
+    },
+    {
+      "title": "README",
+      "kind": "document",
+      "path": "README.md",
+      "note": "What the wiki does and how to start it."
+    },
+    {
+      "title": "Architecture decisions",
+      "kind": "document",
+      "path": "ARCHITECTURE.md",
+      "note": "Editor and document model, storage, auth and permissions, search, history, AI provider design, comments."
+    },
+    {
+      "title": "Design system",
+      "kind": "document",
+      "path": "DESIGN.md",
+      "note": "Calm light and dark tokens, spacing, motion rules and the contrast check."
+    },
+    {
+      "title": "Done-checks for each feature",
+      "kind": "document",
+      "path": "docs/done-checks",
+      "note": "One checklist per feature with build, test, hand-check and lead-check boxes, plus the loop criteria c1-c6 and how each is proved."
+    },
+    {
+      "title": "End-to-end browser tests",
+      "kind": "code",
+      "path": "e2e/tests",
+      "note": "Playwright suite (npm run test:e2e): auth, permissions, nested pages, editor, embeds, search, history, AI on the stub, comments."
+    },
+    {
+      "title": "Check scripts",
+      "kind": "code",
+      "path": "scripts",
+      "note": "npm run check (typecheck, unit and API tests, originality scan, contrast check) and smoke.sh for the real compose stack."
+    },
+    {
+      "title": "Showcase video",
+      "kind": "video",
+      "path": "docs/showcase/showcase.mp4",
+      "note": "Recorded 2026-11-07: the wiki in use. Preview GIF at docs/showcase/preview.gif."
+    }
+  ]
+}

@@ -458,3 +458,22 @@ here just now. Suggest the checker run each criterion as its own command
 with its own timeout, rather than one shared budget across all of them —
 see the project memory note on shared time budgets causing spurious
 timeouts.
+
+## Lead, loop #3 run 2 round 1, 2026-11-08: next feature and RESULT.json
+- The build order (core and auth, slash editor with embeds, search and
+  history, AI) is complete and lead-checked in `02`–`04`; nothing in it is
+  left to pick. The owner's extra order (b) is comments, then templates, then
+  favourites and recently viewed. Comments are accepted (`07`, 41/41 boxes).
+- **Next feature: page templates.** Its done-check is
+  `docs/done-checks/08-templates.md` (0/45 boxes; no template code exists yet,
+  checked: no `apps/server/src/templates`, no migration `0005`). Next item is
+  **8a — Server** for the coder, then 8b screen, hand check, lead check.
+  Favourites get their own done-check only after templates are accepted and
+  committed, so no new scope is opened this round.
+- Templates must not regress c1–c6: `npm run check` and `npm run test:e2e`
+  (35/35 at `66de108d`) stay green after each of 8a and 8b.
+- Wrote `RESULT.json` (12 items, every path checked to exist). The project
+  cannot be finished without it.
+- Still open outside the code: c1 needs a reachable Docker daemon (the
+  sandbox binds the socket to `/dev/null`), and pushing needs a GitHub remote
+  and login; both are already asked in the team chat and not re-asked here.
