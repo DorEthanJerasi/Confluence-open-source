@@ -114,16 +114,16 @@ Unique index `page_templates_space_name_idx` on `(space_id, lower(name))`.
 ## 8a — Server
 
 ### Build
-- [ ] Drizzle table `pageTemplates` in `apps/server/src/db/schema.ts` and
+- [x] Drizzle table `pageTemplates` in `apps/server/src/db/schema.ts` and
       migration `apps/server/drizzle/0005_page_templates.sql` (with its meta
       snapshot), exactly as in the Table section.
-- [ ] `apps/server/src/templates/builtin.ts` holds the four built-ins
+- [x] `apps/server/src/templates/builtin.ts` holds the four built-ins
       (`id`, `name`, `description`, `doc`), each a real starting structure
       (headings, lists, a table or callout where it helps), in our own words.
-- [ ] `apps/server/src/templates/templates.ts` holds all template logic. Every
+- [x] `apps/server/src/templates/templates.ts` holds all template logic. Every
       function checks access through `requireSpaceByKey`. There is no second
       permission rule. Every doc that is stored goes through `normalizeDoc`.
-- [ ] Routes (signed out → 401 on all of them; viewer → 403; cannot see the
+- [x] Routes (signed out → 401 on all of them; viewer → 403; cannot see the
       space → 404):
   - `GET /api/spaces/:key/templates` returns
     `{ templates: [{ id, name, description, builtIn, updatedAt, updatedBy:
@@ -148,47 +148,57 @@ Unique index `page_templates_space_name_idx` on `(space_id, lower(name))`.
     with fresh block ids. `templateId` with `doc` gives 400. An unknown id or
     another space's template gives 400. Without `templateId` it works as
     before.
-- [ ] Names and descriptions are checked as in Decisions. Unknown fields are
+- [x] Names and descriptions are checked as in Decisions. Unknown fields are
       refused. A doc the schema does not allow gives 400, as for pages.
-- [ ] No template route writes `pages`, `page_versions` or `pages.version`,
+- [x] No template route writes `pages`, `page_versions` or `pages.version`,
       except page creation through `createPage`.
 
 ### Checks that must exist and pass — `apps/server/test/templates.test.ts` (Vitest, real Postgres)
-- [ ] Every built-in passes `normalizeDoc` unchanged apart from block ids, and
+- [x] Every built-in passes `normalizeDoc` unchanged apart from block ids, and
       each has at least one heading and one more block.
-- [ ] An editor lists templates in a new space: the four built-ins, in order,
+- [x] An editor lists templates in a new space: the four built-ins, in order,
       with `builtIn: true` and no docs in the list.
-- [ ] An editor creates a template from a doc (heading, task list, table, code
+- [x] An editor creates a template from a doc (heading, task list, table, code
       block) and another from a page (`fromPageId`). Both are listed and
       `GET` returns their docs. The one from a page has the page's content
       with different block ids from the page.
-- [ ] New page from a built-in and from a space template: 201, the page's
+- [x] New page from a built-in and from a space template: 201, the page's
       doc has the template's content, every top-level block id is new and
       unique, the page is at version 1 with one `page_versions` row.
-- [ ] Two pages made from the same template have no block id in common.
-- [ ] Editing a template (PATCH) bumps its version. A stale `baseVersion` →
+- [x] Two pages made from the same template have no block id in common.
+- [x] Editing a template (PATCH) bumps its version. A stale `baseVersion` →
       409. A page made from it earlier is unchanged. Deleting it → 204, it is
       gone from the list, and that page is still there and unchanged.
-- [ ] Duplicate name in the same space (any case) → 409. The same name in
+- [x] Duplicate name in the same space (any case) → 409. The same name in
       another space is fine. Empty name, name over 80, description over 200 →
       400. A doc with an unknown node type → 400.
-- [ ] A space's template is 404 from another space (GET, PATCH, DELETE) and
+- [x] A space's template is 404 from another space (GET, PATCH, DELETE) and
       400 as `templateId` there. `fromPageId` naming a page in another space →
       400.
-- [ ] Built-in: PATCH and DELETE → 403 for an editor, a space admin and an
+- [x] Built-in: PATCH and DELETE → 403 for an editor, a space admin and an
       instance admin.
-- [ ] Viewer of the space: 403 on list, get, create, edit, delete, and on
+- [x] Viewer of the space: 403 on list, get, create, edit, delete, and on
       creating a page with `templateId`.
-- [ ] Non-member of a restricted space: 404 on every template route. After
+- [x] Non-member of a restricted space: 404 on every template route. After
       they are added as an editor, they work. After they are removed, 404
       again.
-- [ ] A word that appears only in a template is not found by search, and a
+- [x] A word that appears only in a template is not found by search, and a
       template's text is never in what AI ask retrieves.
-- [ ] Deleting the space removes its `page_templates` rows.
-- [ ] A template name of `<img src=x onerror=alert(1)>` comes back as the same
+- [x] Deleting the space removes its `page_templates` rows.
+- [x] A template name of `<img src=x onerror=alert(1)>` comes back as the same
       text.
-- [ ] Signed out → 401 on every route.
-- [ ] `npm run check` passes (this file is part of it).
+- [x] Signed out → 401 on every route.
+- [x] `npm run check` passes (this file is part of it).
+
+### Builder's record for 8a (p12-coder, 2026-11-09)
+Built in `73453ed0`; checked this turn with Node 22.11.0, embedded Postgres:
+- `npx vitest run test/templates.test.ts` in `apps/server`: 17 of 17 pass. Each
+  box above has its own case in that file (names match the boxes).
+- `drizzle-kit generate` against `src/db/schema.ts`: "No schema changes,
+  nothing to migrate", so migration 0005 and its snapshot match the table.
+- `npm run check`: exit 0, all 7 steps ok, server 335 of 335, editor-schema 11
+  of 11, originality scan and contrast check ok.
+Waiting for the lead's own run before 8b counts as started.
 
 ---
 
