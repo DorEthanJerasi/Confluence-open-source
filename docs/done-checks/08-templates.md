@@ -295,6 +295,36 @@ Build boxes above ticked after my own run on `a55c3c62` (Node 22):
   ask for it later it becomes its own feature with its own done-check.
 The e2e boxes wait for `templates.spec.ts` (item #115).
 
+### Designer's check of the Styles box (p12-design, item #114, 2026-11-09)
+Read `TemplatePicker.tsx`, `SaveAsTemplate.tsx`, `TemplatesTab.tsx`, `TemplateDoc.tsx`
+and their CSS in `app.css` (lines ~1411–1596), plus the shared `Modal` in
+`ui.tsx`. No code change was needed; everything already meets the box:
+- Every new rule uses tokens only: `var(--space-*)`, `var(--color-*)`,
+  `var(--radius-*)`, `var(--text-*)`, `var(--weight-*)`, `var(--motion-*)` and
+  `var(--ease-*)`. The only bare numbers are 1px/2px hairlines and the 640px
+  breakpoint, the same convention used everywhere else in `app.css`.
+- Motion: the picker preview and modal use `fade-in`/`modal-in`/`overlay-in`
+  at `--motion-base` with `--ease-enter`, nothing longer or bouncier.
+  `prefers-reduced-motion` is handled once, globally, in `tokens.css`, so
+  these components need no media query of their own.
+- Keyboard and focus: `Modal` (shared by the picker, Save as template and the
+  template editor) traps Tab/Shift+Tab, focuses the first field or
+  `[data-autofocus]` on open, returns focus on close, and Escape closes
+  without side effects. The picker's option list adds ArrowUp/Down/Home/End
+  and Enter on top of that.
+- Ran `npm run check` myself: exit 0, all 7 steps ok (server 335/335,
+  originality scan and contrast check both ok).
+- Drove it in Chromium with a throwaway spec (deleted, not committed, same
+  practice as item #113): opened the picker from "New page" and screenshotted
+  it light and dark, arrowed down to Meeting notes and screenshotted the
+  preview light and dark, opened Save as template (name pre-filled with the
+  page title, focused with a visible ring, Save template enabled) and the
+  Templates tab (built-ins with Preview only, calm spacing) in both themes.
+  Nothing used a raw colour or a harsh edge in either theme; dark mode text
+  stayed readable throughout.
+Styles and originality boxes above confirmed ticked; no change needed to code
+or tokens.
+
 ### Checks that must exist and pass — `e2e/tests/templates.spec.ts` (Playwright)
 Set-up (people, space, a page with a heading and a table) goes through the API
 helpers in `e2e/login.ts`. At most 3 tests, so the suite's time barely grows.
