@@ -210,32 +210,32 @@ says "No schema changes, nothing to migrate".
 ## 8b — Screen
 
 ### Build
-- [ ] **Template picker.** Every "New page" and "Add a sub-page" control opens
+- [x] **Template picker.** Every "New page" and "Add a sub-page" control opens
       a quiet picker before the page is made: "Blank page" first and focused,
       then the built-ins (marked "Built in"), then the space's templates, each
       with its name and description. Choosing one shows a read-only preview of
       its content in the same editor styles. "Use template" (or Enter, or a
       double-click) makes the page and opens it in edit mode. "Blank page" keeps
       today's behaviour. Escape closes the picker and makes nothing.
-- [ ] **Save as template.** Editors and up get "Save as template" on a page
+- [x] **Save as template.** Editors and up get "Save as template" on a page
       (in the page header, next to History and Comments, or in its "more"
       menu). It asks for a name and a short description, saves the page's
       current content, and shows a quiet confirmation. A name clash shows the
       server's message in the dialog.
-- [ ] **Templates tab** in space settings, for editors and up: lists built-ins
+- [x] **Templates tab** in space settings, for editors and up: lists built-ins
       (with only "Preview") and the space's templates (with "Edit" and
       "Delete"). "New template" starts a blank one. Edit opens the template in
       the same block editor, with slash commands and embeds, plus its name and
       description. It saves with a Save button, not autosave, and handles a 409
       by offering a reload. Delete asks a quiet confirm first.
-- [ ] Viewers see no template control anywhere: no picker (they have no "New
+- [x] Viewers see no template control anywhere: no picker (they have no "New
       page" today), no "Save as template", no Templates tab.
-- [ ] Styles use only the design tokens (no raw colours, sizes or timings in the
+- [x] Styles use only the design tokens (no raw colours, sizes or timings in the
       new CSS). Light and dark both look right. Motion is soft and short and
       turns off under `prefers-reduced-motion`. The picker and dialogs trap
       focus, can be used with the keyboard alone, and pass the contrast check
       (c6).
-- [ ] Nothing in the new code, text or built-in templates uses another
+- [x] Nothing in the new code, text or built-in templates uses another
       product's names or assets (the originality scan, c5, passes).
 
 ### Builder's record for 8b screens (p12-coder, item #113, 2026-11-09)
@@ -267,6 +267,31 @@ Boxes above are left for the lead to tick after their own look. What is built:
 - The existing e2e specs that click "New page"/"Sub-page" now go through the
   picker's Blank page (`pickBlankPage` in `e2e/login.ts`). The new
   `templates.spec.ts` is item #115.
+
+### Lead's check of 8b screens (item #113, 2026-11-09)
+Build boxes above ticked after my own run on `a55c3c62` (Node 22):
+- `npm run check`: exit 0, all 7 steps ok, server 335 of 335.
+- `npm run test:e2e`: exit 0, 35 of 35, retries 0, no skips or `.only`.
+- Read the diff: every "New page", sidebar "+", tree "Add a sub-page" and
+  page "Sub-page" goes through `newPage` → `TemplatePicker`; viewers have no
+  `canEdit`, so none of them render. New CSS uses tokens only (1px hairlines
+  and the 640px breakpoint as elsewhere); reduced motion is handled globally
+  in `tokens.css`.
+- Drove it in Chromium with a throwaway spec (deleted, not committed): picker
+  opens with Blank focused, four built-ins labelled "Built in", arrow key
+  previews, Escape makes no page, Tab stays inside the dialog; Meeting notes
+  makes a page whose headings survive a reload; Sub-page shows "Under …";
+  Save as template works and a case-only clash shows "This space already has
+  a template with that name"; Templates tab: built-ins Preview only, Edit with
+  slash menu, a save after another tab's save offers Reload, Save then works;
+  a page made from it has the content; Delete asks first and leaves that page.
+  As a viewer: no New page, Sub-page, Save as template or Templates tab; the
+  tab's URL goes back to General; the API gives 403. Light and dark
+  screenshots of the picker and template editor look calm and readable.
+- Open point (uploads straight into a template) stays open; it does not block
+  8b, since images and files come in through "Save as template". Decided
+  with the e2e item, not here.
+The e2e boxes wait for `templates.spec.ts` (item #115).
 
 ### Checks that must exist and pass — `e2e/tests/templates.spec.ts` (Playwright)
 Set-up (people, space, a page with a heading and a table) goes through the API
