@@ -160,25 +160,25 @@ A check constraint stops a row being both a reply and resolved
 ## 7b — Screen
 
 ### Build
-- [ ] A **Comments** button in the page header, next to History, showing the
+- [x] A **Comments** button in the page header, next to History, showing the
       number of open threads (no number when 0). It opens a side panel that
       slides in the same way the history panel does. Only one of the two is
       open at a time.
-- [ ] The panel lists open threads, then a quiet "Resolved (n)" row that
+- [x] The panel lists open threads, then a quiet "Resolved (n)" row that
       expands. Each thread shows the author, `timeAgo` with `exactTime` on hover,
       the body as plain text, "edited" when edited, and its replies indented one
       step. Block threads show a short quote of the block's first line, and
       clicking it scrolls to the block and briefly highlights it. Threads on a
       removed block say so.
-- [ ] A box at the bottom of the panel to comment on the whole page.
+- [x] A box at the bottom of the panel to comment on the whole page.
       `Ctrl+Enter` / `⌘Enter` sends. Empty text cannot be sent.
-- [ ] Block comments: hovering or focusing a top-level block shows a small
+- [x] Block comments: hovering or focusing a top-level block shows a small
       comment button in the margin, which opens the composer for that block.
       Blocks with open threads show a quiet marker in the margin, and clicking
       it opens the panel at that thread. This works in read-only mode too, so
       viewers can comment. The marker and button are not part of the document
       (no change to `pages.doc` and no autosave).
-- [ ] Controls follow the role table: Reply for everyone who can read. Edit
+- [x] Controls follow the role table: Reply for everyone who can read. Edit
       for the author only. Delete for the author and space admins, with a quiet
       confirm. Resolve and Reopen for editors and up. A viewer never sees
       Resolve. A control you cannot use is not shown at all.
@@ -186,7 +186,7 @@ A check constraint stops a row being both a reply and resolved
       new CSS). Light and dark both look right. Motion is soft and short and
       turns off under `prefers-reduced-motion`. Text and controls pass the
       contrast check (c6).
-- [ ] Nothing in the new code or text uses another product's names or assets
+- [x] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
 ### Checks that must exist and pass — `e2e/tests/comments.spec.ts` (Playwright)
@@ -208,26 +208,62 @@ in `e2e/login.ts`. At most 3 tests, so the suite's time barely grows.
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] Sign up as admin, make a second person a viewer of a restricted space and
+- [x] Sign up as admin, make a second person a viewer of a restricted space and
       a third person a non-member. As admin: comment on a block and on the page,
       reply, edit, resolve, reopen, delete.
-- [ ] As the viewer: can read and reply, cannot resolve, cannot edit others'
+- [x] As the viewer: can read and reply, cannot resolve, cannot edit others'
       comments.
-- [ ] As the non-member: the page and its comments are not reachable (404 page).
-- [ ] Type above a commented block, save, reload: the marker is still on the
+- [x] As the non-member: the page and its comments are not reachable (404 page).
+- [x] Type above a commented block, save, reload: the marker is still on the
       same block. Delete the block: the thread shows "on a removed block".
-- [ ] Restore an older version from History: comments are unchanged.
-- [ ] Light and dark: calm, spaced out, no harsh colours. The panel motion is
+- [x] Restore an older version from History: comments are unchanged.
+- [x] Light and dark: calm, spaced out, no harsh colours. The panel motion is
       quiet, and with reduced motion turned on it is instant.
 
 ## Lead check (before templates start)
-- [ ] Read the diff myself: the comment table and routes match the Decisions
+- [x] Read the diff myself: the comment table and routes match the Decisions
       and Table sections, there is one permission path (`requirePageRole`), and
       no comment code writes the page document.
-- [ ] Ran `npm run check` myself: exit 0.
-- [ ] Ran `npm run test:e2e` myself: all passed, exit 0, count noted here.
-- [ ] Hand check above done and ticked.
-- [ ] Committed on `master` (pushing is done from outside the workspace, as
+- [x] Ran `npm run check` myself: exit 0.
+- [x] Ran `npm run test:e2e` myself: all passed, exit 0, count noted here.
+- [x] Hand check above done and ticked.
+- [x] Committed on `master` (pushing is done from outside the workspace, as
       the owner said).
-- [ ] ARCHITECTURE.md gets a short "Comments" section: the table, block-id
+- [x] ARCHITECTURE.md gets a short "Comments" section: the table, block-id
       anchors, and why it stays out of the Yjs document.
+
+### Lead's record (item #109, 2026-11-08)
+
+- `npm run check`: exit 0. Typecheck, originality scan, contrast check,
+  editor-schema 11/11, server 318/318 (16 files).
+- `npm run test:e2e`: **35 passed**, exit 0. No retries, no skips, no `.only`
+  (32 earlier tests + 3 in `comments.spec.ts`).
+- Hand check: a Playwright script drove the built app in Chromium on a fresh
+  Postgres, as four people (admin Ada, space editor Eli, viewer Vera, non-member
+  Nora), with screenshots looked at in light and dark. 22/22 steps passed:
+  - Comments button shows no number at 0 and the open count after that. History
+    and Comments never open together. Send is off for empty or space-only text.
+    Ctrl+Enter sends.
+  - Admin: block comment (marker on that block), page comment, reply, edit
+    ("edited"), resolve (moves under "Resolved (1)", count 2 → 1), reopen,
+    delete with the quiet "Delete this comment?" confirm. Commenting left the
+    page at version 1 (no save). Clicking a thread's quote highlights its block.
+  - Viewer: page is read-only. Sees every thread, replies, starts a block thread
+    from the margin button, and gets Edit only on her own comments. No Resolve
+    anywhere (light and dark). Resolve through the API gives 403. Clicking the
+    block marker opens the panel at that thread, highlighted.
+  - Non-member: the page shows "Nothing here", and the comments API gives 404.
+  - Admin typed two paragraphs above the commented block, saved and reloaded.
+    The marker was still level with the same block (same block id). After the
+    block was deleted and saved, the thread stayed with "On a removed block"
+    and the marker went away.
+  - Restoring the oldest version from History left all 3 threads identical
+    (ids, bodies, replies, authors, times). The block came back with it, so
+    the thread was on it again.
+  - Motion: the panel slides in over 0.32s with a soft ease. With reduced
+    motion turned on it is instant (1e-06s). Both themes look calm and spaced
+    out, with no harsh colours.
+- The 7b screen boxes above were checked against the screen that went in with
+  `bec607b2` (item #106 was cancelled because that screen already did the job).
+  Each one was seen working in the steps above. Originality is c5 in
+  `npm run check`.

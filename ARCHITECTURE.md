@@ -285,3 +285,36 @@ someone on the team has done it by hand in a browser against the compose stack.
 5. **Look and finish** — light and dark both pass the contrast check; reduced
    motion is respected; `check-original` passes; `docker compose up` on a clean
    machine gives a working wiki.
+6. **Page comments** — threads on the whole page or on one block, replies,
+   edit, delete, resolve and reopen, all following the space role; a
+   non-member gets 404. Full check, split into items 7a (server) and 7b
+   (screen): `docs/done-checks/07-comments.md`. Design: §13.
+
+## 13. Comments
+
+- **Own table, never in the page.** Comments live in `page_comments`
+  (migration `0004_page_comments`): `id` (uuid, never reused), `page_id`
+  (cascade on page delete), `parent_id` (one level of replies), `block_id`,
+  `author_id`, `body` (plain text, 1–4,000 characters), `created_at`,
+  `edited_at`, `resolved_at` / `resolved_by` (roots only), `deleted_at`
+  (soft delete; the body is cleared). No comment action writes `pages`,
+  `pages.version` or `page_versions`, so saving, history and restore never
+  touch comments, and restoring an old version leaves them as they are.
+- **Anchored to block ids, not positions.** A thread is on the whole page
+  (`block_id` null) or on one top-level block, by that block's `attrs.id`
+  (§3 rule 2). Typing above a block does not move its comments. If a save
+  removes the block, the thread stays and shows "on a removed block". If a
+  restore brings the block back, the thread is on it again.
+- **Why it stays out of the Yjs document.** When co-editing comes, the Yjs
+  document will hold page content only. Comments are not marks or nodes in it,
+  so concurrent edits cannot break or duplicate them, and the comments table
+  and routes need no change. Block ids already survive Yjs merges, so they stay
+  valid anchors. The block markers on screen are an overlay drawn from the
+  editor's block positions, not part of the document.
+- **One permission path.** Every comment route goes through `requirePageRole`
+  (§7): anyone who can read the page may comment and reply (a comment is not an
+  edit); only the author may edit; the author or a space admin may delete;
+  editors and up may resolve and reopen; someone who cannot read the page gets
+  404.
+- **Not yet:** live updates of other people's comments (the panel reloads when
+  opened and after your own actions), mentions, notifications.
