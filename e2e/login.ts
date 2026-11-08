@@ -75,14 +75,15 @@ export async function createSpace(page: Page, space: NewSpace): Promise<void> {
  * Creates a page in a space through /api/spaces/:key/pages, the call behind
  * the "New page" and "Sub-page" buttons, with its title and, if given, one
  * paragraph of text already in it (one version, like a page typed and saved
- * by its author). Returns the page's id and its URL path.
+ * by its author). Returns the page's id and its URL path. Pass `doc` instead
+ * of `text` for content a single paragraph can't hold (a heading, a table).
  */
 export async function createPage(
   page: Page,
   spaceKey: string,
-  init: { title: string; text?: string; parentId?: string },
+  init: { title: string; text?: string; doc?: object; parentId?: string },
 ): Promise<{ id: string; path: string }> {
-  const doc = {
+  const doc = init.doc ?? {
     type: 'doc',
     content: init.text ? [{ type: 'paragraph', content: [{ type: 'text', text: init.text }] }] : [],
   };
