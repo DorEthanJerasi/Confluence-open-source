@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
 import type { Page } from '@stillwater/shared';
 import { SummaryCard, useAiEnabled } from '../ai/SummaryCard';
-import { api, ApiFailure } from '../api';
+import { api, ApiFailure, favouritesKey, recentKey } from '../api';
 import { BlockMargin } from '../comments/BlockMargin';
 import { CommentsPanel } from '../comments/CommentsPanel';
 import { blockElement, commentsKey, openThreads, scrollToBlock } from '../comments/blocks';
@@ -73,6 +73,49 @@ function TitleEditor({ page, editable, saver }: { page: Page; editable: boolean;
   );
 }
 
+/**
+ * The star in the page header (done-check 09, 9b). It changes at once; the
+ * requests go out one after another so quick clicks land in order, and if the
+ * server refuses, the star goes back and a quiet note says so.
+ */
+function FavouriteButton({ page, onFailed }: { page: Page; onFailed: (failed: boolean) => void }) {
+  const qc = useQueryClient();
+  const [on, setOn] = useState(page.favourite);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+
+  function toggle() {
+    const next = !on;
+    setOn(next);
+    onFailed(false);
+    queue.current = queue.current.then(async () => {
+      try {
+        await api.setFavourite(page.id, next);
+        qc.setQueryData<{ page: Page }>(['page', page.id], (old) =>
+          old ? { page: { ...old.page, favourite: next } } : old,
+        );
+      } catch {
+        setOn(!next);
+        onFailed(true);
+      } finally {
+        void qc.invalidateQueries({ queryKey: favouritesKey });
+      }
+    });
+  }
+
+  const label = on ? 'Remove from favourites' : 'Add to favourites';
+  return (
+    <button
+      className={`btn btn-quiet btn-star${on ? ' is-on' : ''}`}
+      onClick={toggle}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+    >
+      <Star size={16} aria-hidden="true" />
+    </button>
+  );
+}
+
 /** True when the body holds no text and no non-paragraph block. */
 function isEmptyDoc(page: Page) {
   const blocks = (page.doc.content ?? []) as { type?: string; content?: unknown[] }[];
@@ -117,6 +160,12 @@ function PageView({ page }: { page: Page }) {
   const closeSummary = useCallback(() => setSummaryOpen(false), []);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState<string | null>(null);
+  const [starFailed, setStarFailed] = useState(false);
+  useEffect(() => {
+    if (!starFailed) return;
+    const t = window.setTimeout(() => setStarFailed(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [starFailed]);
   // The confirmation fades on its own after a few seconds.
   useEffect(() => {
     if (!templateSaved) return;
@@ -212,6 +261,22 @@ function PageView({ page }: { page: Page }) {
     void qc.invalidateQueries({ queryKey: commentsKey(page.id) });
   }
 
+  // One "viewed" record per open of this page (done-check 09). PageView is
+  // keyed by page id, so this runs when a page is opened from anywhere, and
+  // not on autosave, refetch, reload after a conflict or window focus. The
+  // ref keeps React's development double-run from sending it twice.
+  const viewSent = useRef(false);
+  useEffect(() => {
+    if (viewSent.current) return;
+    viewSent.current = true;
+    api
+      .recordView(page.id)
+      .then(() => qc.invalidateQueries({ queryKey: recentKey }))
+      .catch(() => {
+        // A missed view only leaves the Recently viewed list a step behind.
+      });
+  }, [qc, page.id]);
+
   const children = items.filter((i) => i.parentId === page.id);
 
   return (
@@ -243,6 +308,7 @@ function PageView({ page }: { page: Page }) {
           </p>
         </div>
         <div className="row">
+          <FavouriteButton page={page} onFailed={setStarFailed} />
           <button
             className={`btn btn-quiet${historyOpen ? ' is-on' : ''}`}
             onClick={() => (historyOpen && !panelClosing ? closePanel() : openPanel('history'))}
@@ -290,6 +356,11 @@ function PageView({ page }: { page: Page }) {
         </div>
       </div>
 
+      {starFailed && (
+        <p className="note star-note fade-in" role="status">
+          Couldn’t update favourites. Try again in a moment.
+        </p>
+      )}
       {templateSaved && (
         <p className="note template-saved fade-in" role="status">
           Saved as template “{templateSaved}”. It is in the picker for new pages in this space.

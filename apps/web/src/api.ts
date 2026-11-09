@@ -8,6 +8,7 @@ import type {
   Comment,
   CommentList,
   Doc,
+  FavouritePage,
   LinkPreview,
   Page,
   PageSummary,
@@ -15,6 +16,7 @@ import type {
   PageTreeItem,
   PageVersion,
   PageVersionList,
+  RecentPage,
   Role,
   SearchResult,
   Space,
@@ -150,7 +152,21 @@ export const api = {
   deleteComment: (id: string) => request<null>('DELETE', `/api/comments/${enc(id)}`),
   resolveComment: (id: string) => request<{ comment: Comment }>('POST', `/api/comments/${enc(id)}/resolve`),
   reopenComment: (id: string) => request<{ comment: Comment }>('POST', `/api/comments/${enc(id)}/reopen`),
+
+  /** Star (on) or unstar a page for the person asking. Idempotent both ways; 404 if they cannot read it. */
+  setFavourite: (pageId: string, on: boolean) =>
+    request<null>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/favourite`),
+  /** Records that the person opened this page (once per open; never on autosave or refetch). */
+  recordView: (pageId: string) => request<null>('POST', `/api/pages/${enc(pageId)}/viewed`),
+  /** The person's own favourites they can still read, newest first. */
+  favourites: () => get<{ pages: FavouritePage[] }>('/api/me/favourites'),
+  /** The person's own recently opened pages they can still read, newest first. */
+  recent: () => get<{ pages: RecentPage[] }>('/api/me/recent'),
 };
+
+/** Query keys of the two personal lists on Home. */
+export const favouritesKey = ['me', 'favourites'] as const;
+export const recentKey = ['me', 'recent'] as const;
 
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';

@@ -51,7 +51,8 @@ test.describe.serial('wiki basics', () => {
 
   test('reopening the page shows the saved title', async ({ page }) => {
     await logIn(page, admin);
-    await page.getByRole('link', { name: spaceName }).click();
+    // The space's card (Home's "Recently viewed" also names the space).
+    await page.getByRole('region', { name: 'Spaces' }).getByRole('link', { name: spaceName }).click();
     await expect(page).toHaveURL(`/s/${spaceKey}`);
     await page.getByRole('main').getByRole('link', { name: pageTitle }).click();
     await expect(page).toHaveURL(/\/s\/ocean-notes\/p\/.+/);

@@ -1594,3 +1594,50 @@ textarea.input {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- Favourites and recently viewed (done-check 09) ----
+ * .btn-star: the icon-only star toggle in the page header; it is a
+ *   .btn-quiet with aria-pressed, and .is-on fills the star in the accent.
+ * .personal: the two quiet lists at the top of Home, side by side when there
+ *   is room. Each is .list + .list-link rows with the space and time on the
+ *   right; an empty list is one muted line (the small empty state). */
+.btn-star svg {
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    fill var(--motion-fast) var(--ease-standard);
+}
+.btn-star.is-on svg {
+  color: var(--color-accent);
+  fill: currentColor;
+}
+.star-note {
+  margin-bottom: var(--space-4);
+}
+.personal {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space-9) * 3), 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-7);
+}
+.personal-list {
+  min-width: 0;
+}
+.personal-list .list {
+  /* Pull the rows out by their padding so their text lines up with the heading. */
+  margin: 0 calc(-1 * var(--space-4));
+}
+.personal-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.personal-meta {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.spaces-head {
+  margin-bottom: var(--space-5);
+}
+.spaces-head .section-title {
+  margin-bottom: var(--space-1);
+}

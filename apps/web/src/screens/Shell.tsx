@@ -120,7 +120,7 @@ export function Shell() {
         </Link>
         <nav className="topnav">
           <NavLink to="/" end className="topnav-link">
-            Spaces
+            Home
           </NavLink>
           {user.role === 'admin' && (
             <NavLink to="/admin/users" className="topnav-link">
