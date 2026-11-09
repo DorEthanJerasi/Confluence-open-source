@@ -357,41 +357,89 @@ helpers in `e2e/login.ts`. At most 3 tests, so the suite's time barely grows.
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] Sign up as admin, add a space editor, a viewer of a restricted space and
+- [x] Sign up as admin, add a space editor, a viewer of a restricted space and
       a non-member. As the editor: make a page from each built-in; each opens
       with sensible content and the editor works on it (slash menu, typing,
       autosave).
-- [ ] Save a page that has an image, a code block and a table as a template.
+- [x] Save a page that has an image, a code block and a table as a template.
       Make a page from it: the image shows, the code is highlighted, the table
       is there. Add a comment to a block of the new page; the source page has
       no marker on its matching block.
-- [ ] Edit the template in the Templates tab (add a block with `/`), save,
+- [x] Edit the template in the Templates tab (add a block with `/`), save,
       reload: the change stayed. A page made before is unchanged. Delete the
       template: the page made from it stays.
-- [ ] Two tabs edit the same template; the second save gets the reload offer
+- [x] Two tabs edit the same template; the second save gets the reload offer
       and loses nothing silently.
-- [ ] As the viewer: no template controls. As the non-member: the space and
+- [x] As the viewer: no template controls. As the non-member: the space and
       its templates are not reachable (404 page; the API gives 404).
-- [ ] Search for a word that is only in a template: nothing is found.
-- [ ] Light and dark: the picker and dialogs are calm, spaced out, no harsh
+- [x] Search for a word that is only in a template: nothing is found.
+- [x] Light and dark: the picker and dialogs are calm, spaced out, no harsh
       colours. Motion is quiet, and with reduced motion turned on it is
       instant. Everything works with the keyboard alone.
 
 ## Lead check (before favourites start)
-- [ ] Read the diff myself: the table and routes match the Decisions and Table
+- [x] Read the diff myself: the table and routes match the Decisions and Table
       sections, there is one permission path (`requireSpaceByKey`), every
       stored doc goes through `normalizeDoc`, copies get fresh block ids, and
       no template code writes a page except through `createPage`.
-- [ ] Ran `npm run check` myself: exit 0.
-- [ ] Ran `npm run test:e2e` myself: all passed, exit 0, count noted here.
-- [ ] Hand check above done and ticked.
-- [ ] Committed on `master` and pushed if the workspace can reach GitHub (the
+- [x] Ran `npm run check` myself: exit 0.
+- [x] Ran `npm run test:e2e` myself: all passed, exit 0, count noted here.
+- [x] Hand check above done and ticked.
+- [x] Committed on `master` and pushed if the workspace can reach GitHub (the
       owner said pushing is part of the brief; if there is still no remote,
       say so plainly in the record).
-- [ ] ARCHITECTURE.md gets a short "Templates" section: the table, built-ins
+- [x] ARCHITECTURE.md gets a short "Templates" section: the table, built-ins
       in code, copy with fresh block ids, and why it needs no change for
       co-editing. §12 gets a line pointing at this file.
 
 ### Lead's record
-(Filled in at the lead check: commands run, exit codes, test counts, what the
-hand check saw.)
+Item #116, 2026-11-09, on `452d2cde` plus this commit, Node 22.11.0.
+
+- **Diff read.** `page_templates` in `db/schema.ts` and
+  `drizzle/0005_page_templates.sql` match the Table section (cascade on space,
+  set null on users, unique `(space_id, lower(name))`). Every function in
+  `templates/templates.ts` starts with `requireSpaceByKey(…, 'editor')`; the
+  routes in `routes/templates.ts` only call those. Stored docs go through
+  `normalizeDoc` (create and copies through `withFreshBlockIds`, edits
+  directly). Both copy directions give fresh top-level block ids. The only page
+  write is `POST /api/spaces/:key/pages`, which calls `pageDocFromTemplate` and
+  then `createPage`; `templateId` with `doc` is refused by `createPageBody`.
+- **`npm run check`:** exit 0, all 7 steps ok (server 335 of 335, editor-schema
+  11 of 11, originality scan and contrast check ok), 122s.
+- **`npm run test:e2e`:** exit 0, **38 of 38** passed with 3 workers (35 earlier
+  tests + 3 in `templates.spec.ts`), retries 0, no `.only`/`.skip`/`fixme`.
+- **Hand check.** Drove the built app in Chromium with a throwaway Playwright
+  script (deleted, not committed), as for #113. Restricted space, an editor
+  member, a viewer member and a non-member:
+  - Each of the four built-ins made a page with its headings (e.g. Meeting
+    notes: Details, People, Agenda, Notes, Decisions, Next steps). On each, `/`
+    inserted a divider, typing saved ("Saved"), and both stayed after a reload.
+  - A page with an uploaded image, a JavaScript code block and a table was
+    saved as a template. The page made from it showed the image (loaded), the
+    highlighted code and the table. A comment on its first paragraph shows a
+    marker; the source page's matching paragraph has a different block id and
+    no marker.
+  - In the Templates tab a quote added with `/` was saved and was still there
+    after a reload; the page made earlier did not get it. Two tabs editing at
+    once: the second save showed "This template was changed somewhere else…
+    Your changes are still here and have not been saved" with Reload; the
+    server kept the first tab's text only, and Reload brought it in. Deleting
+    the template left the page made from it as it was.
+  - Viewer: no New page, no Save as template, no Templates tab (its URL goes
+    to General), template list API 403. Non-member: the space and its
+    Templates tab show "Nothing here"; space, list, space template and built-in
+    routes all give 404.
+  - A word only in a template: search finds nothing (`{"results":[]}`).
+  - Picker screenshots in light and dark: soft, roomy, readable. With reduced
+    motion the dialog's animation time is effectively 0 and nothing is running.
+    Keyboard only: Tab to New page, Enter, ArrowDown, Enter made a Meeting notes
+    page.
+- **Small thing seen, not part of templates:** the "Nothing here" (404) screen
+  has no `main` landmark. Worth a one-line fix in a later item.
+- **ARCHITECTURE.md:** new §14 Templates; §12 item 7 points at this file.
+- **GitHub:** there is still no git remote, no GitHub login and no SSH key in
+  this workspace, so I could not push from here. The work is committed on
+  `master`. The owner said the work is already being pushed; if that happens
+  outside the workspace, this commit goes with it.
+
+**Templates are accepted.** Favourites and recently viewed (09) can start.

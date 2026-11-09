@@ -289,6 +289,11 @@ someone on the team has done it by hand in a browser against the compose stack.
    edit, delete, resolve and reopen, all following the space role; a
    non-member gets 404. Full check, split into items 7a (server) and 7b
    (screen): `docs/done-checks/07-comments.md`. Design: §13.
+7. **Page templates** — every "New page" opens a picker (Blank page, four
+   built-ins, the space's own templates); "Save as template" on a page; a
+   Templates tab in space settings to edit and delete; viewers see none of it;
+   a non-member gets 404. Full check, split into items 8a (server) and 8b
+   (screen): `docs/done-checks/08-templates.md`. Design: §14.
 
 ## 13. Comments
 
@@ -318,3 +323,37 @@ someone on the team has done it by hand in a browser against the compose stack.
   404.
 - **Not yet:** live updates of other people's comments (the panel reloads when
   opened and after your own actions), mentions, notifications.
+
+## 14. Templates
+
+- **Own table, same document.** Space templates live in `page_templates`
+  (migration `0005_page_templates`): `id`, `space_id` (cascade on space
+  delete), `name` (1–80, unique in the space ignoring case), `description`
+  (0–200), `doc`, `version`, `created_by` / `updated_by`, timestamps. `doc` is
+  the same ProseMirror JSON as `pages.doc`, checked by the same `normalizeDoc`
+  against the same editor schema and edited in the same block editor. There is
+  no second format.
+- **Built-ins live in code.** *Meeting notes*, *Project brief*, *How-to
+  guide* and *Decision record* are in `apps/server/src/templates/builtin.ts`
+  with fixed ids `builtin:<slug>`. Nothing is seeded, an upgrade can improve
+  them, and nobody can edit or delete them (403).
+- **A new page is a copy with fresh block ids.** Making a page from a template,
+  and saving a page as a template, copies the doc and gives every top-level
+  block a new id. The page does not point back to the template, so editing or
+  deleting a template never changes pages already made from it, and no two
+  pages share a block id (comment anchors and history stay per page). Pages are
+  only ever made through `createPage`; no template route writes `pages` or
+  `page_versions`.
+- **One permission path.** Every template route goes through
+  `requireSpaceByKey(…, 'editor')` (§7): editors and up use and manage
+  templates, viewers get 403 and see no template control, someone who cannot
+  see the space gets 404. Templates are not pages: they are not in the tree,
+  search, history or AI.
+- **Why co-editing needs no change.** Templates do not use `pages.ydoc_state`.
+  When co-editing comes, a page made from a template is seeded from its copied
+  JSON like any other new page. Templates themselves are edited by one person
+  at a time with a `baseVersion` check (a stale save gets 409 and a Reload
+  offer), so the table and routes stay as they are.
+- **Not yet:** uploading a file straight into a template (files come in through
+  "Save as template"; `attachments.page_id` stays NOT NULL), templates shared
+  across spaces, template variables.
