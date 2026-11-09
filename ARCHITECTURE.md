@@ -294,6 +294,11 @@ someone on the team has done it by hand in a browser against the compose stack.
    Templates tab in space settings to edit and delete; viewers see none of it;
    a non-member gets 404. Full check, split into items 8a (server) and 8b
    (screen): `docs/done-checks/08-templates.md`. Design: §14.
+8. **Favourites and recently viewed** — anyone who can read a page can star
+   it; Home shows the person's own Favourites and Recently viewed; lists are
+   filtered by `visibleSpaceIds` when read, so lost access or a deleted page
+   drops out at once; a non-member gets 404. Full check, split into items 9a
+   (server) and 9b (screen): `docs/done-checks/09-favourites-recent.md`.
 
 ## 13. Comments
 
