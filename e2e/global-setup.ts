@@ -47,6 +47,14 @@ export default async function globalSetup() {
     throw new Error('e2e: build missing — run `npm run build` before the e2e tests (test:e2e does this for you)');
   }
 
+  const t0 = Date.now();
+  const lap: string[] = [];
+  let tl = t0;
+  const mark = (name: string) => {
+    const now = Date.now();
+    lap.push(`${name} ${((now - tl) / 1000).toFixed(1)}s`);
+    tl = now;
+  };
   const dir = mkdtempSync(join(tmpdir(), 'stillwater-e2e-pg-'));
   const pgPort = await freePort();
   const pg = new EmbeddedPostgres({
@@ -59,7 +67,9 @@ export default async function globalSetup() {
     onLog: () => {},
   });
   await pg.initialise();
+  mark('initdb');
   await pg.start();
+  mark('postgres start');
   // One database and one server per worker, so spec files can run in
   // parallel without emptying each other's data (see workers.ts).
   const servers: ChildProcess[] = [];
@@ -81,6 +91,7 @@ export default async function globalSetup() {
   try {
     // One at a time: Postgres refuses CREATE DATABASE while template1 is busy.
     for (let i = 0; i < workerCount; i++) await pg.createDatabase(`stillwater_e2e_${i}`);
+    mark('create databases');
     await Promise.all(
       Array.from({ length: workerCount }, async (_, i) => {
         const dbName = `stillwater_e2e_${i}`;
@@ -111,6 +122,8 @@ export default async function globalSetup() {
         await waitForHealth(`http://127.0.0.1:${appPort}/health`);
       }),
     );
+    mark('servers healthy');
+    console.log(`e2e: set-up took ${((Date.now() - t0) / 1000).toFixed(1)}s (${lap.join(', ')})`);
   } catch (err) {
     await teardown();
     throw err;
