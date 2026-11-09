@@ -298,7 +298,7 @@ someone on the team has done it by hand in a browser against the compose stack.
    it; Home shows the person's own Favourites and Recently viewed; lists are
    filtered by `visibleSpaceIds` when read, so lost access or a deleted page
    drops out at once; a non-member gets 404. Full check, split into items 9a
-   (server) and 9b (screen): `docs/done-checks/09-favourites-recent.md`.
+   (server) and 9b (screen): `docs/done-checks/09-favourites-recent.md`. Design: §15.
 
 ## 13. Comments
 
@@ -362,3 +362,40 @@ someone on the team has done it by hand in a browser against the compose stack.
 - **Not yet:** uploading a file straight into a template (files come in through
   "Save as template"; `attachments.page_id` stays NOT NULL), templates shared
   across spaces, template variables.
+
+## 15. Favourites and recently viewed
+
+- **Two small tables, nothing else.** Migration `0006_favourites_views` adds
+  `page_favourites (user_id, page_id, created_at)` and
+  `page_views (user_id, page_id, viewed_at)`. Each has the primary key
+  `(user_id, page_id)`, cascades from `users` and `pages`, and one index on
+  `(user_id, time desc)`. The rows hold a user id, a page id and a time,
+  nothing more. Logic is in `apps/server/src/me/personal.ts`, routes in
+  `apps/server/src/routes/personal.ts`.
+- **Personal only.** Each person sees only their own lists, admins included.
+  There are no counts or "starred by" lists anywhere.
+- **Filtered when read, never cleaned up.** Starring and recording a view go
+  through `requirePageRole(…, 'viewer')` (§7), so a page the person cannot read
+  is 404. `GET /api/me/favourites` (newest first, up to 100) and
+  `GET /api/me/recent` (newest first, up to 20) join `pages` and keep only
+  pages where `deleted_at is null` and whose space is in
+  `visibleSpaceIds(user)`. Losing access to a space, or a page being deleted,
+  takes it off both lists at once. Getting access back brings it back. There
+  is no second permission rule and no clean-up job.
+- **A view is recorded on purpose.** `GET /api/pages/:id` stays read-only (it
+  only gains `favourite: boolean`). The page screen calls
+  `POST /api/pages/:id/viewed` once each time a page is opened (`PageView` is
+  keyed by page id). Autosave, refetch and window focus never send it, so
+  history, search, AI and the template picker cannot fill the list.
+- **50-row cap.** A view is an upsert of `viewed_at` (one row per person and
+  page). In the same transaction, any of that person's rows past their newest
+  50 are deleted. Home shows 8 of each list.
+- **Not content.** Favourites and views never change `pages.version`,
+  `pages.updated_at` or `page_versions`, and they are not in search, AI or
+  history.
+- **Why co-editing needs no change.** These tables never touch the document
+  or `pages.ydoc_state`. When co-editing comes, opening a page still sends one
+  `viewed` call and the star is still one row per person, whoever else is
+  editing the page.
+- **Not yet:** favourite spaces, folders or ordering of favourites, a
+  favourites section in the sidebar, view counts.

@@ -167,15 +167,15 @@ tester (e2e run), and the lead's hand and lead checks.
 ## 9b — Screen
 
 ### Build
-- [ ] **Star on the page.** In the page header, next to History and Comments,
+- [x] **Star on the page.** In the page header, next to History and Comments,
       a star button for everyone who can read the page (viewers too). Its
       label is "Add to favourites" or "Remove from favourites" and it has
       `aria-pressed`. It changes at once and goes back with a quiet note if the
       server refuses.
-- [ ] **View recorded on open.** Opening a page (from a link, the tree, search,
+- [x] **View recorded on open.** Opening a page (from a link, the tree, search,
       Home or the address bar) calls `POST /api/pages/:id/viewed` once.
       Autosave, refetch and switching tabs do not.
-- [ ] **Home gets two quiet sections** above the list of spaces:
+- [x] **Home gets two quiet sections** above the list of spaces:
       "Favourites" and "Recently viewed", each showing up to 8 pages as
       title + space name + a soft relative time, each a link to the page. When
       a list is empty it says so in one calm line (for example "Star a page to
@@ -192,14 +192,14 @@ tester (e2e run), and the lead's hand and lead checks.
 Set-up (people, spaces, pages) goes through the API helpers in `e2e/login.ts`.
 **At most 2 tests**: c2 has timed out in the outside checker before, so the
 suite must not grow much.
-- [ ] An editor opens two pages, stars one, goes Home: the starred page is
+- [x] An editor opens two pages, stars one, goes Home: the starred page is
       under "Favourites", both are under "Recently viewed" with the last one
       opened first. They unstar it from the page and Home shows the empty
       line. Checked once in dark mode.
-- [ ] A viewer of a restricted space stars a page there and sees it on Home;
+- [x] A viewer of a restricted space stars a page there and sees it on Home;
       an admin removes them from the space; after a reload the page is gone
       from both of their lists.
-- [ ] `npm run test:e2e` passes in full: 38 + the new tests, no retries, no
+- [x] `npm run test:e2e` passes in full: 38 + the new tests, no retries, no
       skips, no `.only`. The lead notes the wall-clock time and the load; it
       should stay under the 75 s target in `06-c2-time-budget.md`.
 
@@ -245,30 +245,91 @@ Checked in the workspace myself, not from the builder's report:
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] As an editor: star pages in two spaces from the page header, open
+- [x] As an editor: star pages in two spaces from the page header, open
       several pages, go Home: both lists are right and in order. Unstar from
       the page: Home updates without a reload.
-- [ ] Keep a page open and let autosave run for a while: Recently viewed does
+- [x] Keep a page open and let autosave run for a while: Recently viewed does
       not jump around.
-- [ ] As a viewer: the star is there and works. As a non-member: a page link
+- [x] As a viewer: the star is there and works. As a non-member: a page link
       in a restricted space is the 404 page, and nothing from it is in their
       lists.
-- [ ] Delete a starred page: it is gone from both lists.
-- [ ] Light and dark: the star and the two Home sections are calm, spaced out,
+- [x] Delete a starred page: it is gone from both lists.
+- [x] Light and dark: the star and the two Home sections are calm, spaced out,
       no harsh colours; motion is quiet and instant with reduced motion on.
       Everything works with the keyboard alone.
 
 ## Lead check (closes the owner's option b)
-- [ ] Read the diff myself: tables and routes match the Decisions and Tables
+- [x] Read the diff myself: tables and routes match the Decisions and Tables
       sections, page checks go through `requirePageRole`, lists filter with
       `visibleSpaceIds`, and nothing here writes `pages` or `page_versions`.
-- [ ] Ran `npm run check` myself: exit 0.
-- [ ] Ran `npm run test:e2e` myself: all passed, exit 0, count and wall time
+- [x] Ran `npm run check` myself: exit 0.
+- [x] Ran `npm run test:e2e` myself: all passed, exit 0, count and wall time
       noted here.
-- [ ] Hand check above done and ticked.
-- [ ] Committed on `master` and pushed if the workspace can reach GitHub (if
+- [x] Hand check above done and ticked.
+- [x] Committed on `master` and pushed if the workspace can reach GitHub (if
       there is still no remote, say so plainly in the record).
-- [ ] ARCHITECTURE.md gets a short "Favourites and recently viewed" section:
+- [x] ARCHITECTURE.md gets a short "Favourites and recently viewed" section:
       the two tables, filtering when read, the explicit `viewed` call, the
       50-row cap, and why co-editing needs no change. §12 gets a line pointing
       at this file.
+
+### Lead sign-off (2026-11-10, work item #117)
+Every box above is ticked from my own reading of the code and my own runs on
+this machine (Node 22), not from the team's reports.
+
+- **Code.** Read the 9b diff (`0cd27829`, against the 9a acceptance
+  `8d4cc4f9`): `FavouriteButton` in `PageScreen.tsx` (labels, `aria-pressed`,
+  changes at once, sends in order, goes back and shows a note on refusal);
+  the single `recordView` effect guarded by a ref in `PageView`, which is
+  rendered with `key={pageId}`, so one call per open; Home's two
+  `PersonalList` sections with up to 8 rows and calm empty lines, refetched on
+  every visit and invalidated by the star. Re-read `me/personal.ts`: writes go
+  through `requirePageRole(…, 'viewer')`, both lists join `pages` with
+  `deleted_at is null` and `visibleSpaceIds(user)`, the 50-row cap runs in the
+  upsert's transaction, and nothing writes `pages` or `page_versions`.
+- **`npm run check`:** exit 0, "all 7 steps ok", 348 server tests + 11 schema
+  tests passed (personal.test.ts 13/13), 110 s wall, load 4.3 at the start.
+- **`npm run test:e2e`:** exit 0, **40 passed** (both favourites tests among
+  them), retries 0, no `.only`/`.skip` in `e2e/tests`, 3 workers, **95 s wall**
+  (Playwright: 1.5 m), load 9.3 at the start and 10.2 at the end. That is under
+  the 95 s busy-box limit but over the 75 s target. The speed gap belongs to
+  done-check 10, not to this feature (favourites adds 2 tests, 11 s).
+- **Hand check.** There is no person at a screen and no Docker on this
+  machine, so I drove the built app in Chromium with a script I wrote for this
+  (kept out of the repo). It ran against the same server build and an
+  embedded Postgres migrated the same way as the compose stack. I looked at
+  every screenshot myself. What ran:
+  editor Eli starred "Watering plan" (Garden) and "Bread recipe" (Kitchen) from
+  the header and opened "Seed list". Home showed Favourites: Bread recipe, then
+  Watering plan, and Recently viewed: Seed list, Bread recipe, Watering plan.
+  With the keyboard only, I tabbed to the first favourite and pressed Enter,
+  then tabbed to the star and pressed Space to unstar. Home, reached through
+  the in-app link with no reload, then listed only Watering plan. Then 3 edits
+  with "Saved" each time, plus blur, visibilitychange and focus events: **0**
+  extra `viewed` calls, and the order stayed Watering plan > Bread recipe > Seed
+  list. Deleting the starred Watering plan took it off both lists. Viewer Vic
+  starred Seed list and it worked. The Vault page link (Vic is not a member)
+  showed "Nothing here" with no star; `PUT favourite` and `viewed` both gave
+  404; nothing from Vault was in either list. With the server forced to refuse
+  (500), the star went back to off, "Couldn't update favourites. Try again in a
+  moment." showed and then faded, and the list stayed empty. The star's
+  transition is 0.14 s normally and 0.000001 s with reduced motion. Light
+  and dark screenshots of Home and the page: calm, spaced out, accent-only
+  star, readable meta text, a visible focus ring on the star and the rows.
+- **Pushed?** No. This workspace still has **no git remote and no GitHub
+  credentials** (`git remote -v` is empty; no `gh`, no credential helper, no
+  SSH key). The work is committed on `master` only.
+- **ARCHITECTURE.md:** new §15 "Favourites and recently viewed". §12 item 8
+  points at this file and at §15.
+
+Gaps I am naming, not hiding (none of them blocks this feature):
+1. The hand check was a scripted Chromium run, not a person in a browser
+   against `docker compose up`. The compose run waits for a machine with
+   Docker, the same as the open boxes in 02 to 05.
+2. e2e wall time is 95 s against the 75 s target. That is done-check 10.
+3. A small wording leftover: the 404 screen's button still says "Back to
+   spaces", but that screen is now called "Home". It is cosmetic and goes to
+   the designer as a one-line fix.
+
+**Favourites and recently viewed is accepted. This closes the owner's option
+(b): comments, templates, favourites.**
