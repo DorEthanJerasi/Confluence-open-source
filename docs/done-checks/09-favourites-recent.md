@@ -181,11 +181,11 @@ tester (e2e run), and the lead's hand and lead checks.
       a list is empty it says so in one calm line (for example "Star a page to
       keep it here.") instead of hiding the heading. Starring or unstarring a
       page updates Home without a reload.
-- [ ] Styles use only the design tokens (no raw colours, sizes or timings in
+- [x] Styles use only the design tokens (no raw colours, sizes or timings in
       the new CSS). Light and dark both look right. Motion is soft and short
       and turns off under `prefers-reduced-motion`. The star and the lists work
       with the keyboard alone and pass the contrast check (c6).
-- [ ] Nothing in the new code or text uses another product's names or assets
+- [x] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
 ### Checks that must exist and pass — `e2e/tests/favourites.spec.ts` (Playwright)
@@ -222,6 +222,25 @@ this note is the check, run by hand afterwards, Node 22). Boxes are left for the
   machine load average 11 to 21 during the run. That is over the 75 s target in
   `06-c2-time-budget.md`; the load was high, so the lead should time it again.
 - Dark-mode screenshot: `e2e/test-results/favourites-home-dark.png`, looked at: calm, readable.
+
+### Designer's check of the styles box (2026-11-09, loop #3 round 3)
+Checked in the workspace myself, not from the builder's report:
+- `app.css` diff for this feature uses only `var(--space-*)`, `var(--motion-fast)`,
+  `var(--ease-standard)` and `var(--color-accent)` — no raw colours, sizes or
+  timings. `.btn-star` is a plain `.btn-quiet` with `.is-on` filling the star
+  in the accent colour, the same pattern as History/Comments.
+- `PersonalList` on Home reuses `.list` / `.list-link` / `.muted.small` /
+  `.section-title`, each section has its own `aria-labelledby` heading, and
+  the empty line sits in the list in place of the rows — no layout jump.
+- Reduced motion needs no per-component rule: the new `.btn-star` and
+  `.fade-in` transitions are caught by the single global
+  `prefers-reduced-motion` block in `tokens.css` (lines 135-140).
+- Ran `node scripts/check-original.mjs`: `ORIGINAL OK`.
+- Ran `node scripts/check-contrast.mjs`: `CONTRAST OK`, 50 pairs, both themes.
+- Ran `npm run typecheck --prefix apps/web`: exit 0.
+- The star button and the two Home lists are plain `<button>` / `<Link>`
+  elements with `aria-pressed` / visible focus from the shared `.btn` and
+  `.list-link` styles, so keyboard-only use needs no new code.
 
 ---
 
