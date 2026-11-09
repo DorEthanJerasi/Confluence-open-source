@@ -328,18 +328,31 @@ or tokens.
 ### Checks that must exist and pass — `e2e/tests/templates.spec.ts` (Playwright)
 Set-up (people, space, a page with a heading and a table) goes through the API
 helpers in `e2e/login.ts`. At most 3 tests, so the suite's time barely grows.
-- [ ] An editor clicks "New page", picks *Meeting notes*, sees the preview,
+- [x] An editor clicks "New page", picks *Meeting notes*, sees the preview,
       uses it: the new page opens with the template's headings. After a reload
       they are still there. "Blank page" still makes an empty page.
-- [ ] An editor saves the set-up page as a template, then makes a new page from
+- [x] An editor saves the set-up page as a template, then makes a new page from
       it: the heading and table are there. In the Templates tab they change the
       template's text and save; a page made from it now has the change, and the
       page made before does not. They delete the template and it is gone from
       the picker. This test is also checked once in dark mode.
-- [ ] A viewer of the space opens it: no "New page", no "Save as template", no
+- [x] A viewer of the space opens it: no "New page", no "Save as template", no
       Templates tab.
-- [ ] `npm run test:e2e` passes in full: 35 + the new tests, no retries, no
+- [x] `npm run test:e2e` passes in full: 35 + the new tests, no retries, no
       skips, no `.only`.
+
+### Lead's check of item #115 (2026-11-09)
+- Read `e2e/tests/templates.spec.ts` (3 tests, `describe.serial`, set-up through
+  `createPage(..., { doc })` in `e2e/login.ts`) against the three boxes above:
+  each step of each box is asserted on screen, none is skipped.
+- `npm run test:e2e` with the default 3 workers (load ~13-19): exit 0, 38 of 38,
+  retries 0, no `.only`/`.skip`/`fixme` in `e2e/tests/`.
+- The dark-mode screenshot (`e2e/test-results/templates-dark.png`) shows the
+  delete dialog on the dark theme; it is caught mid fade-in, which is fine for
+  a record shot.
+- The tester's report of 9 sign-up timeouts with 3 workers did not happen in
+  my run; if it comes back, raise it as its own item, not as part of templates.
+- Still no git remote in the workspace, so nothing is pushed.
 
 ---
 
