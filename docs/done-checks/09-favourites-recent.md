@@ -203,6 +203,26 @@ suite must not grow much.
       skips, no `.only`. The lead notes the wall-clock time and the load; it
       should stay under the 75 s target in `06-c2-time-budget.md`.
 
+### Builder report for 9b (2026-11-09, loop #3 round 3)
+Code is in `0cd27829` (the run that wrote it timed out before it could check it;
+this note is the check, run by hand afterwards, Node 22). Boxes are left for the lead.
+- Star: `FavouriteButton` in `apps/web/src/screens/PageScreen.tsx`, labels
+  "Add to favourites" / "Remove from favourites", `aria-pressed`, changes at
+  once, goes back with a quiet note ("Couldn't update favourites…") on refusal.
+- View: one `POST /viewed` per `PageView` mount (keyed by page id), guarded by a
+  ref; not on autosave, refetch or focus.
+- Home (`apps/web/src/screens/Home.tsx`): "Favourites" and "Recently viewed"
+  above Spaces, up to 8 rows each, calm empty lines. The nav link and heading now
+  say "Home"; `e2e/tests/wiki.spec.ts` was scoped to the Spaces region to match.
+- Styles: tokens only (`app.css`, end of file); reduced motion is covered by the
+  global rule in `tokens.css`.
+- `npm run typecheck`: exit 0. Originality scan: ORIGINAL OK. Contrast: 50 pairs OK.
+- `playwright test tests/favourites.spec.ts`: 2 passed.
+- `npm run test:e2e` in full: **40 passed** (38 + 2), retries 0, 2.0 min wall,
+  machine load average 11 to 21 during the run. That is over the 75 s target in
+  `06-c2-time-budget.md`; the load was high, so the lead should time it again.
+- Dark-mode screenshot: `e2e/test-results/favourites-home-dark.png`, looked at: calm, readable.
+
 ---
 
 ## Hand check (lead, in a browser, both themes)
