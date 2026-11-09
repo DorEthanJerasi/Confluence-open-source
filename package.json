@@ -16,7 +16,7 @@
     "start": "npm run start --workspace apps/server",
     "typecheck": "node scripts/build-if-needed.mjs packages/shared packages/editor-schema && npm run typecheck --workspace apps/server && npm run typecheck --workspace apps/web",
     "test": "node scripts/build-if-needed.mjs packages/shared packages/editor-schema && npm run test --workspace packages/editor-schema && npm run test --workspace apps/server",
-    "test:e2e": "node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && npm run install-browsers --workspace e2e && npm run test --workspace e2e",
+    "test:e2e": "node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && node e2e/ensure-browser.mjs && cd e2e && PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
     "test:ai": "node scripts/build-if-needed.mjs packages/shared packages/editor-schema && npm run test:ai --workspace apps/server",
     "check": "node scripts/check.mjs"
   }

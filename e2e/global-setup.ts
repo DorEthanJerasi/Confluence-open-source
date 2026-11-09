@@ -3,7 +3,7 @@
 // then one built apps/server/dist/index.js per test worker, each on its own
 // database and port, serving the built web app.
 // Returns a teardown closure, which Playwright runs after the whole run.
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, cpSync, renameSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +40,15 @@ async function waitForHealth(url: string, tries = 90): Promise<void> {
   throw new Error(`e2e: server never became healthy at ${url}`);
 }
 
+function embeddedPgVersion(): string {
+  try {
+    const pkg = join(repoRoot, 'node_modules/embedded-postgres/package.json');
+    return (JSON.parse(readFileSync(pkg, 'utf8')) as { version: string }).version.replace(/[^\w.-]/g, '_');
+  } catch {
+    return 'unknown';
+  }
+}
+
 export default async function globalSetup() {
   const serverEntry = join(repoRoot, 'apps/server/dist/index.js');
   const webIndex = join(repoRoot, 'apps/web/dist/index.html');
@@ -56,18 +65,43 @@ export default async function globalSetup() {
     tl = now;
   };
   const dir = mkdtempSync(join(tmpdir(), 'stillwater-e2e-pg-'));
+  const dataDir = join(dir, 'data');
   const pgPort = await freePort();
   const pg = new EmbeddedPostgres({
-    databaseDir: join(dir, 'data'),
+    databaseDir: dataDir,
     user: 'stillwater',
     password: 'stillwater',
     port: pgPort,
     persistent: false,
     autoRehydrateSymlinks: true,
     onLog: () => {},
+    // A throwaway cluster that is deleted after the run: nothing needs to
+    // survive a crash, so skip the disk syncs on every commit (each autosave
+    // is a commit). Test set-up only; the compose stack's Postgres is untouched.
+    postgresFlags: ['-c', 'fsync=off', '-c', 'synchronous_commit=off', '-c', 'full_page_writes=off'],
   });
-  await pg.initialise();
-  mark('initdb');
+  // initdb costs ~3 s of CPU on this busy box and makes the same empty
+  // cluster every time, so the first run keeps a copy in the temp dir and
+  // later runs copy that instead (~0.3 s). The copy is keyed by the
+  // embedded-postgres version, and is renamed into place only when complete,
+  // so an interrupted run never leaves half a cluster behind.
+  const cache = join(tmpdir(), `stillwater-e2e-pgcluster-${embeddedPgVersion()}`);
+  if (existsSync(join(cache, 'PG_VERSION'))) {
+    cpSync(cache, dataDir, { recursive: true });
+    mark('copy cluster');
+  } else {
+    await pg.initialise();
+    mark('initdb');
+    let part = '';
+    try {
+      part = mkdtempSync(`${cache}.part-`);
+      cpSync(dataDir, part, { recursive: true });
+      renameSync(part, cache);
+    } catch {
+      // another run got there first, or the temp dir is read-only: fine either way
+      if (part) rmSync(part, { recursive: true, force: true });
+    }
+  }
   await pg.start();
   mark('postgres start');
   // One database and one server per worker, so spec files can run in
