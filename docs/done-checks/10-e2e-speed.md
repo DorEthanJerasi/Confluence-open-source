@@ -158,6 +158,75 @@ What this run says:
   cached, compressed assets and a reused login) are still open. Boxes 1–2
   stay unticked until three runs meet the target.
 
+## Step 2: compressed, long-cached assets (coder, item #119, 2026-11-10 01:53)
+What changed (right for real users too, box 6):
+- `apps/web/vite.config.ts`: after each build, a small plugin writes a
+  `.br` (brotli, quality 11) and a `.gz` (gzip, level 9) copy next to every
+  text file over 1 KB in `dist/assets`. The Dockerfile needs no change: it
+  already runs this build and copies all of `dist`.
+- `apps/server/src/app.ts`: `@fastify/static` now has `preCompressed: true`,
+  so it sends the brotli copy if the browser accepts it, else gzip, else the
+  plain file. Nothing is compressed per request. Hashed files in `/assets/`
+  keep `Cache-Control: public, max-age=31536000, immutable` (the pattern now
+  also matches the `.js.br` / `.js.gz` file actually sent) and get
+  `Vary: Accept-Encoding`. `index.html`, client routes and other files stay
+  `no-cache`.
+- `apps/server/test/static.test.ts` (4 tests, pass): brotli sent with the
+  immutable header and Vary, body decodes back to the original and is under a
+  quarter of its size; gzip sent when brotli is not accepted; plain file when
+  neither is; `/`, `/index.html`, a client route and `/favicon.svg` are
+  `no-cache` and never `immutable` or a long max-age.
+
+What the browser now downloads per fresh context:
+
+| file              | plain   | brotli  | gzip    |
+|-------------------|---------|---------|---------|
+| PageEditor-*.js   | 663 KB  | 170 KB  | 209 KB  |
+| index-*.js        | 365 KB  | 96 KB   | 111 KB  |
+| PageScreen-*.js   | 35 KB   | 10 KB   | 11 KB   |
+| index-*.css       | 47 KB   | 7 KB    | 8 KB    |
+| **total**         | 1110 KB | 283 KB  | 339 KB  |
+
+**One timed run**, `/usr/bin/time npm run test:e2e`, default 3 workers,
+web and server freshly built just before (so builds skipped in the run):
+**40 passed (1.5m), 93.5 s wall, exit 0**. Load **9.69 at start, 11.81 at
+end**. Global set-up: **6.2 s** (initdb 1.4 s, Postgres start 0.3 s, create
+databases 0.3 s, three servers healthy 4.2 s).
+
+| spec file       | tests | summed test time |
+|-----------------|-------|------------------|
+| permissions     | 6 | 29.1 s |
+| history         | 5 | 23.0 s |
+| templates       | 3 | 16.6 s |
+| embeds          | 2 | 15.2 s |
+| video-links     | 2 | 14.4 s |
+| editor-slash    | 1 | 14.3 s |
+| search          | 4 | 13.6 s |
+| ai-ask-access   | 2 | 11.9 s |
+| ai-ask          | 1 | 10.9 s |
+| editor          | 3 | 10.6 s |
+| wiki            | 4 | 10.2 s |
+| favourites      | 2 | 10.0 s |
+| ai              | 1 | 8.6 s  |
+| comments-roles  | 1 | 8.2 s  |
+| comments-author | 1 | 7.4 s  |
+| comments        | 1 | 6.8 s  |
+| editor-conflict | 1 | 6.4 s  |
+| **total**       | 40 | **217.2 s** |
+
+What this run says:
+- 107 s → 93.5 s wall, and summed test time 248 s → 217 s, with a higher
+  load at the start (9.7 against 1.0). The two slowest single tests of step 1
+  dropped: templates' second test 19.9 s → 11.3 s, video-links' first
+  18.6 s → 1.5 s.
+- Still over the 75 s target. Boxes 1–2 stay unticked until three runs meet
+  it. Next in "Where to look first": a reused login and the permissions and
+  history files (now the two biggest).
+- One side cost: the web build took 253 s at this load. Brotli on the
+  biggest file alone took 1.9 s when measured on its own; the rest is Vite.
+  The build only runs when web sources change, so `npm run test:e2e` skips
+  it on a normal run.
+
 ## Who proves it
 - Coder: makes the change, ticks 1, 2, 4, 5, 6 with three timed runs recorded
   here (load at start and end), commits and pushes.

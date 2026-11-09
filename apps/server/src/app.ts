@@ -107,12 +107,17 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
     await app.register(fastifyStatic, {
       root: webDist,
       wildcard: false,
+      // The web build writes .br and .gz copies of each asset; send the one
+      // the browser accepts (brotli first), or the plain file if there is none.
+      preCompressed: true,
       // Files in /assets have a content hash in their name, so a browser may
       // keep them for good; everything else is checked again on each load.
+      // `path` is the file actually sent, so it may end in .br or .gz.
       cacheControl: false,
       setHeaders: (res, path) => {
-        const hashed = /[\\/]assets[\\/][^\\/]+-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/.test(path);
+        const hashed = /[\\/]assets[\\/][^\\/]+-[A-Za-z0-9_-]{8,}(\.[a-z0-9]+)+$/.test(path);
         res.setHeader('cache-control', hashed ? 'public, max-age=31536000, immutable' : 'no-cache');
+        if (hashed) res.setHeader('vary', 'Accept-Encoding');
       },
     });
   }
