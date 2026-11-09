@@ -235,3 +235,6 @@ gap is the checker's shared time budget, not this suite (same as item
 against its own done-check is the "<75s" speed target, which items
 #101-#103 already tried to close and could not fully, on this box's
 current load. Nothing in this round's run points to a new regression.
+
+## Superseded (lead, 2026-11-10)
+The suite now has 40 tests. The target and plan moved to `10-e2e-speed.md`.
