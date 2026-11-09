@@ -546,3 +546,41 @@ no change — confirmed by reading both and the migration file.
   migrate-on-start path is still sound with the new migration included; c1
   stays open only on Docker daemon access, same ask to the owner as every
   round before this one.
+
+## Tester's check, loop #3 round 3, 2026-11-09: reran all three suites after templates (08) and favourites (09) landed
+Last time I ran these myself was before templates and favourites existed
+(round 2). Since then 08 and 09 each added code, so I ran the real proof
+commands again, fresh, and read the actual output.
+
+- **c3 (unit/API, plus c5/c6)**: `npm run check` → **348/348 tests passed**,
+  7/7 steps ok, in 110.4s. Exit 0.
+- **c4 (AI stub)**: `npm run test:ai` → **66/66 passed** in 76.9s. Exit 0.
+  `/api/ai/status` still off with no key, on with the stub, as before.
+- **c2 (e2e)**: first run (default 3 workers) hit `npm run test:e2e`'s own
+  120s-per-command ceiling partway through the browser-install+build step,
+  then printed **26 passed, 5 failed, 9 did not run** after ~3 minutes of
+  actual test time. The 5 failures were all 30s *timeouts* (favourites list
+  not appearing, History button not opening, etc.), not wrong answers —
+  the signature this suite's own `e2e/workers.ts` comment already names:
+  this box's load average was **15–15.25** on 4 cores at the time (checked
+  with `uptime`), well past where 3 Chromium workers start starving each
+  other. So I reran with `E2E_WORKERS=1` under the same load (15.18) to take
+  worker contention out of the question: **40/40 passed in 3.6 minutes**,
+  covering every box in `docs/done-checks/`'s feature list including the
+  newest two (favourites/recently-viewed, templates) alongside auth, nested
+  permissions, the slash editor, every embed type, search, history,
+  comments and AI. Exit 0.
+- **Conclusion: c2, c3, c4 all pass.** The multi-worker run's 5 failures
+  were this sandbox's background load spilling into Playwright's own
+  parallelism, not a defect in templates, favourites, or anything else —
+  confirmed by the single-worker rerun passing clean on the exact same
+  commit under the exact same load. If the external checker also runs with
+  default (3) workers under similar load, it will see the same flake; it
+  should either set `E2E_WORKERS=1` (slower, ~3.6 min, but load-independent)
+  or give each criterion its own uncapped time budget rather than one
+  shared 120s step, per the existing note in project memory about shared
+  time budgets causing spurious timeouts.
+- **c1**: not re-run — devops already confirmed this round (commit
+  `5cc1d15b`) that the sandbox's Docker socket is unreachable by design,
+  and nothing about this round's work touches compose or migrations. No new
+  information to add from the tester's side.
