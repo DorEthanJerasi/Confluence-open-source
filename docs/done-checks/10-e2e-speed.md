@@ -93,6 +93,71 @@ the checker's limit.
    machine (for example fewer workers when the load is far above the core
    count), but prove with numbers that it is faster overall, not just safer.
 
+## Step 1: the three biggest files split (coder, item #118, 2026-11-10 01:28)
+`editor.spec.ts`, `ai.spec.ts` and `comments.spec.ts` are now nine files.
+Each one empties its database and builds its own starting point through the
+API helpers in `e2e/login.ts` (new: `addComment`), so it can run on any
+worker:
+
+- editor: `editor.spec.ts` (type, save, reload; viewer; reduced motion),
+  `editor-slash.spec.ts` (every slash block, table, ids),
+  `editor-conflict.spec.ts` (two tabs, 409 note).
+- ai: `ai.spec.ts` (Summarise), `ai-ask.spec.ts` (answer, [1] link, Sources),
+  `ai-ask-access.spec.ts` (restricted space, AI off).
+- comments: `comments.spec.ts` (adding through the panel),
+  `comments-roles.spec.ts` (viewer replies, editor resolves and reopens),
+  `comments-author.spec.ts` (edit, delete, deleted root keeps its reply).
+  People, page and locators are shared in `e2e/comments-page.ts`.
+
+No test, assertion or time limit was removed or raised. What a later test
+used to inherit from an earlier one is now made through the API: the
+"Hello calm world" page (editor-slash, editor-conflict), Beck's two comments
+and Cleo's reply (comments-roles, comments-author, with the block id fixed in
+the page doc), and the admin plus the open "Garden notes" page
+(ai-ask-access). The things still done on screen are the things each test is
+about. One check was added: comments-roles waits for the block marker before
+resolving.
+
+**One timed run**, `/usr/bin/time npm run test:e2e`, default 3 workers,
+builds skipped (up to date): **40 passed (1.8m), 107.3 s wall, exit 0**.
+Load 0.98 at start, **12.59 at end** (it climbed during the run).
+Global set-up: **5.1 s** (initdb 1.0 s, Postgres start 0.2 s, create
+databases 0.2 s, three servers healthy 3.6 s).
+
+| spec file       | tests | summed test time | per test |
+|-----------------|-------|------------------|----------|
+| permissions     | 6 | 38.1 s | 2.7, 6.8, 4.0, 10.3, 7.3, 7.0 |
+| templates       | 3 | 31.0 s | 7.1, 19.9, 4.0 |
+| video-links     | 2 | 25.8 s | 18.6, 7.2 |
+| history         | 5 | 24.0 s | 4.7, 2.9, 6.4, 4.9, 5.1 |
+| wiki            | 4 | 20.8 s | 7.8, 5.2, 4.1, 3.7 |
+| search          | 4 | 15.0 s | 5.2, 4.1, 3.5, 2.2 |
+| embeds          | 2 | 13.2 s | 10.8, 2.4 |
+| editor-slash    | 1 | 12.8 s | 12.8 |
+| ai-ask-access   | 2 | 10.1 s | 8.0, 2.1 |
+| ai-ask          | 1 | 9.6 s  | 9.6 |
+| favourites      | 2 | 8.5 s  | 5.1, 3.4 |
+| ai              | 1 | 8.2 s  | 8.2 |
+| editor          | 3 | 7.8 s  | 3.9, 1.9, 2.0 |
+| editor-conflict | 1 | 6.3 s  | 6.3 |
+| comments-roles  | 1 | 5.8 s  | 5.8 |
+| comments-author | 1 | 5.6 s  | 5.6 |
+| comments        | 1 | 5.2 s  | 5.2 |
+| **total**       | 40 | **247.8 s** | |
+
+What this run says:
+- The nine new files are each 5–13 s, so none of them holds a worker up any
+  more. The split did what it was for.
+- The run as a whole is not under the 75 s target yet (107 s, with the load
+  rising to 12.6 while it ran). Set-up is only 5 s, so start-up is not the
+  cost; the cost is the tests themselves under load.
+- The big files are now the ones nobody split: **permissions 38 s,
+  templates 31 s, video-links 26 s, history 24 s**. The slow single tests
+  are templates' second test (19.9 s) and video-links' first (18.6 s).
+- Next steps in "Where to look first" (2 for these four files, then 3:
+  cached, compressed assets and a reused login) are still open. Boxes 1–2
+  stay unticked until three runs meet the target.
+
 ## Who proves it
 - Coder: makes the change, ticks 1, 2, 4, 5, 6 with three timed runs recorded
   here (load at start and end), commits and pushes.

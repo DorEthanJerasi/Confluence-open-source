@@ -105,3 +105,21 @@ export async function pickBlankPage(page: Page): Promise<void> {
   await expect(picker.getByRole('option', { name: /Blank page/ })).toBeFocused();
   await picker.getByRole('button', { name: 'Create page' }).click();
 }
+
+/**
+ * Adds a comment through /api/pages/:id/comments, the call behind the
+ * comment composers: on a block when `blockId` is given, a reply when
+ * `parentId` is given, otherwise on the page. Returns the comment's id.
+ */
+export async function addComment(
+  page: Page,
+  pageId: string,
+  init: { body: string; blockId?: string; parentId?: string },
+): Promise<string> {
+  const res = await page.request.post(`/api/pages/${pageId}/comments`, {
+    data: { body: init.body, blockId: init.blockId ?? null, parentId: init.parentId ?? null },
+  });
+  expect(res.status(), `comment "${init.body}"`).toBe(201);
+  const { comment } = (await res.json()) as { comment: { id: string } };
+  return comment.id;
+}
