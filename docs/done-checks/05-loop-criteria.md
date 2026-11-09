@@ -56,6 +56,27 @@ here may reach the network or cost money: AI tests run on the stub.
       to the workspace (or the checker's own Docker result, if it has one,
       taken as the real signal) — the team cannot clear this by writing more
       code.
+- [ ] Devops re-check, loop #3 round 2, 2026-11-09: new migration landed since
+      the last check — `0006_favourites_views.sql` (favourites and recently
+      viewed, item #9a). `docker compose config -q` still exits 0; `docker/
+      Dockerfile` already copies the whole `apps/server/drizzle` directory
+      (`COPY --from=build /repo/apps/server/drizzle ./apps/server/drizzle`),
+      so no Dockerfile change was needed for the new migration file to ship
+      in the image. `docker ps`/`docker compose up` still cannot reach the
+      daemon here (`Cannot connect to the Docker daemon at unix:///var/run/
+      docker.sock`), same sandbox block as every round before. Re-ran the
+      no-Docker proof end to end on a brand-new embedded Postgres (clean
+      `npm run build`, then `scripts/local-start.mjs` against a fresh data
+      dir): migrations 0000–0006 all applied, `/health` returned
+      `{"status":"ok"}`, "AI features: off" logged with no key set. Then
+      proved migration 0006's tables specifically, through the real API: signed
+      up (first user → admin), made a space, made a page under it, PUT the
+      favourite, POST a view, then read both back — `GET /api/me/favourites`
+      and `GET /api/me/recent` both returned the page. Stack torn down
+      (server and embedded Postgres killed, temp data dir removed). So the
+      migrate-on-start path, including the newest migration, is still sound;
+      c1 stays blocked only on Docker daemon access, unchanged from every
+      prior round.
 
 ## c2 — The end-to-end suite passes, covering auth, permissions, the editor and embeds
 - Command: `npm run test:e2e` (builds, starts the app on a throwaway
