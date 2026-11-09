@@ -77,6 +77,27 @@ here may reach the network or cost money: AI tests run on the stub.
       migrate-on-start path, including the newest migration, is still sound;
       c1 stays blocked only on Docker daemon access, unchanged from every
       prior round.
+- [ ] Devops re-check, loop #3 round 3, 2026-11-09: only change since the last
+      re-check is 9b (the favourites/recently-viewed screen) — CSS and
+      component changes in `apps/web`, no new migration, no Dockerfile or
+      compose change needed (confirmed with a diff of migrations since
+      0006 — none). `docker compose config -q` still exits 0. Tried the real
+      daemon again: `docker ps` and `docker compose up` both still say
+      `Cannot connect to the Docker daemon at unix:///var/run/docker.sock`;
+      looked at the sandbox launch command this time and found the cause is
+      structural, not transient — the sandbox bind-mounts
+      `/run/docker.sock` from `/dev/null` (`--ro-bind /dev/null
+      /run/docker.sock` in the `bwrap` invocation), so there is no daemon
+      this workspace can ever reach, by design. Re-ran the no-Docker proof
+      end to end on a fresh embedded Postgres (`scripts/local-start.mjs`
+      against a clean temp data dir on port 3099): `/health` returned
+      `{"status":"ok"}`, signup created the first user as admin, and
+      `GET /api/me/favourites` / `GET /api/me/recent` (migration 0006's
+      routes) both answered correctly against the new user's empty lists.
+      Stack torn down (server and embedded Postgres killed, temp dir
+      removed); `git status` clean apart from this note. c1 is unchanged:
+      still blocked on Docker access that no project can grant itself, now
+      confirmed as a sandbox-level block rather than a flaky daemon.
 
 ## c2 — The end-to-end suite passes, covering auth, permissions, the editor and embeds
 - Command: `npm run test:e2e` (builds, starts the app on a throwaway
