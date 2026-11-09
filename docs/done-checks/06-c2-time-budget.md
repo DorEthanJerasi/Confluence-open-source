@@ -198,3 +198,40 @@ No failed, flaky or skipped tests in either run, no retries. Check 2
 (32 passed, exit 0) held in both runs, at higher load than #102's failing
 run. Check 1 (under 75 s) is still not met: the load here was 20 to 31 on
 4 cores, and the time follows the load.
+
+## Item #104 (tester, loop #3 round 2, 2026-11-09) — 3 fresh timed runs, plus c4
+
+Ran `/usr/bin/time -v npm run test:e2e` three times back to back on this
+box, nothing else changed. Suite is still 38 tests (no new favourites e2e
+spec exists yet — `09-favourites-recent.md`'s e2e checklist boxes are all
+unticked, confirmed by reading the file and `e2e/tests/`, which has no
+`favourites.spec.ts`).
+
+| run | load avg (1 min, start → end) | wall clock | result |
+|-----|-------------------------------|-----------|--------|
+| 1   | 10.55 → 18.52                 | 2:33.41 (153.4 s) | **38 passed**, exit 0 |
+| 2   | 17.51 → 13.48                 | 1:44.49 (104.5 s) | **38 passed**, exit 0 |
+| 3   | 12.56 → 14.19                 | 1:47.37 (107.4 s) | **38 passed**, exit 0 |
+
+All three runs: exit 0, no retries, no skipped tests, no `.only`. Coverage
+unchanged from item #102/#103's list (favourites has no screen or e2e test
+yet, so nothing new to check here). Check 1 (under 75 s) is still **not
+met** on this box — best run is 104.5 s, about 1.4x the target, at load
+12-18. Check 2 (N≥32 passed, exit 0, no retries/skip/only) is **met** in
+all three runs.
+
+Also ran `npm run test:ai` fresh: **66/66 passed, 57.1 s** (`vitest`
+duration; 63.7 s wall with `/usr/bin/time`), exit 0 — `test/ai.test.ts`,
+`test/ai-ask.test.ts`, `test/ai-summary.test.ts`. Confirms `GET
+/api/ai/status` is `{enabled:false}` with no key and never leaks the key,
+and summarise/ask both 404 `ai_off` and hide their UI when AI is off, and
+answer correctly against the stub when on. This is c4's proof command and
+it passes clean; if the outside checker is still marking c4 exit 124, the
+gap is the checker's shared time budget, not this suite (same as item
+#101's note for c2 — see the project memory on shared time budgets).
+
+**Net:** c2 and c4 both run correctly and finish (c2 in ~1:45-2:33, c4 in
+~1 min) with no failures, flakiness, retries or skips. c2's only open gap
+against its own done-check is the "<75s" speed target, which items
+#101-#103 already tried to close and could not fully, on this box's
+current load. Nothing in this round's run points to a new regression.
