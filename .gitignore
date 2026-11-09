@@ -8,6 +8,7 @@ test-results/
 e2e/playwright-report/
 .npm-cache/
 .local-data/
+.local-data*/
 # mind: never commit (owner fix #216)
 .claude/
 .env
