@@ -96,16 +96,16 @@ Primary key `(user_id, page_id)`. Index `page_views_user_idx` on
 ## 9a — Server
 
 ### Build
-- [ ] Drizzle tables `pageFavourites` and `pageViews` in
+- [x] Drizzle tables `pageFavourites` and `pageViews` in
       `apps/server/src/db/schema.ts` and migration
       `apps/server/drizzle/0006_favourites_views.sql` (with its meta snapshot),
       exactly as in the Tables section. `drizzle-kit generate` afterwards says
       there is nothing to migrate.
-- [ ] `apps/server/src/me/personal.ts` (or one file of that kind) holds all the
+- [x] `apps/server/src/me/personal.ts` (or one file of that kind) holds all the
       logic. Page checks go through `requirePageRole`; lists filter with
       `visibleSpaceIds` and `pages.deleted_at is null`. No second permission
       rule.
-- [ ] Routes (signed out → 401 on all of them):
+- [x] Routes (signed out → 401 on all of them):
   - `PUT /api/pages/:id/favourite` → 204. `DELETE /api/pages/:id/favourite`
     → 204. A page the user cannot see, a deleted page or an unknown id → 404.
   - `POST /api/pages/:id/viewed` → 204, same 404 rule. Upserts `viewed_at`
@@ -118,32 +118,49 @@ Primary key `(user_id, page_id)`. Index `page_views_user_idx` on
     newest first, at most 20.
   - `GET /api/pages/:id` also returns `favourite: boolean` for the person
     asking. Nothing else in its answer changes.
-- [ ] Bodies on these routes are refused if they carry unknown fields (empty
+- [x] Bodies on these routes are refused if they carry unknown fields (empty
       body expected).
 
 ### Checks that must exist and pass — `apps/server/test/personal.test.ts` (Vitest, real Postgres)
-- [ ] An editor favourites two pages in two spaces: both are listed, newest
+- [x] An editor favourites two pages in two spaces: both are listed, newest
       first, with title and space; `GET /api/pages/:id` says `favourite: true`
       for them and `false` for a third page.
-- [ ] `PUT` twice gives 204 twice and one row; `DELETE` removes it from the
+- [x] `PUT` twice gives 204 twice and one row; `DELETE` removes it from the
       list; `DELETE` again gives 204.
-- [ ] A viewer of a space can favourite and record views there (204), and the
+- [x] A viewer of a space can favourite and record views there (204), and the
       page's `version` and `updated_at` are unchanged afterwards.
-- [ ] Another person's favourites and views never show in your lists, and an
+- [x] Another person's favourites and views never show in your lists, and an
       instance admin's lists hold only the admin's own.
-- [ ] Opening pages A, B, A (three `viewed` calls) lists A then B, with one row
+- [x] Opening pages A, B, A (three `viewed` calls) lists A then B, with one row
       each. 55 `viewed` calls on 55 pages leave 50 rows for that person and
       the list shows the newest 20.
-- [ ] `GET /api/pages/:id` on its own does not add a view.
-- [ ] Non-member of a restricted space: `PUT favourite` and `viewed` give 404.
+- [x] `GET /api/pages/:id` on its own does not add a view.
+- [x] Non-member of a restricted space: `PUT favourite` and `viewed` give 404.
       A member who favourited and viewed a page there, then is removed from the
       space, no longer sees it in either list; added back, it shows again.
-- [ ] A soft-deleted page drops out of both lists, and its routes give 404.
+- [x] A soft-deleted page drops out of both lists, and its routes give 404.
       Deleting its space removes the rows (count the rows).
-- [ ] Deleting a user removes their rows.
-- [ ] A page titled `<img src=x onerror=alert(1)>` comes back as the same text.
-- [ ] Signed out → 401 on every route.
-- [ ] `npm run check` passes (this file is part of it).
+- [x] Deleting a user removes their rows.
+- [x] A page titled `<img src=x onerror=alert(1)>` comes back as the same text.
+- [x] Signed out → 401 on every route.
+- [x] `npm run check` passes (this file is part of it).
+
+### Lead acceptance of 9a (2026-11-09, loop #3 round 3)
+Accepted. Checked in the workspace myself, not from the report:
+- Read the diff of `2e218aed`: tables match the Tables section exactly (primary
+  keys, cascades, the two `desc` indexes). Writes go through
+  `requirePageRole(..., 'viewer')`; both lists join `pages` and filter with
+  `pages.deleted_at is null` and `visibleSpaceIds(user)`; nothing writes
+  `pages` or `page_versions`. The 50-row cap runs in the same transaction as
+  the upsert. `GET /api/pages/:id` only gains `favourite`.
+- `drizzle-kit generate`: "No schema changes, nothing to migrate".
+- `vitest run test/personal.test.ts`: 13/13 passed, exit 0.
+- `npm run check`: all 7 steps ok, 348 tests, exit 0, 4m33s wall.
+
+**9b (screen) may start now.** It goes to the builder as one item: the star in
+the page header, the one `viewed` call on open, the two Home sections, and
+`e2e/tests/favourites.spec.ts` with at most 2 tests. Then designer (styles box),
+tester (e2e run), and the lead's hand and lead checks.
 
 ---
 
