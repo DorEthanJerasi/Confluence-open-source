@@ -43,6 +43,13 @@
       "when": 1794098170092,
       "tag": "0005_page_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794185103167,
+      "tag": "0006_favourites_views",
+      "breakpoints": true
     }
   ]
 }

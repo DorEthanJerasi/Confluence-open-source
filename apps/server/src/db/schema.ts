@@ -223,3 +223,36 @@ export const pageTemplates = pgTable(
   },
   (t) => [uniqueIndex('page_templates_space_name_idx').on(t.spaceId, sql`lower(${t.name})`)],
 );
+
+// Favourites and recently viewed (docs/done-checks/09-favourites-recent.md).
+// Personal lists: each row is only a person, a page and a time. Lists are
+// filtered when read (pages.deleted_at, visibleSpaceIds), never cleaned up when
+// access changes. They never touch pages.doc or ydoc_state, so co-editing
+// needs no change here. A person keeps at most 50 view rows (me/personal.ts).
+export const pageFavourites = pgTable(
+  'page_favourites',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.pageId] }), index('page_favourites_user_idx').on(t.userId, t.createdAt.desc())],
+);
+
+export const pageViews = pgTable(
+  'page_views',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    viewedAt: timestamp('viewed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.pageId] }), index('page_views_user_idx').on(t.userId, t.viewedAt.desc())],
+);

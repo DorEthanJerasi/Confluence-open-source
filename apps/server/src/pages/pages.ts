@@ -7,7 +7,7 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { generateKeyBetween } from 'fractional-indexing';
 import { EMPTY_DOC, type Crumb, type Doc, type Page, type Role } from '@stillwater/shared';
 import type { Db } from '../db/client.js';
-import { pageVersions, pages, spaces, users } from '../db/schema.js';
+import { pageFavourites, pageVersions, pages, spaces, users } from '../db/schema.js';
 import { requireSpaceRole } from '../auth/permissions.js';
 import type { SessionUser } from '../auth/session.js';
 import { badRequest, conflict, notFound } from '../http.js';
@@ -111,7 +111,12 @@ async function breadcrumbs(db: Db, parentId: string | null): Promise<Crumb[]> {
 export async function getPageView(db: Db, user: SessionUser, pageId: string): Promise<Page> {
   const { role } = await requirePageRole(db, user, pageId, 'viewer');
   const [row] = await db
-    .select({ page: pages, spaceKey: spaces.key, updatedByName: users.name })
+    .select({
+      page: pages,
+      spaceKey: spaces.key,
+      updatedByName: users.name,
+      favourite: sql<boolean>`exists (select 1 from ${pageFavourites} where ${pageFavourites.userId} = ${user.id} and ${pageFavourites.pageId} = ${pages.id})`,
+    })
     .from(pages)
     .innerJoin(spaces, eq(spaces.id, pages.spaceId))
     .leftJoin(users, eq(users.id, pages.updatedBy))
@@ -131,6 +136,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
     updatedBy: p.updatedBy && row.updatedByName ? { id: p.updatedBy, name: row.updatedByName } : null,
     breadcrumbs: await breadcrumbs(db, p.parentId),
     myRole: role,
+    favourite: row.favourite,
   };
 }
 

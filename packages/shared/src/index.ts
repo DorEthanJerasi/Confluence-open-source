@@ -158,6 +158,8 @@ export interface Page {
   /** Ancestors from the top of the space down to the parent. */
   breadcrumbs: Crumb[];
   myRole: Role;
+  /** Whether the person asking has this page in their favourites. */
+  favourite: boolean;
 }
 
 // ---------- Page history ----------
@@ -434,6 +436,30 @@ export function splitAnswer(answer: string, sources: AskSource[]): AnswerPart[] 
   text += answer.slice(last);
   if (text) parts.push({ text });
   return parts;
+}
+
+// ---------- Favourites and recently viewed (docs/done-checks/09-favourites-recent.md) ----------
+
+/** Body of PUT/DELETE /api/pages/:id/favourite and POST /api/pages/:id/viewed: nothing. */
+export const emptyBody = z.object({}).strict();
+
+export const FAVOURITES_LIMIT = 100;
+export const RECENT_LIMIT = 20;
+/** View rows kept per person; the oldest beyond this are dropped on write. */
+export const VIEWS_KEPT = 50;
+
+interface PersonalPage {
+  id: string;
+  title: string;
+  space: { key: string; name: string };
+}
+/** One entry of GET /api/me/favourites (newest favourited first). */
+export interface FavouritePage extends PersonalPage {
+  favouritedAt: string;
+}
+/** One entry of GET /api/me/recent (newest viewed first). */
+export interface RecentPage extends PersonalPage {
+  viewedAt: string;
 }
 
 export interface ApiError {
