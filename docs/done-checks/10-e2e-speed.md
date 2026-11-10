@@ -54,14 +54,51 @@ Last round the tester also saw the default 3-worker run fail at load ~15
 failing test costs its full 30 s limit, which by itself pushes the run past
 the checker's limit.
 
+## Step 4 (item #121, tester, 2026-11-10 02:36): the three timed runs
+
+Three `/usr/bin/time npm run test:e2e` runs in a row, right after each other,
+on this shared box (load stayed at 17–22 throughout, well above the ≥12
+the done-check asks for):
+
+| run | result | wall clock | load start → end |
+|-----|--------|-----------|-------------------|
+| 1   | 40 passed, exit 0 | **94.75 s** | 17.22 → 18.86 |
+| 2   | 40 passed, exit 0 | **81.22 s** | 18.86 → 19.46 |
+| 3   | 40 passed, exit 0 | **119.46 s** | 19.46 → 22.32 |
+
+All three runs were at load ≥ 15, so the 95 s target applies to each. Runs 1
+and 2 meet it (94.75 s, 81.22 s). **Run 3 does not: 119.46 s, over the 95 s
+limit.** All three printed `40 passed` and exited 0 — no failures, retries,
+skipped tests or `.only` in any of them.
+
+**Box 1 does not hold**: not all three runs in a row are under target: 1 of
+3 (run 3) is over.
+**Box 2 holds**: every run is 40 passed, exit 0, no retries/skips/`.only`/
+failures.
+**Box 3 holds**: the suite is the same 40 tests as step 3 (item #120), still
+covering the full behaviour list from `06-c2-time-budget.md` plus comments,
+templates, favourites and recently viewed — nothing was removed or changed
+to make these runs.
+**Box 7 holds**: ran straight after the three timed runs, same commit —
+`npm run check`: all 7 steps ok, exit 0, 1:26.62 (includes the originality
+scan and the contrast check, c5/c6); `npm run test:ai`: 66 passed (3 files),
+exit 0, 17.0 s.
+
+**What this says**: the suite is close but not reliably under the load-15+
+target yet — one run in three still goes over by about 24 s. The gap looks
+load-driven (this box was already busy with other work before and during
+these runs; run 3 started at the highest load of the three, 19.46, and the
+load kept climbing through it to 22.32), not a regression from step 3's
+change. Reported in team chat; #121 does not tick box 1.
+
 ## The done-check (all must be true)
 1. [ ] `npm run test:e2e` from the workspace root, default settings, finishes
    in **under 75 s wall clock** (`/usr/bin/time`) at load ≤ 10, and **under
    95 s** at load 15 or more. Three runs in a row, load noted at start and
    end of each, at least one of them at load ≥ 12.
-2. [ ] Every run prints `N passed` with N ≥ 40 and exits 0. No retries, no
+2. [x] Every run prints `N passed` with N ≥ 40 and exits 0. No retries, no
    skipped tests, no `.only`, no failures, in all three runs.
-3. [ ] Coverage is not reduced: every behaviour in the list in
+3. [x] Coverage is not reduced: every behaviour in the list in
    `06-c2-time-budget.md` (item #102, "Point 3 coverage") is still proven on
    screen, plus comments, templates, favourites and recently viewed.
 4. [ ] No raised time limits (per test or per check) and no assertions removed
@@ -71,7 +108,7 @@ the checker's limit.
 6. [ ] The app's own behaviour does not change to suit the tests (for example
    the 1 s autosave delay stays). Changes to how the app is served are fine
    if they are right for real users too (see below).
-7. [ ] `npm run check` (c3), `npm run test:ai` (c4), originality (c5) and
+7. [x] `npm run check` (c3), `npm run test:ai` (c4), originality (c5) and
    contrast (c6) still pass afterwards.
 
 ## Where to look first (the coder chooses, in this order of payoff)
