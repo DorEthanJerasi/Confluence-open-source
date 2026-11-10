@@ -128,7 +128,7 @@ clicking, except where clicking is the point.
 | 6 | Space admin makes a members-only space with an editor, and an open space | `permissions-settings.spec.ts:14` | **Browser** | `permissions` (7 s) |
 | 7 | Someone outside the space does not see it in the list or by URL | `permissions-outsider.spec.ts:17` | **Browser**, list and URL only, folded into row 6. The API part: **server** `spaces.test.ts:42` | `permissions` |
 | 8 | A member editor opens and edits the space's page and sub-page | `permissions-member.spec.ts:12` | **Server** `spaces.test.ts:31`, `spaces.test.ts:69`, `pages.test.ts:81`; editing itself is row 10 | – |
-| 9 | Removed from the space, the person loses it after a reload | `permissions-removed.spec.ts:12` | **Server** `personal.test.ts:168`, `search.test.ts:74`, `comments.test.ts:250`, `templates.test.ts:301`, `ai-ask.test.ts:189` | – |
+| 9 | Removed from the space, the person loses it after a reload | `permissions-removed.spec.ts:12` | **Server** `personal.test.ts:168`, `search.test.ts:74`, `comments.test.ts:251`, `templates.test.ts:301`, `ai-ask.test.ts:189` | – |
 | 10 | Type, autosave, reload, text is still there | `editor.spec.ts:20` | **Browser** | `editor` (20 s) |
 | 11 | Slash menu filters and inserts every block (headings, three list kinds, quote, callout, divider, code with highlighting, table with its toolbar), markdown shortcuts; block ids | `editor-slash.spec.ts:23` | **Browser** for the menu, the filter and every block on screen; **server** `pages.test.ts:216` and `pages.test.ts:227` for "every block type is stored, each with a unique id" | `editor` |
 | 12 | Slash menu has no animation with reduced motion | `editor.spec.ts:45` | **Browser**, folded into row 10 (switch reduced motion on the same page) | `editor` |
@@ -150,8 +150,8 @@ clicking, except where clicking is the point.
 | 28 | A non-member asking gets "couldn't find", no sources | `ai-ask-access.spec.ts:43` | **Server** `ai-ask.test.ts:337`, `ai-ask.test.ts:411` | – |
 | 29 | With AI off, Summarise and Ask are hidden and `/ask` shows the not-set-up note | `ai-ask-access.spec.ts:71` | **Browser** | `ai-off` (4 s) |
 | 30 | An editor comments on a paragraph and on the page; marker and count survive a reload (dark mode too) | `comments.spec.ts:15` | **Browser** | `comments` (10 s) |
-| 31 | A viewer can reply but not resolve or edit; the editor resolves and reopens | `comments-roles.spec.ts:23` | **Server** `comments.test.ts:107`, `comments.test.ts:154`, `comments.test.ts:210` (`:154` proves only the author may edit, refusing another editor and both kinds of admin; it has no viewer case of its own, so the tester confirms that is enough or the coder adds the viewer case) | – |
-| 32 | The author edits and deletes their comment; a deleted root keeps its reply | `comments-author.spec.ts:12` | **Server** `comments.test.ts:154`, `comments.test.ts:171` | – |
+| 31 | A viewer can reply but not resolve or edit; the editor resolves and reopens | `comments-roles.spec.ts:23` | **Server** `comments.test.ts:107`, `comments.test.ts:154`, `comments.test.ts:211` (`:154` proves only the author may edit, refusing another editor and both kinds of admin; it has no viewer case of its own, so the tester confirms that is enough or the coder adds the viewer case) | – |
+| 32 | The author edits and deletes their comment; a deleted root keeps its reply | `comments-author.spec.ts:12` | **Server** `comments.test.ts:154`, `comments.test.ts:172` | – |
 | 33 | New page from a built-in template; Blank page is still empty; save a page as a template and reuse it | `templates-builtin.spec.ts:15`, `templates-saved.spec.ts:11` | **Browser**, the two merged | `templates` (11 s) |
 | 34 | Edit and delete a saved template (dark mode) | `templates-edit.spec.ts:25` | **Server** `templates.test.ts:192` | – |
 | 35 | A viewer sees no template control | `templates-viewer.spec.ts:11` | **Server** `templates.test.ts:287` | – |
@@ -183,10 +183,17 @@ not only fewer tests. A file over its budget is fine if the total holds.
    behaviours present in the 14 lean files.)*
 10. [x] At most 18 test files under `e2e/tests/`. *(Tester, item #127: 14
    files.)*
-11. [ ] Total browser time (the sum of the per-test times Playwright prints)
+11. ~~[ ] Total browser time (the sum of the per-test times Playwright prints)
    is **150 s or less** in each of the three proof runs, at load 15 or more
-   at the start of the run. *(Tester, item #127: 230.6 s, 189.9 s, 177.0 s —
+   at the start of the run.~~ *(Tester, item #127: 230.6 s, 189.9 s, 177.0 s —
    all over budget. See Step 7 below.)*
+   **Dropped by the lead, item #128.** This box was never the goal; it was my
+   estimate of what the suite would need to meet box 1. Box 1 is the real
+   target (the wall clock the checker's limit is about), and it is met in all
+   four timed runs since the lean suite (88.86 s, 78.18 s, 65.52 s, 77.14 s),
+   with 19 passed and exit 0 each time. Four workers run the tests side by
+   side, so the summed time can be well over 150 s while the wall clock stays
+   under 95 s. Keeping the box would mean more cuts with nothing to gain.
 
 ## The done-check (all must be true)
 1. [x] `npm run test:e2e` from the workspace root, default settings, finishes
@@ -204,14 +211,17 @@ not only fewer tests. A file over its budget is fine if the total holds.
    proven where the table says, on screen or by the named server test.
    *(Tester, item #127: checked every row against the lean files and the
    named server tests; `npm run test` 350 passed, exit 0. See Step 7 below.)*
-4. [ ] No raised time limits (per test or per check). No assertions removed,
+4. [x] No raised time limits (per test or per check). No assertions removed,
    except a browser check the table moves to a named server test that
    already exists and passes.
-5. [ ] The proof command stays `npm run test:e2e` with no environment
+   *(Lead, item #128: see "Lead sign-off" below.)*
+5. [x] The proof command stays `npm run test:e2e` with no environment
    variables the checker would not set.
-6. [ ] The app's own behaviour does not change to suit the tests (for example
+   *(Lead, item #128: see "Lead sign-off" below.)*
+6. [x] The app's own behaviour does not change to suit the tests (for example
    the 1 s autosave delay stays). Changes to how the app is served are fine
    if they are right for real users too (see below).
+   *(Lead, item #128: see "Lead sign-off" below.)*
 7. [x] `npm run check` (c3), `npm run test:ai` (c4), originality (c5) and
    contrast (c6) still pass afterwards.
 
@@ -679,6 +689,64 @@ every behaviour in the table is still proven somewhere. What it does not
 yet meet is its own 150 s browser-time budget (box 11) — the per-file
 merges cut tests but several files still run longer than planned. Reported
 in team chat; #127 ticks 1, 2, 3, 8 and leaves 11 open.
+
+## Lead sign-off (item #128, lead, 2026-11-10)
+
+My own reading of `git diff 26c9b6926 HEAD` (this done-check was written in
+26c9b6926; HEAD is 8866b2a68), then one timed run and `npm run check` on the
+same commit.
+
+**Box 4: no raised time limits; assertions only moved as the table says.**
+- Every time limit in `e2e/` is the same as before the speed work began.
+  `test.setTimeout(90_000)` is on the same three tests as before (editor
+  slash, embeds, video-links). The 10 s waits on single checks were there
+  before too. `playwright.config.ts` still has `retries: 0`,
+  `expect.timeout` 10 s, and no per-test limit set. Its only change is a
+  comment. There is no `.only`, `.skip` or `fixme` anywhere.
+- No server test lost a check. The only server-test change is
+  `comments.test.ts` gaining a viewer 403 on edit (row 31).
+- The browser checks that were taken out are the "Server" rows of the table.
+  I opened each named test I spot-checked: `history.test.ts:384`,
+  `search.test.ts:74`, `templates.test.ts:192`, `templates.test.ts:287`,
+  `ai-ask.test.ts:337`, `ai-ask.test.ts:411`, `comments.test.ts:107/154/172/211/251`,
+  `personal.test.ts:168`, `spaces.test.ts:42`, `pages.test.ts:216`. Each one
+  tests what its row says. Three line numbers in rows 9, 31 and 32 were one
+  off, because the viewer line went in above them. I fixed them in the table.
+  The tester's walk through the table (item #127) agrees.
+
+**Box 5: the proof command is still plain `npm run test:e2e`.**
+- The script is now `build-if-needed … && node e2e/ensure-browser.mjs && cd
+  e2e && PLAYWRIGHT_BROWSERS_PATH=0 playwright test`. The one variable it uses
+  is set inside the script itself, so the checker does not set anything.
+  The worker count comes from the core count (at most 4) and needs no
+  variable either. `E2E_WORKERS` is only an optional override.
+
+**Box 6: the app does not behave differently for the tests.**
+- Nothing under `apps/web/src` or `apps/server/src` changed except
+  `apps/server/src/app.ts`, in how it serves files. It now sends the
+  pre-compressed `.br`/`.gz` copy of a hashed asset (brotli first), with a
+  year-long `immutable` cache and `Vary: Accept-Encoding`. `index.html` stays
+  `no-cache`. The build (`apps/web/vite.config.ts`) writes those copies. This
+  is right for real users on any network, and `static.test.ts` covers it
+  (4 tests).
+- The autosave delay and every screen are unchanged.
+
+**One timed run (commit 8866b2a68):**
+`/usr/bin/time npm run test:e2e`, default settings: **19 passed (1.2m),
+exit 0, 77.14 s wall**. Load was 7.70 at the start and 14.21 at the end, so
+it falls between the "≤ 10" and "15+" bands. It is under 95 s, and only
+2.1 s over the 75 s quiet-machine figure, with the load rising through the
+run. No failures, retries, skips or `.only`. Summed browser time was 175 s.
+Builds and the browser download were skipped (up to date).
+
+**`npm run check` straight after it:** all 7 steps ok, exit 0, 160.6 s wall
+(350 server tests passed, contrast ok, originality ok). Load was 13.42 at
+the start and 15.60 at the end. Earlier today, at load ~17, it took 86.6 s.
+This time the server typecheck alone took 159 s under load, which is worth
+watching (c3 passed the checker at about 110 s), but it passed.
+
+**Box 11 is dropped** (reason above). **Done-check 10 is accepted:** boxes
+1–10 are ticked and box 11 is dropped.
 
 ## Who proves it
 - Coder: slims the suite to the table, re-measures the workers setting,
