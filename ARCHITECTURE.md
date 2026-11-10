@@ -299,6 +299,12 @@ someone on the team has done it by hand in a browser against the compose stack.
    filtered by `visibleSpaceIds` when read, so lost access or a deleted page
    drops out at once; a non-member gets 404. Full check, split into items 9a
    (server) and 9b (screen): `docs/done-checks/09-favourites-recent.md`. Design: §15.
+9. **Trash** — deleting a page or space moves it, with everything under it,
+   to the trash with the same ids; editors restore from the space's Trash
+   view, space admins delete for good or empty it, and items older than
+   `TRASH_RETENTION_DAYS` go by themselves, file bytes included; nothing in
+   the trash shows in search or AI answers. Full check, split into items 11a
+   (server) and 11b (screen): `docs/done-checks/11-trash.md`. Design: §16.
 
 ## 13. Comments
 
@@ -399,3 +405,54 @@ someone on the team has done it by hand in a browser against the compose stack.
   editing the page.
 - **Not yet:** favourite spaces, folders or ordering of favourites, a
   favourites section in the sidebar, view counts.
+
+## 16. Trash
+
+- **A state of the same rows, never a copy.** Migration `0007_trash` adds
+  `pages.deleted_by`, `pages.trash_root_id` and `spaces.deleted_at`,
+  `spaces.deleted_by`, plus the partial index `pages_trash_idx` on
+  `(space_id, trash_root_id) where deleted_at is not null`. A page or space in
+  the trash keeps its row and its id. Its sub-pages, history, comments, files,
+  favourites and views are left as they are and are all there again on
+  restore. Logic is in `apps/server/src/trash/trash.ts`, routes in
+  `apps/server/src/routes/trash.ts`.
+- **One trash item per delete.** Deleting a page sets `deleted_at`,
+  `deleted_by` and `trash_root_id` (the deleted page's id) on it and every
+  live page under it, in one statement. Restore and purge work on a whole
+  item, found by `trash_root_id`. A sub-page deleted on its own earlier stays
+  its own item. The migration back-fills older deletes so each one is one
+  item.
+- **Restore never leaves a live page under a trashed one.** The page goes
+  back under its old parent if that parent is live, otherwise to the top of
+  the space. It keeps its position key unless a live sibling has it.
+- **Spaces.** A trashed space is hidden everywhere by `visibleSpaceIds` and
+  the space loaders (§7), so its pages, files, search hits and AI sources go
+  with it. Its key stays taken until it is purged. Trashed spaces are reached
+  only by id, through `requireTrashedSpace`, which takes the role from
+  `effectiveRole` like everything else.
+- **Who.** Editors and up see a space's Trash and restore. Only space admins
+  (and instance admins) purge and empty, and delete, restore or purge a
+  space. Viewers get 403. People who cannot read the space get 404.
+- **Purge rule.** By hand (one item, or empty the space's trash), or by time:
+  `purgeExpired` removes items trashed `TRASH_RETENTION_DAYS` ago (default 30,
+  `0` = never). It runs when the server starts and then hourly, inside the
+  server process, and stops when the server closes. Purging deletes the rows
+  (cascades remove sub-pages, history, comments, file rows, favourites and
+  views) and then each file's bytes from `FileStorage`. Ids are never reused.
+- **Kept out of reach.** Search and AI already skip deleted pages and pages
+  under them. `readableAttachment` now also gives 404 for a file whose page
+  is trashed or under a trashed page, which closes the old download gap.
+  Opening a trashed page is 404 for everyone; for editors and up the 404
+  carries the code `in_trash`, so the screen can link them to the Trash view.
+  Viewers and non-members learn nothing.
+- **Screens.** The space's Trash view is at `/s/:key/trash`
+  (`apps/web/src/screens/Trash.tsx`), reached from a Trash link under the
+  page tree that only editors and up see. Trashed spaces are listed under
+  "Deleted spaces" on Home for their space admins and instance admins.
+- **Why co-editing stays possible.** Trash, restore and purge never write
+  `pages.doc`, `pages.version`, `pages.ydoc_state` or `page_versions`.
+  A restored page is the same document with the same id and the same Yjs
+  state. A co-editing session for a page can simply close when the page is
+  trashed and open again on restore.
+- **Not yet:** trash for single comments, templates or files; choosing where
+  to restore to; restoring one sub-page out of a larger item.

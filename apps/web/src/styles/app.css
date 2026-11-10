@@ -1643,6 +1643,11 @@ textarea.input {
 }
 
 /* ---- Trash (done-check 11b) ---- */
+/* "Empty trash" stays on one line next to a long intro. */
+.trash-empty-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .tree-trash-link {
   margin-top: var(--space-4);

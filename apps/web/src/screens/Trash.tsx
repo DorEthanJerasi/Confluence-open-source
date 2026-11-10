@@ -154,7 +154,7 @@ export function TrashScreen() {
         {q.data && <p className="muted lead">Pages deleted from {space.name}. {keptFor(q.data.retentionDays)}</p>}
       </div>
       {isAdmin && count > 0 && (
-        <button className="btn btn-quiet" onClick={() => setEmptying(true)}>
+        <button className="btn btn-quiet trash-empty-btn" onClick={() => setEmptying(true)}>
           <Trash2 size={15} aria-hidden="true" /> Empty trash
         </button>
       )}
@@ -218,7 +218,7 @@ export function TrashScreen() {
       {purging && (
         <ConfirmForGood
           title={`Delete “${purging.title}” for good?`}
-          text={`The page${purging.subPages > 0 ? ` and its ${plural(purging.subPages, 'sub-page')}` : ''}, with their history, comments and files, will be removed.`}
+          text={`The page${purging.subPages > 0 ? ` and its ${plural(purging.subPages, 'sub-page')}` : ''}, with ${purging.subPages > 0 ? 'their' : 'its'} history, comments and files, will be removed.`}
           action="Delete for good"
           pending={purge.isPending}
           error={purge.error}
