@@ -193,7 +193,7 @@ not only fewer tests. A file over its budget is fine if the total holds.
    No retries, no skipped tests, no `.only`, no failures, in all three runs.
    *(Unticked by the lead, item #125: step 6 had failures in 2 of 3 runs, so
    the tick from #121 no longer stands.)*
-3. [ ] Coverage is not reduced: every row of the behaviour table below is
+3. [ ] Coverage is not reduced: every row of the behaviour table above is
    proven where the table says, on screen or by the named server test.
    *(Unticked by the lead, item #125: the suite is being slimmed, so this
    has to be checked again against the table.)*
