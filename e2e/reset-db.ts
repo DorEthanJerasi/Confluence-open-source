@@ -6,8 +6,11 @@
 // itself stays migrated; only rows in "public" are removed.
 import pg from 'pg';
 import { dbUrlEnvFor } from './workers';
+import { forgetSessions } from './login';
 
 export async function resetDatabase(): Promise<void> {
+  // The sessions table is emptied too, so the logins login.ts saved are void.
+  forgetSessions();
   const index = Number(process.env.TEST_PARALLEL_INDEX ?? 0);
   const url = process.env[dbUrlEnvFor(index)];
   if (!url) throw new Error(`e2e: ${dbUrlEnvFor(index)} is not set (global-setup.ts sets it)`);

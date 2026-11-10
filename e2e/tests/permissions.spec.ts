@@ -5,7 +5,7 @@
 // edit A until Ada removes her. Also: a sub-page sits under its parent in
 // the tree, and logging out and back in works.
 import { test, expect, type Browser, type Page } from '../fixtures';
-import { addPerson, createPage, createSpace, logIn, logInWithForm, pickBlankPage, signUp } from '../login';
+import { addPerson, contextFor, createPage, createSpace, logIn, logInWithForm, pickBlankPage, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const ada = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -20,11 +20,10 @@ const CHILD = 'Buoy colours';
 let parentUrl = '';
 let childUrl = '';
 
-/** A fresh browser (own cookies) logged in as `user`; the caller opens the first page. */
+/** A fresh browser (own cookies) logged in as `user` from its saved storageState; the caller opens the first page. */
 async function session(browser: Browser, user: { email: string; password: string }) {
-  const context = await browser.newContext();
+  const context = await contextFor(browser, user);
   const page = await context.newPage();
-  await logIn(page, user, null);
   return { context, page };
 }
 

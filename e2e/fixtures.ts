@@ -11,4 +11,4 @@ export const test = base.extend({
 });
 
 export { expect } from '@playwright/test';
-export type { Browser, Page } from '@playwright/test';
+export type { Browser, BrowserContext, Page } from '@playwright/test';

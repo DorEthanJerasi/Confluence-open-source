@@ -31,7 +31,6 @@ export default defineConfig({
         ? { mode: 'retain-on-failure', screenshots: process.env.E2E_TRACE_SCREENSHOTS === '1', snapshots: true }
         : 'off',
     screenshot: 'only-on-failure',
-    launchOptions: { args: process.env.E2E_ARGS ? process.env.E2E_ARGS.split(' ') : [] },
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 });

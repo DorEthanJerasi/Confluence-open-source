@@ -6,23 +6,72 @@
 // most of a test's setup. wiki.spec.ts still logs in and adds a person
 // through the real forms, and the log-out test in permissions.spec.ts logs in
 // through the form (logInWithForm), so both forms stay covered.
-import { expect, type Page } from './fixtures';
+//
+// Each person logs in once per spec file: the first logIn (or signUp) saves
+// the browser's storageState, and every later logIn for that person, in any
+// test of the file, puts that saved state into the new browser context
+// instead of posting the password again (each login is an argon2 check, a
+// real cost on this busy box). resetDatabase() empties the sessions table at
+// the start of each file, so it also forgets the saved states (forgetSessions).
+import { expect, type Browser, type BrowserContext, type Page } from './fixtures';
 
 type Login = { email: string; password: string };
+type StorageState = Awaited<ReturnType<BrowserContext['storageState']>>;
+
+// One map per test worker process; each worker has its own server and database.
+const saved = new Map<string, StorageState>();
+
+/** Drops every saved login. resetDatabase() calls this, since it deletes the sessions behind them. */
+export function forgetSessions(): void {
+  saved.clear();
+}
+
+/** Logs `user` in through the API in `context` and saves its storageState. */
+async function logInOnce(context: BrowserContext, user: Login): Promise<StorageState> {
+  const res = await context.request.post('/api/auth/login', { data: { email: user.email, password: user.password } });
+  expect(res.ok(), `log in as ${user.email}: HTTP ${res.status()}`).toBe(true);
+  return remember(context, user.email);
+}
+
+async function remember(context: BrowserContext, email: string): Promise<StorageState> {
+  const state = await context.storageState();
+  saved.set(email, state);
+  return state;
+}
 
 /**
- * Logs in through the API, then opens `to` (home by default). Pass the page
+ * Logs in (the first time through the API, after that from the saved
+ * storageState), then opens `to` (home by default). Pass the page
  * the test is about to open anyway, so the app starts once instead of twice
  * (home, then that page): on this busy box each start of the app costs a
  * second or more. Pass null to stay put, e.g. when the next step is
  * addPerson, which only needs the session cookie.
  */
 export async function logIn(page: Page, user: Login, to: string | null = '/'): Promise<void> {
-  const res = await page.request.post('/api/auth/login', { data: { email: user.email, password: user.password } });
-  expect(res.ok(), `log in as ${user.email}: HTTP ${res.status()}`).toBe(true);
+  if (saved.has(user.email)) {
+    // Same as a fresh context made with this storageState: only these cookies.
+    const context = page.context();
+    await context.clearCookies();
+    await context.addCookies(saved.get(user.email)!.cookies);
+  } else {
+    await logInOnce(page.context(), user);
+  }
   if (to === null) return;
   await page.goto(to);
   if (to === '/') await expect(page).toHaveURL('/');
+}
+
+/**
+ * A new browser context (its own cookies) already logged in as `user`: made
+ * with Playwright's storageState option when `user` has logged in before in
+ * this spec file, otherwise logged in once through the API and saved.
+ */
+export async function contextFor(browser: Browser, user: Login): Promise<BrowserContext> {
+  const known = saved.get(user.email);
+  if (known) return browser.newContext({ storageState: known });
+  const context = await browser.newContext();
+  await logInOnce(context, user);
+  return context;
 }
 
 export async function logInWithForm(page: Page, user: Login): Promise<void> {
@@ -54,6 +103,7 @@ export async function signUp(page: Page, user: Person): Promise<void> {
     data: { name: user.name, email: user.email, password: user.password },
   });
   expect(res.status(), `sign up ${user.email}`).toBe(201);
+  await remember(page.context(), user.email);
 }
 
 type NewSpace = {
