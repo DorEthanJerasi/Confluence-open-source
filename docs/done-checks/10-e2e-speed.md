@@ -91,18 +91,115 @@ these runs; run 3 started at the highest load of the three, 19.46, and the
 load kept climbing through it to 22.32), not a regression from step 3's
 change. Reported in team chat; #121 does not tick box 1.
 
+## The lean suite (lead, item #125, 2026-11-10): the browser does less
+
+**Why.** Steps 1–5 made the suite smaller per file but not smaller overall.
+The 41 tests add up to about **290–465 s of browser time** (the sum of the
+per-test times Playwright prints; seven runs in `test-results/workers-cmp/`,
+load 11–24). On a 4-core box at load 15–25 no worker count fits that inside
+the checker's ~110–120 s, and steps 4–5 made it slower (142–162 s) and
+flaky (2 of 3 runs failed). So the browser suite has to do less work.
+
+**The rule.** Each feature keeps **one browser test of its real screen
+path**: what a person clicks and sees. A check that is only about data or
+rules (a role getting 403, a removed member losing access, a version list
+being right) leaves the browser **only where a server test already proves
+it and passes today**. The table names that test. If a row says "server"
+and the named test does not really cover it, the check stays in the browser.
+Merging tests is fine (one test may walk through several steps of the same
+screen path). Set-up goes through the API helpers in `e2e/login.ts`, not by
+clicking, except where clicking is the point.
+
+### Where each behaviour is proven
+
+"Browser" = kept on screen, in the lean file named in the last column.
+"Server" = the browser check is removed; the named server test proves it
+(under `apps/server/test/`, and `diffBlocks.test.ts` under
+`packages/editor-schema/test/`; both run by `npm run test`, which is part of
+`npm run check`).
+
+| # | Behaviour | Browser test today | Proven by after the change | Lean file (budget) |
+|---|-----------|--------------------|----------------------------|--------------------|
+| 1 | First sign-up becomes admin, creates a space and a page | `wiki.spec.ts:35` | **Browser** (also `auth.test.ts:12`) | `wiki` (11 s) |
+| 2 | Reopening the page shows the saved title | `wiki.spec.ts:52` | **Browser**, folded into row 1 (one reload) | `wiki` |
+| 3 | Admin adds a person with the viewer role | `wiki.spec.ts:62` | **Browser**, folded into row 1 | `wiki` |
+| 4 | Sub-page sits under its parent in the tree and reopens by URL | `permissions-subpage.spec.ts:12` | **Browser**, folded into row 1 (also `pages.test.ts:28`) | `wiki` |
+| 5 | Log out ends the session, log in brings it back | `permissions-outsider.spec.ts:51` | **Browser**, folded into row 1 (also `auth.test.ts:43`) | `wiki` |
+| 6 | Space admin makes a members-only space with an editor, and an open space | `permissions-settings.spec.ts:14` | **Browser** | `permissions` (7 s) |
+| 7 | Someone outside the space does not see it in the list or by URL | `permissions-outsider.spec.ts:17` | **Browser**, list and URL only, folded into row 6. The API part: **server** `spaces.test.ts:42` | `permissions` |
+| 8 | A member editor opens and edits the space's page and sub-page | `permissions-member.spec.ts:12` | **Server** `spaces.test.ts:31`, `spaces.test.ts:69`, `pages.test.ts:81`; editing itself is row 10 | – |
+| 9 | Removed from the space, the person loses it after a reload | `permissions-removed.spec.ts:12` | **Server** `personal.test.ts:168`, `search.test.ts:74`, `comments.test.ts:250`, `templates.test.ts:301`, `ai-ask.test.ts:189` | – |
+| 10 | Type, autosave, reload, text is still there | `editor.spec.ts:20` | **Browser** | `editor` (20 s) |
+| 11 | Slash menu filters and inserts every block (headings, three list kinds, quote, callout, divider, code with highlighting, table with its toolbar), markdown shortcuts; block ids | `editor-slash.spec.ts:23` | **Browser** for the menu, the filter and every block on screen; **server** `pages.test.ts:216` and `pages.test.ts:227` for "every block type is stored, each with a unique id" | `editor` |
+| 12 | Slash menu has no animation with reduced motion | `editor.spec.ts:45` | **Browser**, folded into row 10 (switch reduced motion on the same page) | `editor` |
+| 13 | Two tabs: the second save gets the conflict note and keeps its text | `editor-conflict.spec.ts:16` | **Browser** (also `pages.test.ts:266`) | `editor-conflict` (9 s) |
+| 14 | A viewer sees the page, its image, caption, file, video, players and link cards, with nothing editable and no upload control | `editor.spec.ts:35`, `wiki.spec.ts:75`, `embeds.spec.ts:148`, `video-links.spec.ts:181` | **Browser**, the four merged into one viewer test (also `attachments.test.ts:97`, `spaces.test.ts:31`) | `viewer` (5 s) |
+| 15 | Image from the slash menu, by paste and by drop; caption; file block | `embeds.spec.ts:69` | **Browser** for upload, paste, drop, caption and file block; **server** `embeds.test.ts:26` for "only ids stored" | `embeds` (14 s) |
+| 16 | Upload a video, paste YouTube, add Vimeo, other hosts refused, link cards | `video-links.spec.ts:64` | **Browser** for each step on screen; **server** `video.test.ts` (`videoEmbedUrl`) and `linkPreview.test.ts` for which hosts and cards | `video-links` (11 s) |
+| 17 | A word is found with Ctrl+K, highlighted, and opens the page | `search.spec.ts:33` | **Browser** | `search` (8 s) |
+| 18 | Page text that looks like HTML shows as text in results | `search.spec.ts:57` | **Browser**, folded into row 17 (also `search.test.ts:203`) | `search` |
+| 19 | `/search?q=…` reload shows the same results, light and dark | `search.spec.ts:86` | **Browser**, folded into row 17 | `search` |
+| 20 | A non-member of a restricted space gets no search results | `search.spec.ts:111` | **Server** `search.test.ts:74` | – |
+| 21 | Two editors save; history lists both names | `history-list.spec.ts:28` | **Browser** | `history` (14 s) |
+| 22 | An earlier version opens read-only with the changed block marked | `history-preview.spec.ts:11` | **Browser**, folded into row 21 (also `diffBlocks.test.ts`) | `history` |
+| 23 | Restore puts the old text back and it survives a reload | `history-restore.spec.ts:12` | **Browser**, folded into row 21 (also `history.test.ts:302`) | `history` |
+| 24 | Typing after a restore saves with no conflict note | `history-after-restore.spec.ts:12` | **Browser**, folded into row 21 (also `history.test.ts:341`) | `history` |
+| 25 | A viewer sees versions but no Restore button, light and dark | `history-viewer.spec.ts:12` | **Server** `history.test.ts:384` (403 on restore). Dark mode stays covered in rows 19, 30, 34 | – |
+| 26 | Summarise shows the first sentence in the card | `ai.spec.ts:21` | **Browser** | `ai` (18 s, rows 26–27) |
+| 27 | Ask: the answer shows, and the [1] link and the Sources entry open the page | `ai-ask.spec.ts:37` | **Browser** | `ai` |
+| 28 | A non-member asking gets "couldn't find", no sources | `ai-ask-access.spec.ts:43` | **Server** `ai-ask.test.ts:337`, `ai-ask.test.ts:411` | – |
+| 29 | With AI off, Summarise and Ask are hidden and `/ask` shows the not-set-up note | `ai-ask-access.spec.ts:71` | **Browser** | `ai-off` (4 s) |
+| 30 | An editor comments on a paragraph and on the page; marker and count survive a reload (dark mode too) | `comments.spec.ts:15` | **Browser** | `comments` (10 s) |
+| 31 | A viewer can reply but not resolve or edit; the editor resolves and reopens | `comments-roles.spec.ts:23` | **Server** `comments.test.ts:107`, `comments.test.ts:154`, `comments.test.ts:210` (`:154` proves only the author may edit, refusing another editor and both kinds of admin; it has no viewer case of its own, so the tester confirms that is enough or the coder adds the viewer case) | – |
+| 32 | The author edits and deletes their comment; a deleted root keeps its reply | `comments-author.spec.ts:12` | **Server** `comments.test.ts:154`, `comments.test.ts:171` | – |
+| 33 | New page from a built-in template; Blank page is still empty; save a page as a template and reuse it | `templates-builtin.spec.ts:15`, `templates-saved.spec.ts:11` | **Browser**, the two merged | `templates` (11 s) |
+| 34 | Edit and delete a saved template (dark mode) | `templates-edit.spec.ts:25` | **Server** `templates.test.ts:192` | – |
+| 35 | A viewer sees no template control | `templates-viewer.spec.ts:11` | **Server** `templates.test.ts:287` | – |
+| 36 | An editor stars a page, sees both Home lists in order, unstars it (dark mode) | `favourites.spec.ts:39` | **Browser** | `favourites` (8 s) |
+| 37 | A viewer's favourite leaves both lists when they are removed from the space | `favourites.spec.ts:93` | **Server** `personal.test.ts:168` | – |
+
+The behaviour list from `06-c2-time-budget.md` ("Point 3 coverage") is all in
+this table: sign-up (1), log in/out (5), per-space roles (3, 6–9, 14),
+nested pages (4), every slash block (11), embeds (14–16), two-tab conflict
+(13), search scoping and both themes (19, 20), history view and restore
+(21–25), AI summarise (26), ask with sources (27), restricted-space exclusion
+(20, 28), AI off (29). Plus comments (30–32), templates (33–35), favourites
+and recently viewed (36–37).
+
+**The budget.** 14 lean files, about 18 tests. The per-file budgets above
+add up to **150 s**. Today's tests for the same paths, measured one by one,
+add up to about 220 s at load 15+, so meeting the budget needs the merges
+(each merge saves a login and a cold page load, about 3–5 s) and API set-up,
+not only fewer tests. A file over its budget is fine if the total holds.
+
+### Lean-suite boxes (all must be true, on top of boxes 1–7 below)
+8. [ ] Every row of the table is proven where it says. Every "server" row
+   names a test that exists today and passes in `npm run test`. If a named
+   test does not really cover its row, the check stays in the browser.
+9. [ ] One browser test is kept per feature screen path (the "Browser" rows);
+   none of them is dropped or emptied.
+10. [ ] At most 18 test files under `e2e/tests/`.
+11. [ ] Total browser time (the sum of the per-test times Playwright prints)
+   is **150 s or less** in each of the three proof runs, at load 15 or more
+   at the start of the run.
+
 ## The done-check (all must be true)
 1. [ ] `npm run test:e2e` from the workspace root, default settings, finishes
    in **under 75 s wall clock** (`/usr/bin/time`) at load ≤ 10, and **under
    95 s** at load 15 or more. Three runs in a row, load noted at start and
    end of each, at least one of them at load ≥ 12.
-2. [x] Every run prints `N passed` with N ≥ 40 and exits 0. No retries, no
-   skipped tests, no `.only`, no failures, in all three runs.
-3. [x] Coverage is not reduced: every behaviour in the list in
-   `06-c2-time-budget.md` (item #102, "Point 3 coverage") is still proven on
-   screen, plus comments, templates, favourites and recently viewed.
-4. [ ] No raised time limits (per test or per check) and no assertions removed
-   to get under the target.
+2. [ ] Every run prints `N passed` and exits 0, where N is the number of
+   tests in the lean suite (see "The lean suite" below; it replaces "N ≥ 40").
+   No retries, no skipped tests, no `.only`, no failures, in all three runs.
+   *(Unticked by the lead, item #125: step 6 had failures in 2 of 3 runs, so
+   the tick from #121 no longer stands.)*
+3. [ ] Coverage is not reduced: every row of the behaviour table below is
+   proven where the table says, on screen or by the named server test.
+   *(Unticked by the lead, item #125: the suite is being slimmed, so this
+   has to be checked again against the table.)*
+4. [ ] No raised time limits (per test or per check). No assertions removed,
+   except a browser check the table moves to a named server test that
+   already exists and passes.
 5. [ ] The proof command stays `npm run test:e2e` with no environment
    variables the checker would not set.
 6. [ ] The app's own behaviour does not change to suit the tests (for example
@@ -517,8 +614,12 @@ Reported in team chat; #124 does not tick box 1 (box 2 already carried an
 be revisited given this round's failures).
 
 ## Who proves it
-- Coder: makes the change, ticks 1, 2, 4, 5, 6 with three timed runs recorded
-  here (load at start and end), commits and pushes.
-- Tester: runs it three times on their own, records the output here, ticks 3
-  and 7.
+- Coder: slims the suite to the table, re-measures the workers setting,
+  ticks 4, 5, 6, 9 and 10, records `npm run check` and one timed
+  `npm run test:e2e` run here (load at start and end, total browser time),
+  commits and pushes.
+- Tester: runs it three times in a row on their own at load 12 or more,
+  records wall time, total browser time and load here, and ticks 1, 2 and
+  11 only if all three runs meet them. Checks every row of the table against
+  the specs and the named server tests and ticks 3 and 8; re-checks 7.
 - Lead: runs it once more and accepts or sends it back.
