@@ -1,10 +1,10 @@
 # Stillwater
 
 <!-- mind:showcase:start -->
-<!-- capture 20261107T061013Z -->
+<!-- capture 20261109T222859Z -->
 [![Test5 in use, click for the full video](docs/showcase/preview.gif)](docs/showcase/showcase.mp4)
 
-Showcase recorded 2026-11-07. Click the preview to watch the full video.
+Showcase recorded 2026-11-09. Click the preview to watch the full video.
 <!-- mind:showcase:end -->
 
 A calm, self-hosted team wiki. Make spaces, nest pages inside pages, and
