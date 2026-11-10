@@ -432,6 +432,7 @@ function PageView({ page }: { page: Page }) {
           <PageEditor
             key={`${page.id}:${generation}`}
             page={page}
+            spaceKey={space.key}
             editable={canEdit}
             saver={saver}
             onReload={reload}

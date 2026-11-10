@@ -50,7 +50,7 @@ test.describe.serial('ai', () => {
     page,
   }) => {
     await logIn(page, admin);
-    await page.getByRole('link', { name: 'Ask' }).click();
+    await page.getByRole('link', { name: 'Ask', exact: true }).click();
     await expect(page).toHaveURL('/ask');
     await askField(page).fill(`What is a ${WORD}?`);
     await page.keyboard.press('Enter');

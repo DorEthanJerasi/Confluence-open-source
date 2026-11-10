@@ -1,6 +1,7 @@
 // The page body: the Tiptap editor for space editors, the same schema
 // rendered read-only for viewers. Autosaves ~1 s after typing stops.
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BubbleMenu, EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
 import { NodeSelection } from '@tiptap/pm/state';
@@ -10,6 +11,9 @@ import { Bold, Code, Italic, Link2, Strikethrough } from 'lucide-react';
 import { SlashCommand } from './slash';
 import { AttachmentUpload, CardOfferButton, embedViews, type UploadNote } from './embeds';
 import type { PageSaver, SaveState } from './saver';
+import { TaskCaret, TaskController, TaskPopover, taskItemView, type TaskOpen } from './tasks';
+import { api } from '../api';
+import { spacePeopleKey } from '../tasks';
 
 const AUTOSAVE_MS = 1000;
 
@@ -144,8 +148,11 @@ export function PageEditor({
   saver,
   onReload,
   onEditor,
+  spaceKey,
 }: {
   page: Page;
+  /** The page's space: the task picker lists the people who can read it. */
+  spaceKey?: string;
   editable: boolean;
   saver: PageSaver;
   onReload: () => void;
@@ -156,6 +163,18 @@ export function PageEditor({
   const timer = useRef<number | null>(null);
   const latest = useRef<Doc | null>(null);
   const [note, setNote] = useState<UploadNote | null>(null);
+  const [taskOpen, setTaskOpen] = useState<TaskOpen | null>(null);
+  const [tasks] = useState(() => new TaskController());
+  tasks.open = setTaskOpen;
+  const closeTask = useCallback(() => setTaskOpen(null), []);
+  const people = useQuery({
+    queryKey: spacePeopleKey(spaceKey ?? ''),
+    queryFn: () => api.spacePeople(spaceKey!),
+    enabled: !!spaceKey,
+    staleTime: 60_000,
+  });
+  const peopleList = people.data?.people ?? null;
+  useEffect(() => tasks.setPeople(peopleList), [tasks, peopleList]);
 
   const flush = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -168,10 +187,11 @@ export function PageEditor({
   const editor = useEditor(
     {
       extensions: [
-        ...getExtensions({ history: true, nodeViews: embedViews }),
+        ...getExtensions({ history: true, nodeViews: { ...embedViews, taskItem: taskItemView(tasks) } }),
         ...(editable
           ? [
               SlashCommand,
+              TaskCaret.configure({ ctrl: tasks }),
               AttachmentUpload.configure({ pageId: page.id, onNote: setNote }),
               Placeholder.configure({
                 placeholder: ({ node }) => (node.type.name === 'paragraph' ? 'Write, or type / for blocks' : ''),
@@ -246,6 +266,7 @@ export function PageEditor({
       {editor && editable && <TableMenu editor={editor} />}
       {editor && editable && <MarksMenu editor={editor} />}
       {editor && editable && <CardOfferButton editor={editor} />}
+      {editor && editable && taskOpen && <TaskPopover editor={editor} open={taskOpen} people={peopleList} onClose={closeTask} />}
       <EditorContent editor={editor} />
     </div>
   );

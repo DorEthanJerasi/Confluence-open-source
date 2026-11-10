@@ -504,7 +504,7 @@ export interface ExtensionOptions {
    * Interactive views for the embed blocks (the web editor's upload and caption
    * UI). They change only how a block is drawn, never its schema.
    */
-  nodeViews?: Partial<Record<'image' | 'file' | 'video' | 'linkPreview', NodeViewRenderer>>;
+  nodeViews?: Partial<Record<'image' | 'file' | 'video' | 'linkPreview' | 'taskItem', NodeViewRenderer>>;
 }
 
 /** The single list of nodes and marks. */
@@ -517,7 +517,7 @@ export function getExtensions(opts: ExtensionOptions = {}): AnyExtension[] {
     }),
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
     TaskList,
-    Task.configure({ nested: true }),
+    (opts.nodeViews?.taskItem ? withView(Task, opts.nodeViews.taskItem) : Task).configure({ nested: true }),
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,

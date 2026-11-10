@@ -10,6 +10,7 @@ import type {
   Doc,
   FavouritePage,
   LinkPreview,
+  MyTaskList,
   Page,
   PageSummary,
   PageTemplate,
@@ -21,7 +22,9 @@ import type {
   SearchResult,
   Space,
   SpaceMember,
+  SpacePeopleList,
   TemplateSummary,
+  TickTaskReply,
   User,
   Visibility,
 } from '@stillwater/shared';
@@ -203,6 +206,14 @@ export const api = {
   favourites: () => get<{ pages: FavouritePage[] }>('/api/me/favourites'),
   /** The person's own recently opened pages they can still read, newest first. */
   recent: () => get<{ pages: RecentPage[] }>('/api/me/recent'),
+
+  /** The person's open tasks on live pages they can read: dated first, earliest first. */
+  myTasks: () => get<MyTaskList>('/api/me/tasks'),
+  /** Ticks or unticks a task through a normal page save (editor and up); 409 when the page just changed twice. */
+  tickTask: (pageId: string, taskId: string, checked: boolean) =>
+    request<TickTaskReply>('PATCH', `/api/pages/${enc(pageId)}/tasks/${enc(taskId)}`, { checked }),
+  /** Active people who can read the space, by name (the task picker). */
+  spacePeople: (key: string) => get<SpacePeopleList>(`/api/spaces/${enc(key)}/people`),
 };
 
 /** Query keys of the two personal lists on Home. */

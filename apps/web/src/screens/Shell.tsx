@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { LogOut, MessageCircleQuestion, Moon, Search, Sun, Users } from 'lucide-react';
+import { ListChecks, LogOut, MessageCircleQuestion, Moon, Search, Sun, Users } from 'lucide-react';
 import { api } from '../api';
 import { useCurrentUser } from '../auth';
 import { currentTheme, setTheme, type Theme } from '../theme';
@@ -121,6 +121,9 @@ export function Shell() {
         <nav className="topnav">
           <NavLink to="/" end className="topnav-link">
             Home
+          </NavLink>
+          <NavLink to="/tasks" className="topnav-link">
+            <ListChecks size={16} aria-hidden="true" /> My tasks
           </NavLink>
           {user.role === 'admin' && (
             <NavLink to="/admin/users" className="topnav-link">

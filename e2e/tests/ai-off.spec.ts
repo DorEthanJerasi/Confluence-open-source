@@ -19,7 +19,7 @@ test.describe.serial('ai switched off', () => {
     await page.goto(path);
     await expect(page.getByLabel('Page title')).toHaveValue('Garden notes');
     await expect(page.getByRole('button', { name: 'Summarise' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'Ask' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Ask', exact: true })).toHaveCount(0);
 
     await page.goto('/ask');
     await expect(page.getByText('AI is not set up on this wiki')).toBeVisible();

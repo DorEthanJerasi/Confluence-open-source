@@ -102,6 +102,148 @@
   text-decoration: line-through;
 }
 
+/* Task person and due date (done-check 12b): quiet chips after the text,
+   and the Assign / Due date controls on the row under the pointer or caret. */
+.doc ul[data-type='taskList'] li > .task-meta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  max-width: 50%;
+  padding-top: 0.15em;
+  user-select: none;
+}
+.task-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.9;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-base) var(--ease-standard),
+    color var(--motion-base) var(--ease-standard);
+}
+.task-chip[hidden] {
+  display: none;
+}
+.task-person.is-no-access {
+  font-style: italic;
+}
+.task-due[data-tone='today'],
+.task-due[data-tone='soon'] {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
+.task-due[data-tone='overdue'] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-weight: var(--weight-medium);
+}
+.doc li[data-checked='true'] > .task-meta .task-chip {
+  background: transparent;
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+.task-ctls {
+  display: inline-flex;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+.task-ctl {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  line-height: 1.8;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.task-ctl:hover {
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+}
+.task-ctl:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+/* The row under the pointer (not its parent too), the row with the caret, or a focused control. */
+.doc li[data-type='taskItem']:hover:not(:has(li[data-type='taskItem']:hover)) > .task-meta .task-ctls,
+.ProseMirror-focused li.has-caret > .task-meta .task-ctls,
+.task-ctls:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .task-ctls {
+    opacity: 1;
+  }
+}
+
+.task-popover {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+}
+.task-assign {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.task-assign .input,
+.task-due-form .input {
+  width: 100%;
+}
+.task-due-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.task-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.task-person-option {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.task-person-option.is-active {
+  background: var(--color-accent-soft);
+}
+.task-person-option.is-current {
+  font-weight: var(--weight-medium);
+}
+.task-person-option.is-clear {
+  color: var(--color-text-muted);
+}
+.task-popover-note {
+  padding: var(--space-1) var(--space-2);
+}
+
 /* Quote, divider, callout */
 .doc blockquote {
   padding-left: var(--space-4);
