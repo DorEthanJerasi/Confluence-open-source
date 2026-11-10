@@ -2,7 +2,9 @@
 // from this file with `npm run db:generate -w apps/server` and committed.
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
+  date,
   customType,
   index,
   integer,
@@ -265,4 +267,32 @@ export const pageViews = pgTable(
     viewedAt: timestamp('viewed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.pageId] }), index('page_views_user_idx').on(t.userId, t.viewedAt.desc())],
+);
+
+// Task index (docs/done-checks/12-tasks.md). The page document is the truth: a
+// task's person, due day and tick are attrs on its taskItem in pages.doc. This
+// table is rebuilt from the doc by createPage and savePage in the same
+// transaction as the page row, and nothing else writes it, so a history
+// restore, a template or a later co-editing server keep it right for free.
+// My tasks filters it when read (pages.deleted_at, visibleSpaceIds).
+export const pageTasks = pgTable(
+  'page_tasks',
+  {
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    taskId: text('task_id').notNull(),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => spaces.id, { onDelete: 'cascade' }),
+    assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    due: date('due', { mode: 'string' }),
+    checked: boolean('checked').notNull(),
+    text: text('text').notNull(),
+    position: integer('position').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.pageId, t.taskId] }),
+    index('page_tasks_open_idx').on(t.assigneeId, t.due).where(sql`${t.checked} = false`),
+  ],
 );

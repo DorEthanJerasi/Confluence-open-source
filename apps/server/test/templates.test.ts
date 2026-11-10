@@ -45,8 +45,19 @@ const pageDoc: Doc = {
 
 const blocks = (doc: unknown) => ((doc as { content?: Block[] }).content ?? []) as Block[];
 const ids = (doc: unknown) => blocks(doc).map((b) => b.attrs?.id as string);
-/** The doc with top-level block ids taken out, to compare content only. */
-const content = (doc: unknown) => blocks(doc).map(({ attrs, ...rest }) => ({ ...rest, attrs: { ...attrs, id: undefined } }));
+/** Task ids taken out anywhere in a node (they are made fresh, like block ids). */
+const noTaskIds = (n: unknown): unknown => {
+  if (!n || typeof n !== 'object') return n;
+  const { attrs, content: kids, ...rest } = n as { attrs?: Record<string, unknown>; content?: unknown[] };
+  return {
+    ...rest,
+    ...(attrs ? { attrs: 'taskId' in attrs ? { ...attrs, taskId: undefined } : attrs } : {}),
+    ...(kids ? { content: kids.map(noTaskIds) } : {}),
+  };
+};
+/** The doc with top-level block ids and task ids taken out, to compare content only. */
+const content = (doc: unknown) =>
+  blocks(doc).map((b) => noTaskIds({ ...b, attrs: { ...b.attrs, id: undefined } }));
 
 /**
  * Restricted space "eng" made by Ada (instance admin). Bea is an editor of it,

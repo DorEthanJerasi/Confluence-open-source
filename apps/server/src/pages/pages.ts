@@ -2,15 +2,18 @@
 // the routes before these are called. savePage is the ONLY writer of
 // pages.doc (ARCHITECTURE.md §3, rule 5), and createPage and savePage are the
 // only writers of page_versions (§5), always in the same transaction as the
-// page row, so a page and its history never disagree.
+// page row, so a page and its history never disagree. The same two are the
+// only writers of page_tasks (done-check 12): the task index is rebuilt from
+// the saved doc in the same transaction (replaceTasks).
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { generateKeyBetween } from 'fractional-indexing';
 import { EMPTY_DOC, type Crumb, type Doc, type Page, type Role } from '@stillwater/shared';
 import type { Db } from '../db/client.js';
-import { pageFavourites, pageVersions, pages, spaces, users } from '../db/schema.js';
+import { pageFavourites, pageTasks, pageVersions, pages, spaces, users } from '../db/schema.js';
 import { requireSpaceRole } from '../auth/permissions.js';
 import type { SessionUser } from '../auth/session.js';
 import { badRequest, conflict, notFound } from '../http.js';
+import type { DocTask } from '@stillwater/editor-schema';
 import { normalizeDoc } from './docText.js';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -35,11 +38,32 @@ async function requireLiveParent(tx: Tx, spaceId: string, parentId: string) {
   if (!parent) throw badRequest('The parent page does not exist in this space');
 }
 
+/**
+ * Make the page's page_tasks rows match its doc. Called only by createPage and
+ * savePage, inside their transaction, right after the page row is written.
+ */
+async function replaceTasks(tx: Tx, pageId: string, spaceId: string, tasks: DocTask[]) {
+  await tx.delete(pageTasks).where(eq(pageTasks.pageId, pageId));
+  if (tasks.length === 0) return;
+  await tx.insert(pageTasks).values(
+    tasks.map((t) => ({
+      pageId,
+      taskId: t.taskId,
+      spaceId,
+      assigneeId: t.assignee,
+      due: t.due,
+      checked: t.checked,
+      text: t.text,
+      position: t.position,
+    })),
+  );
+}
+
 export async function createPage(
   db: Db,
   input: { spaceId: string; userId: string; title: string; parentId: string | null; doc?: Doc },
 ): Promise<string> {
-  const { doc, text } = normalizeDoc(input.doc ?? EMPTY_DOC);
+  const { doc, text, tasks } = normalizeDoc(input.doc ?? EMPTY_DOC);
   return db.transaction(async (tx) => {
     await lockSpaceTree(tx, input.spaceId);
     if (input.parentId) await requireLiveParent(tx, input.spaceId, input.parentId);
@@ -71,6 +95,7 @@ export async function createPage(
       createdAt: row!.updatedAt,
       savedAt: row!.updatedAt,
     });
+    await replaceTasks(tx, row!.id, input.spaceId, tasks);
     return row!.id;
   });
 }
@@ -201,8 +226,9 @@ export async function savePage(
         updatedAt: new Date(),
       })
       .where(and(eq(pages.id, pageId), eq(pages.version, baseVersion), isNull(pages.deletedAt)))
-      .returning({ version: pages.version, title: pages.title, doc: pages.doc, updatedAt: pages.updatedAt });
+      .returning({ version: pages.version, title: pages.title, doc: pages.doc, updatedAt: pages.updatedAt, spaceId: pages.spaceId });
     if (row) {
+      if (body) await replaceTasks(tx, pageId, row.spaceId, body.tasks);
       await recordSnapshot(tx, {
         pageId,
         version: row.version,

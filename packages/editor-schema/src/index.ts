@@ -14,7 +14,8 @@ import TableCell from '@tiptap/extension-table-cell';
 import Link from '@tiptap/extension-link';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
-import { videoEmbedUrl } from '@stillwater/shared';
+import { Transform } from '@tiptap/pm/transform';
+import { isCalendarDate, videoEmbedUrl } from '@stillwater/shared';
 
 export { diffBlocks, type BlockDiff, type BlockJson, type DocJson } from './diff.js';
 
@@ -357,6 +358,140 @@ export const BlockId = Extension.create({
   },
 });
 
+/** A task id: what newBlockId makes, or any short id of letters, digits, - and _. */
+const TASK_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+function isTaskId(v: unknown): v is string {
+  return typeof v === 'string' && TASK_ID.test(v);
+}
+
+/**
+ * A task (done-check 12): the checkbox item plus a stable `taskId`, the person
+ * it is given to (`assignee`, a user id) and a `due` calendar day. The page
+ * document is the truth; the server's page_tasks table is only an index of it.
+ * None of the three is copied to the new task when a task is split by Enter.
+ */
+export const Task = TaskItem.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      taskId: {
+        default: null,
+        keepOnSplit: false,
+        parseHTML: (el: HTMLElement) => {
+          const v = el.getAttribute('data-task-id');
+          return isTaskId(v) ? v : null;
+        },
+        renderHTML: (attrs: Record<string, unknown>) => (attrs.taskId ? { 'data-task-id': attrs.taskId } : {}),
+      },
+      assignee: {
+        default: null,
+        keepOnSplit: false,
+        parseHTML: (el: HTMLElement) => {
+          const v = el.getAttribute('data-assignee');
+          return v && UUID.test(v) ? v : null;
+        },
+        renderHTML: (attrs: Record<string, unknown>) => (attrs.assignee ? { 'data-assignee': attrs.assignee } : {}),
+      },
+      due: {
+        default: null,
+        keepOnSplit: false,
+        parseHTML: (el: HTMLElement) => {
+          const v = el.getAttribute('data-due');
+          return isCalendarDate(v) ? v : null;
+        },
+        renderHTML: (attrs: Record<string, unknown>) => (attrs.due ? { 'data-due': attrs.due } : {}),
+      },
+    };
+  },
+});
+
+/** Positions of task items whose id is missing, malformed, or repeats an earlier one. */
+function tasksNeedingIds(doc: PmNode): { pos: number; node: PmNode }[] {
+  const seen = new Set<string>();
+  const out: { pos: number; node: PmNode }[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'taskItem') return;
+    const id = node.attrs.taskId as unknown;
+    if (isTaskId(id) && !seen.has(id)) seen.add(id);
+    else out.push({ pos, node });
+  });
+  return out;
+}
+
+const taskIdKey = new PluginKey('taskId');
+
+/** In the browser: gives every task a unique `taskId`, like BlockId does for blocks. */
+export const TaskId = Extension.create({
+  name: 'taskId',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: taskIdKey,
+        appendTransaction: (trs, _old, state) => {
+          if (!trs.some((t) => t.docChanged)) return null;
+          const todo = tasksNeedingIds(state.doc);
+          if (todo.length === 0) return null;
+          const tr = state.tr;
+          for (const { pos, node } of todo) tr.setNodeMarkup(pos, undefined, { ...node.attrs, taskId: newBlockId() });
+          return tr.setMeta('addToHistory', false);
+        },
+      }),
+    ];
+  },
+});
+
+/** Fill in missing or repeated task ids anywhere in the doc (nested tasks too). */
+export function withTaskIds(doc: PmNode): PmNode {
+  const todo = tasksNeedingIds(doc);
+  if (todo.length === 0) return doc;
+  const tr = new Transform(doc);
+  for (const { pos, node } of todo) tr.setNodeMarkup(pos, undefined, { ...node.attrs, taskId: newBlockId() });
+  return tr.doc;
+}
+
+/** One task of a page as the server indexes it (page_tasks). */
+export interface DocTask {
+  taskId: string;
+  assignee: string | null;
+  due: string | null;
+  checked: boolean;
+  /** The task's own text, at most TASK_TEXT_MAX characters, without its nested tasks. */
+  text: string;
+  /** Order in the doc, 0 first. */
+  position: number;
+}
+
+export const TASK_TEXT_MAX = 300;
+
+/**
+ * Every task of a page in doc order. Takes a parsed doc, or JSON that is
+ * parsed first (so ids are filled in). Tasks with no id are left out; a doc
+ * from parseDoc has none of those.
+ */
+export function docTasks(doc: PmNode | unknown): DocTask[] {
+  const node = doc instanceof PmNode ? doc : parseDoc(doc);
+  const tasks: DocTask[] = [];
+  node.descendants((n) => {
+    if (n.type.name !== 'taskItem') return;
+    const id = n.attrs.taskId as unknown;
+    if (!isTaskId(id)) return;
+    const parts: string[] = [];
+    n.forEach((child) => {
+      if (child.type.name !== 'taskList') parts.push(child.textBetween(0, child.content.size, ' ', leafText));
+    });
+    tasks.push({
+      taskId: id,
+      assignee: typeof n.attrs.assignee === 'string' ? n.attrs.assignee : null,
+      due: typeof n.attrs.due === 'string' ? n.attrs.due : null,
+      checked: n.attrs.checked === true,
+      text: parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, TASK_TEXT_MAX),
+      position: tasks.length,
+    });
+  });
+  return tasks;
+}
+
 export const lowlight = createLowlight(common);
 
 export interface ExtensionOptions {
@@ -382,7 +517,7 @@ export function getExtensions(opts: ExtensionOptions = {}): AnyExtension[] {
     }),
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
     TaskList,
-    TaskItem.configure({ nested: true }),
+    Task.configure({ nested: true }),
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
@@ -399,6 +534,7 @@ export function getExtensions(opts: ExtensionOptions = {}): AnyExtension[] {
     withView(Video, opts.nodeViews?.video),
     withView(LinkPreview, opts.nodeViews?.linkPreview),
     BlockId,
+    TaskId,
   ];
 }
 
@@ -447,6 +583,12 @@ function checkAttrs(node: Json, path: string) {
       if ((k === 'url' || k === 'imageUrl') && v !== null && v !== undefined && !(typeof v === 'string' && WEB_URL.test(v))) {
         throw new InvalidDocError(`${path}.${k}: only http and https addresses are allowed`);
       }
+      if (k === 'due' && node.type === 'taskItem' && v !== null && v !== undefined && !isCalendarDate(v)) {
+        throw new InvalidDocError(`${path}.${k}: a due date must be a real day written YYYY-MM-DD`);
+      }
+      if (k === 'assignee' && node.type === 'taskItem' && v !== null && v !== undefined && !(typeof v === 'string' && UUID.test(v))) {
+        throw new InvalidDocError(`${path}.${k}: must be the id of a person`);
+      }
       if (k === 'embedUrl' && v !== null && v !== undefined && !isVideoEmbedUrl(v)) {
         throw new InvalidDocError(`${path}.${k}: only YouTube and Vimeo videos can be embedded`);
       }
@@ -460,7 +602,8 @@ function checkAttrs(node: Json, path: string) {
 /**
  * Parse and check a stored/incoming page body against the schema. Throws
  * InvalidDocError on anything the schema does not define, on inline `data:`
- * URLs and on unsafe link targets. Returns the parsed node with ids filled in.
+ * URLs, on unsafe link targets and on a task's bad `due` or `assignee`.
+ * Returns the parsed node with block and task ids filled in.
  */
 export function parseDoc(json: unknown): PmNode {
   if (!json || typeof json !== 'object' || (json as Json).type !== 'doc') {
@@ -480,7 +623,7 @@ export function parseDoc(json: unknown): PmNode {
   } catch (err) {
     throw new InvalidDocError(`The page body does not fit the editor schema: ${(err as Error).message}`);
   }
-  return withBlockIds(node);
+  return withTaskIds(withBlockIds(node));
 }
 
 /** Fill in missing or repeated top-level block ids. */

@@ -462,6 +462,54 @@ export interface RecentPage extends PersonalPage {
   viewedAt: string;
 }
 
+// ---------- Tasks (docs/done-checks/12-tasks.md) ----------
+
+/** True for a real calendar day written `YYYY-MM-DD` (no time, no zone). */
+export function isCalendarDate(v: unknown): v is string {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split('-').map(Number) as [number, number, number];
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
+
+/** At most this many tasks in GET /api/me/tasks. */
+export const MY_TASKS_LIMIT = 200;
+/** At most this many people in GET /api/spaces/:key/people. */
+export const SPACE_PEOPLE_LIMIT = 500;
+
+/** One open task of GET /api/me/tasks. `due` is `YYYY-MM-DD` or null. */
+export interface MyTask {
+  pageId: string;
+  taskId: string;
+  text: string;
+  due: string | null;
+  page: { id: string; title: string };
+  space: { key: string; name: string };
+  /** The person is an editor or up in the page's space. */
+  canTick: boolean;
+}
+export interface MyTaskList {
+  tasks: MyTask[];
+}
+
+/** Body of PATCH /api/pages/:id/tasks/:taskId. */
+export const tickTaskBody = z.object({ checked: z.boolean() }).strict();
+export type TickTaskBody = z.infer<typeof tickTaskBody>;
+export interface TickTaskReply {
+  version: number;
+  checked: boolean;
+}
+
+/** Query of GET /api/spaces/:key/people: filter by name or email. */
+export const spacePeopleQuery = z.object({ q: z.string().trim().max(100).optional() });
+export interface SpacePerson {
+  id: string;
+  name: string;
+}
+export interface SpacePeopleList {
+  people: SpacePerson[];
+}
+
 export interface ApiError {
   error: string;
   message: string;
