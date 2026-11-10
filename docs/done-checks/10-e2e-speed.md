@@ -173,30 +173,37 @@ add up to about 220 s at load 15+, so meeting the budget needs the merges
 not only fewer tests. A file over its budget is fine if the total holds.
 
 ### Lean-suite boxes (all must be true, on top of boxes 1–7 below)
-8. [ ] Every row of the table is proven where it says. Every "server" row
+8. [x] Every row of the table is proven where it says. Every "server" row
    names a test that exists today and passes in `npm run test`. If a named
    test does not really cover its row, the check stays in the browser.
-9. [ ] One browser test is kept per feature screen path (the "Browser" rows);
-   none of them is dropped or emptied.
-10. [ ] At most 18 test files under `e2e/tests/`.
+   *(Tester, item #127: walked every row against the 14 lean files and the
+   named server tests; `npm run test` 350 passed, exit 0.)*
+9. [x] One browser test is kept per feature screen path (the "Browser" rows);
+   none of them is dropped or emptied. *(Tester, item #127: all 19 rows'
+   behaviours present in the 14 lean files.)*
+10. [x] At most 18 test files under `e2e/tests/`. *(Tester, item #127: 14
+   files.)*
 11. [ ] Total browser time (the sum of the per-test times Playwright prints)
    is **150 s or less** in each of the three proof runs, at load 15 or more
-   at the start of the run.
+   at the start of the run. *(Tester, item #127: 230.6 s, 189.9 s, 177.0 s —
+   all over budget. See Step 7 below.)*
 
 ## The done-check (all must be true)
-1. [ ] `npm run test:e2e` from the workspace root, default settings, finishes
+1. [x] `npm run test:e2e` from the workspace root, default settings, finishes
    in **under 75 s wall clock** (`/usr/bin/time`) at load ≤ 10, and **under
    95 s** at load 15 or more. Three runs in a row, load noted at start and
    end of each, at least one of them at load ≥ 12.
-2. [ ] Every run prints `N passed` and exits 0, where N is the number of
+   *(Tester, item #127: three runs in a row at load 18.3–23.6, 88.86 s,
+   78.18 s, 65.52 s — all under the 95 s target. See Step 7 below.)*
+2. [x] Every run prints `N passed` and exits 0, where N is the number of
    tests in the lean suite (see "The lean suite" below; it replaces "N ≥ 40").
    No retries, no skipped tests, no `.only`, no failures, in all three runs.
-   *(Unticked by the lead, item #125: step 6 had failures in 2 of 3 runs, so
-   the tick from #121 no longer stands.)*
-3. [ ] Coverage is not reduced: every row of the behaviour table above is
+   *(Tester, item #127: all three runs print `19 passed`, exit 0, no
+   retries/skips/`.only`/failures. See Step 7 below.)*
+3. [x] Coverage is not reduced: every row of the behaviour table above is
    proven where the table says, on screen or by the named server test.
-   *(Unticked by the lead, item #125: the suite is being slimmed, so this
-   has to be checked again against the table.)*
+   *(Tester, item #127: checked every row against the lean files and the
+   named server tests; `npm run test` 350 passed, exit 0. See Step 7 below.)*
 4. [ ] No raised time limits (per test or per check). No assertions removed,
    except a browser check the table moves to a named server test that
    already exists and passes.
@@ -612,6 +619,66 @@ itself just created, so this is not stale state from an earlier test.
 Reported in team chat; #124 does not tick box 1 (box 2 already carried an
 `[x]` from #121's three clean runs — see team chat for whether that should
 be revisited given this round's failures).
+
+## Step 7 (item #127, tester, 2026-11-10 04:54–05:00): three runs of the lean suite
+
+After the coder's lean-suite change (item #126, commit 99cb1ae5e: 28 spec
+files → 14, 41 tests → 19), three `/usr/bin/time npm run test:e2e` runs in a
+row, right after each other, on this shared box, load 18.3–23.6 throughout
+(well above the ≥12 the done-check asks for):
+
+| run | result | wall clock | load start → end | total browser time (summed per-test) |
+|-----|--------|-----------|-------------------|---------------------------------------|
+| 1   | 19 passed, exit 0 | **88.86 s** | 18.30 → 21.68 | 230.6 s |
+| 2   | 19 passed, exit 0 | **78.18 s** | 20.28 → 22.24 | 189.9 s |
+| 3   | 19 passed, exit 0 | **65.52 s** | 21.42 → 23.57 | 177.0 s |
+
+**Box 1 holds**: all three runs are well above load 15, and all three are
+under the 95 s load-15+ target (88.86 s, 78.18 s, 65.52 s).
+**Box 2 holds**: all three runs print `19 passed` and exit 0 — no retries,
+skips, `.only` or failures in any of them.
+**Box 11 does not hold**: the lean-suite budget was 150 s of total browser
+time; all three runs are well over it — 230.6 s, 189.9 s, 177.0 s. The split
+into 14 files and 19 tests did cut the test count (41 → 19) and the wall
+clock (142–162 s → 66–89 s), mostly through fewer, cheaper logins and
+fewer cold page loads, not through hitting the per-file budgets in the
+table: several lean files (`editor`, 20+18.6s; `video-links`, 15.7–18.5s;
+`embeds`, 12.7–18.5s; `comments`, 11.3–14.0s) run longer than their stated
+budget once merged. The wall-clock target (box 1) is met; the browser-time
+budget (box 11) is not.
+
+**Box 3/8 check — table against the code**: walked every row of "Where
+each behaviour is proven" against the 14 lean files and the named server
+tests.
+- Every "Browser" row's behaviour is present in the lean suite: sign-up/
+  space/sub-page/log-out (`wiki.spec.ts`, 2 tests), space settings and
+  outsider exclusion (`permissions.spec.ts`), type/autosave/slash menu/
+  reduced motion (`editor.spec.ts`, 2 tests), two-tab conflict
+  (`editor-conflict.spec.ts`), viewer view of a page with every embed kind
+  (`viewer.spec.ts`), image/file upload (`embeds.spec.ts`), video/link
+  cards (`video-links.spec.ts`), search (`search.spec.ts`), history list/
+  preview/restore/after-restore (`history.spec.ts`, 2 tests), AI summarise
+  and ask (`ai.spec.ts`, 2 tests), AI off (`ai-off.spec.ts`), comments
+  (`comments.spec.ts`), templates built-in/saved (`templates.spec.ts`,
+  2 tests), favourites (`favourites.spec.ts`). None of the 19 "Browser"
+  rows is dropped or emptied.
+- Every "Server" row's named test file exists today (`spaces.test.ts`,
+  `pages.test.ts`, `personal.test.ts`, `search.test.ts`, `comments.test.ts`,
+  `templates.test.ts`, `ai-ask.test.ts`, `history.test.ts`, `embeds.test.ts`,
+  `video.test.ts`, `linkPreview.test.ts`, `attachments.test.ts`).
+- Row 31's gap (a viewer's own 403 on editing a comment) is closed:
+  `comments.test.ts`'s edit test now also checks a viewer (`val`), not just
+  another editor and a space admin (commit 99cb1ae5e).
+**`npm run test`** (the server suite that proves every "Server" row): run
+straight after the three timed e2e runs, same commit — all passed, exit 0.
+**Box 3 and box 8 hold.**
+
+**What this says**: the coder's lean suite is correct and comfortably meets
+the wall-clock target (box 1) with margin to spare even at load 18–24, and
+every behaviour in the table is still proven somewhere. What it does not
+yet meet is its own 150 s browser-time budget (box 11) — the per-file
+merges cut tests but several files still run longer than planned. Reported
+in team chat; #127 ticks 1, 2, 3, 8 and leaves 11 open.
 
 ## Who proves it
 - Coder: slims the suite to the table, re-measures the workers setting,
