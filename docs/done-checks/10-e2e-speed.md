@@ -413,6 +413,66 @@ What this says:
   load's. Step 5 (#123, comparing 2, 3 and 4 workers at the same load) and
   the tester's three runs (#124) are where that gets settled.
 
+## Speed step 5 (item #123, coder, 2026-11-10 03:24–03:45): 2, 3 or 4 workers
+
+Six full `npm run test:e2e` runs one after another, the worker count set with
+`E2E_WORKERS`, in the order **3, 2, 4, 4, 2, 3**. Going forwards and then
+backwards puts each setting at the same average place in the sequence, so a
+load that drifts up or down during the half hour affects all three settings
+alike. Builds were skipped (up to date) in every run. Wall time is from the
+start to the end of `npm run test:e2e`. Load is the 1-minute load at start and
+end. 41 tests, same commit (5e8af031d) in all six.
+
+| run | workers | result | wall | load start → end | set-up |
+|-----|---------|--------|------|------------------|--------|
+| 1 | 3 | 41 passed, exit 0 | 142.1 s | 10.8 → 14.4 | 8.8 s |
+| 2 | 2 | 41 passed, exit 0 | 170.8 s | 14.4 → 14.5 | 5.3 s |
+| 3 | 4 | 41 passed, exit 0 | 142.2 s | 14.5 → 18.2 | 9.5 s |
+| 4 | 4 | 41 passed, exit 0 | 150.6 s | 18.2 → 21.3 | 13.7 s |
+| 5 | 2 | 41 passed, exit 0 | 255.5 s | 21.3 → 19.1 | 5.4 s |
+| 6 | 3 | **1 failed**, 40 passed, exit 1 | 157.6 s | 19.1 → 24.4 | 14.2 s |
+
+| workers | mean wall | passing runs | mean load over its runs |
+|---------|-----------|--------------|-------------------------|
+| 2 | **213.2 s** | 2 of 2 | ~17.3 |
+| 3 | **149.9 s** | 1 of 2 | ~17.2 |
+| 4 | **146.4 s** | 2 of 2 | ~18.1 |
+
+The run-6 failure: `search.spec.ts` "someone who is not a member of the
+restricted space gets no results". Ctrl+K was pressed and the search box was
+not focused within 10 s (`toBeFocused`, received "inactive"). It looks like
+the key was pressed before the page had attached its shortcut under load, not
+a wrong result. It did not happen in the 4-worker runs. It is reported in
+team chat and was not changed here (this item only sets the worker count).
+
+What this says:
+- **2 workers is clearly the slowest**: 171 s against 142 s at load ~14, and
+  256 s at load ~20, where 3 and 4 workers took 150–158 s. Using fewer
+  workers when the box is busy makes it slower, not faster, so the default
+  does **not** follow the load.
+- **4 workers is as fast as 3 or a little faster, and steadier.** At the
+  lower load (runs 1 and 3) both took 142 s, but the 4-worker run had more
+  load (14.5 → 18.2 against 10.8 → 14.4). At the higher load, 4 took 150.6 s
+  against 157.6 s for 3. The mean is 146.4 s against 149.9 s. That is a small
+  lead, about 3.5 s, and with two runs each it is close to the noise. But
+  both 4-worker runs passed in full, and one of the two 3-worker runs did not.
+- The earlier worry that 4 browsers starve each other into timeouts
+  (2026-11-07, load ~23) did not show up here, after steps 1–4 made each
+  file smaller and each test cheaper.
+
+**Change:** `e2e/workers.ts` default is now `Math.min(4, cpus().length)`,
+one worker per core up to 4, instead of `Math.min(3, …)`. `E2E_WORKERS`
+still overrides it. Nothing else changed: no test, check or time limit.
+
+**Check run with the new default** (no `E2E_WORKERS`),
+`/usr/bin/time npm run test:e2e`: "Running 41 tests using 4 workers",
+**41 passed (2.6 m), exit 0, 157.8 s wall**, load **18.2 → 28.1** (the
+highest load of all seven runs). Set-up 8.2 s.
+
+Still open: none of these runs is under the 95 s load-15+ target. At this
+load (14–28, against 17–22 in #121) all three settings are far over it, so
+box 1 stays unticked. #124 (the tester's three runs) settles it.
+
 ## Who proves it
 - Coder: makes the change, ticks 1, 2, 4, 5, 6 with three timed runs recorded
   here (load at start and end), commits and pushes.
