@@ -4,8 +4,8 @@
 // shares the browser context's cookies, so the session lands in the browser.
 // That skips loading pages and typing into forms in every test, which was
 // most of a test's setup. wiki.spec.ts still logs in and adds a person
-// through the real forms, and the log-out test in permissions.spec.ts logs in
-// through the form (logInWithForm), so both forms stay covered.
+// through the real forms, and the log-out test in permissions-outsider.spec.ts
+// logs in through the form (logInWithForm), so both forms stay covered.
 //
 // Each person logs in once per spec file: the first logIn (or signUp) saves
 // the browser's storageState, and every later logIn for that person, in any
@@ -84,12 +84,43 @@ export async function logInWithForm(page: Page, user: Login): Promise<void> {
 
 type Person = Login & { name: string };
 
-/** Adds an account the way an admin's "Add a person" dialog does. The page must be logged in as an admin. */
-export async function addPerson(page: Page, user: Person, role: 'admin' | 'editor' | 'viewer'): Promise<void> {
+/** Adds an account the way an admin's "Add a person" dialog does. The page must be logged in as an admin. Returns the new user's id. */
+export async function addPerson(page: Page, user: Person, role: 'admin' | 'editor' | 'viewer'): Promise<string> {
   const res = await page.request.post('/api/users', {
     data: { name: user.name, email: user.email, password: user.password, role },
   });
   expect(res.status(), `add ${user.email} as ${role}`).toBe(201);
+  const { user: created } = (await res.json()) as { user: { id: string } };
+  return created.id;
+}
+
+/** Makes `userId` a member of a space with `role`, the call behind the space settings "Add" button. The page must be logged in as a space admin. */
+export async function addMember(page: Page, spaceKey: string, userId: string, role: 'admin' | 'editor' | 'viewer'): Promise<void> {
+  const res = await page.request.put(`/api/spaces/${spaceKey}/members/${userId}`, { data: { role } });
+  expect(res.status(), `add member to ${spaceKey} as ${role}`).toBe(200);
+}
+
+/**
+ * Saves a new title and doc over version `baseVersion`, the call the editor's
+ * autosave makes. Returns the page's new version number.
+ */
+export async function savePage(
+  page: Page,
+  pageId: string,
+  init: { baseVersion: number; title: string; doc: object },
+): Promise<number> {
+  const res = await page.request.put(`/api/pages/${pageId}`, { data: init });
+  expect(res.status(), `save page ${pageId} over version ${init.baseVersion}`).toBe(200);
+  const { version } = (await res.json()) as { version: number };
+  return version;
+}
+
+/** Restores `version` over `baseVersion`, the call behind history's Restore button. Returns the new version number. */
+export async function restorePageVersion(page: Page, pageId: string, version: number, baseVersion: number): Promise<number> {
+  const res = await page.request.post(`/api/pages/${pageId}/versions/${version}/restore`, { data: { baseVersion } });
+  expect(res.status(), `restore version ${version} of ${pageId}`).toBe(200);
+  const body = (await res.json()) as { version: number };
+  return body.version;
 }
 
 /**
@@ -132,7 +163,7 @@ export async function createPage(
   page: Page,
   spaceKey: string,
   init: { title: string; text?: string; doc?: object; parentId?: string },
-): Promise<{ id: string; path: string }> {
+): Promise<{ id: string; path: string; version: number }> {
   const doc = init.doc ?? {
     type: 'doc',
     content: init.text ? [{ type: 'paragraph', content: [{ type: 'text', text: init.text }] }] : [],
@@ -141,8 +172,8 @@ export async function createPage(
     data: { title: init.title, parentId: init.parentId ?? null, doc },
   });
   expect(res.status(), `create page "${init.title}" in ${spaceKey}`).toBe(201);
-  const { page: created } = (await res.json()) as { page: { id: string } };
-  return { id: created.id, path: `/s/${spaceKey}/p/${created.id}` };
+  const { page: created } = (await res.json()) as { page: { id: string; version: number } };
+  return { id: created.id, path: `/s/${spaceKey}/p/${created.id}`, version: created.version };
 }
 
 /**

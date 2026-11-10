@@ -320,6 +320,99 @@ Per-file summed test time, passing run:
 Still open: boxes 1–2 need three timed runs under 75 s; #121 does those
 runs, ideally at a load near the earlier ones.
 
+## Speed step 4 (item #122, coder, 2026-11-10): permissions, history and templates split
+
+What changed: the three biggest files became 14, each setting itself up
+through the API helpers, so they can land on different workers.
+
+| was | now |
+|-----|-----|
+| `permissions.spec.ts` (6 tests) | `permissions-settings`, `-subpage`, `-outsider` (Otto + the log-out test), `-member`, `-removed` |
+| `history.spec.ts` (5 tests) | `history-list`, `-preview`, `-restore`, `-after-restore`, `-viewer` |
+| `templates.spec.ts` (3 tests) | `templates-builtin`, `-saved`, `-edit`, `-viewer` |
+
+- Shared people, locators and set-up live in `e2e/permissions-page.ts`,
+  `e2e/history-page.ts` and `e2e/templates-page.ts`, like
+  `e2e/comments-page.ts`. Each set-up makes, through the same API calls the
+  screens use, what the earlier tests used to leave behind: Eve added to
+  space A, the parent page and sub-page, Beck's second version, a restore,
+  the saved "Launch Plan" template and a page made from it.
+- New helpers in `e2e/login.ts`: `addMember`, `savePage`,
+  `restorePageVersion`. `addPerson` now returns the new user's id and
+  `createPage` the page's version.
+- Nothing removed or loosened. Every test and check is still there. No time
+  limit changed. There is one test more (41, was 40): the long templates test
+  ("save as template, reuse, edit, delete") is now two, "save and reuse" and
+  "edit and delete". One check was added: `history-after-restore` first
+  checks that the restored text is on the page. Tests still on screen: the
+  space settings form, the Sub-page button, the history panel and Restore,
+  the "Save as template" dialog, the template editor and the delete dialog.
+
+Quick check of the 12 new files on their own at load ~15–20: 14/14 passed,
+59.6 s. The slowest were `history-restore` (14.3 s, two tests at that point)
+and `permissions-member` (14.2 s). `history-restore` was split again after
+that.
+
+**Timed run A** (before the templates test was split in two, 40 tests):
+`/usr/bin/time npm run test:e2e`: **40 passed, exit 0, 124.5 s wall**,
+**load 21.1 at start, 20.4 at end**. Summed test time 299.4 s. The step 3
+run had 297.1 s at load 24–29.
+
+**Timed run B** (final code, 41 tests): `/usr/bin/time npm run test:e2e`:
+**41 passed (2.4 m), exit 0, 150.9 s wall**, **load 15.3 at start, 25.1
+at end**. Set-up took 11.3 s, 9.7 s of it waiting for the three servers.
+Summed test time 325.5 s.
+
+| file | tests | summed |
+|------|-------|--------|
+| video-links           | 2 | 27.9 s |
+| search                | 4 | 24.0 s |
+| wiki                  | 4 | 22.3 s |
+| templates-edit        | 1 | 20.9 s |
+| editor-slash          | 1 | 18.8 s |
+| embeds                | 2 | 16.3 s |
+| permissions-member    | 1 | 14.9 s |
+| ai-ask-access         | 2 | 13.9 s |
+| editor                | 3 | 12.8 s |
+| ai-ask                | 1 | 12.7 s |
+| templates-builtin     | 1 | 12.4 s |
+| editor-conflict       | 1 | 12.2 s |
+| permissions-outsider  | 2 | 12.0 s |
+| permissions-removed   | 1 | 11.2 s |
+| ai                    | 1 | 11.1 s |
+| templates-saved       | 1 | 10.7 s |
+| permissions-subpage   | 1 | 9.2 s  |
+| favourites            | 2 | 8.3 s  |
+| comments-roles        | 1 | 7.8 s  |
+| comments-author       | 1 | 7.2 s  |
+| comments              | 1 | 7.0 s  |
+| history-restore       | 1 | 5.9 s  |
+| history-list          | 1 | 5.1 s  |
+| history-viewer        | 1 | 4.8 s  |
+| templates-viewer      | 1 | 4.7 s  |
+| history-after-restore | 1 | 4.3 s  |
+| history-preview       | 1 | 3.9 s  |
+| permissions-settings  | 1 | 3.2 s  |
+| **total**             | 41 | **325.5 s** |
+
+What this says:
+- The split did its own job. No file holds up a worker the way permissions
+  (45 s) and history (30 s) did. 12 of the 14 new files are at or under
+  ~12 s. The two left over are single tests that can't be split further
+  without cutting them up: `templates-edit` (20.9 s, the template editor
+  plus two pages made from the template) and `permissions-member` (14.9 s,
+  typing into two pages).
+- **It did not make the suite faster at this load.** Both runs were slower
+  than the tester's #121 runs (81–119 s at load 17–22). Run B's load climbed
+  to 25 during the run, and every file got slower with it. The biggest files
+  now are ones outside this item: video-links, search and wiki.
+- Each new file also pays for its own set-up: a database reset, a sign-up
+  and one or two added people, each with a password hash. Under load that
+  adds up. 14 files where there were 3 is about 11 extra set-ups.
+- Two runs at shifting load can't separate the split's effect from the
+  load's. Step 5 (#123, comparing 2, 3 and 4 workers at the same load) and
+  the tester's three runs (#124) are where that gets settled.
+
 ## Who proves it
 - Coder: makes the change, ticks 1, 2, 4, 5, 6 with three timed runs recorded
   here (load at start and end), commits and pushes.

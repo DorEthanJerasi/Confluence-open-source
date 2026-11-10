@@ -12,7 +12,7 @@ export default defineConfig({
   // Each on-screen check (expect) may wait up to 10s instead of Playwright's
   // default 5s. On this shared 4-core box the load often sits at 15-21, mostly
   // from work outside this project, and a page can take more than 5s to paint
-  // (2026-11-07: permissions.spec.ts:150 failed waiting for the page title to
+  // (2026-11-07: permissions.spec.ts:150, now permissions-member.spec.ts, failed waiting for the page title to
   // become editable). A check still passes the moment the screen is right, so
   // this costs nothing on a quiet machine. The 30s limit per test stays.
   expect: { timeout: 10_000 },
