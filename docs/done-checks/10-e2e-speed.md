@@ -227,6 +227,62 @@ What this run says:
   The build only runs when web sources change, so `npm run test:e2e` skips
   it on a normal run.
 
+## Step 3 (item #120): one login per person per file, reused as storageState
+
+What changed:
+- `e2e/login.ts`: the first `logIn` (or `signUp`) of a person in a spec file
+  saves the browser's storageState; every later `logIn` for that person puts
+  the saved cookies into the test's browser context instead of posting the
+  password again (each login is an argon2 check). New `contextFor(browser,
+  user)` makes a second browser with Playwright's `storageState` option;
+  `permissions.spec.ts` uses it for its two-browser tests.
+- `e2e/reset-db.ts`: `resetDatabase()` also forgets the saved logins, since
+  it empties the sessions table at the start of each file.
+- Tests whose point is the login form are unchanged: `wiki.spec.ts` signs up
+  and logs in through the forms, and the log-out test in
+  `permissions.spec.ts` uses `logInWithForm`.
+- `E2E_ARGS` launch hook removed from `playwright.config.ts`: nothing in the
+  repo set it or documented it.
+
+Timed run (2026-11-10), `npm run test:e2e`: **40 passed, exit 0, 139.8 s
+wall** (Playwright 2.1 m), set-up 12.0 s (Postgres start alone 7.3 s).
+**Load 24.5 at start, 29.2 at end** — two to three times the load of the
+step 2 run (9.7 → 11.8), from work outside this project, so this time is not
+comparable with step 2's 93.5 s and says nothing yet about the 75 s target.
+
+An earlier run the same hour, while the load climbed from 9.9 to ~39, had
+6 failures, all the first test of a file in the first ~3 minutes, all
+timing out or failing on sign-up (one through the sign-up form, which this
+change does not touch; one a 409 from a stalled earlier sign-up landing after
+the reset). The other 33 passed, including every test that reuses a saved
+login. Our processes used 1 m 33 s of CPU over that 7 min run.
+
+Per-file summed test time, passing run:
+
+| file | tests | summed |
+|------|-------|--------|
+| permissions     | 6 | 45.4 s |
+| history         | 5 | 30.3 s |
+| templates       | 3 | 25.9 s |
+| video-links     | 2 | 22.0 s |
+| embeds          | 2 | 20.9 s |
+| editor-slash    | 1 | 19.6 s |
+| search          | 4 | 19.0 s |
+| ai-ask-access   | 2 | 16.6 s |
+| editor          | 3 | 13.4 s |
+| ai-ask          | 1 | 12.8 s |
+| favourites      | 2 | 12.3 s |
+| wiki            | 4 | 12.0 s |
+| comments-author | 1 | 10.7 s |
+| comments-roles  | 1 | 9.6 s |
+| comments        | 1 | 9.1 s |
+| editor-conflict | 1 | 8.8 s |
+| ai              | 1 | 8.7 s |
+| **total**       | 40 | **297.1 s** |
+
+Still open: boxes 1–2 need three timed runs under 75 s; #121 does those
+runs, ideally at a load near the earlier ones.
+
 ## Who proves it
 - Coder: makes the change, ticks 1, 2, 4, 5, 6 with three timed runs recorded
   here (load at start and end), commits and pushes.
