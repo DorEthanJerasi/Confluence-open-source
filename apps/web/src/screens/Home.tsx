@@ -8,6 +8,7 @@ import { useCurrentUser } from '../auth';
 import { exactTime, timeAgo } from '../time';
 import { pageTitle } from '../tree';
 import { ErrorNote, Field, Loading, Modal, ROLE_LABEL, RoleSelect } from '../ui';
+import { DeletedSpaces } from './Trash';
 
 function slugify(s: string) {
   return s
@@ -214,6 +215,7 @@ export function Home() {
           </ul>
         )}
       </section>
+      <DeletedSpaces />
       {creating && <NewSpace onClose={() => setCreating(false)} />}
     </main>
   );

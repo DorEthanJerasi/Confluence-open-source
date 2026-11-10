@@ -6,6 +6,7 @@ import { roleAtLeast, type PageTreeItem, type Space } from '@stillwater/shared';
 import { api, ApiFailure } from '../api';
 import { buildTree, pageTitle, subtreeIds, type TreeNode } from '../tree';
 import { ErrorNote, Field, Loading, Modal, ROLE_LABEL } from '../ui';
+import { keptFor, plural, trashKey } from '../trash';
 import { TemplatePicker } from '../templates/TemplatePicker';
 import { NotFound } from './NotFound';
 
@@ -47,7 +48,10 @@ function useTreeActions(spaceKey: string) {
   });
   const remove = useMutation({
     mutationFn: (id: string) => api.deletePage(id),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      await qc.invalidateQueries({ queryKey: trashKey(spaceKey) });
+    },
   });
   return { create, move, remove };
 }
@@ -214,6 +218,8 @@ export function SpaceLayout() {
   const [picking, setPicking] = useState<{ parentId: string | null } | null>(null);
 
   const items = treeQ.data?.pages ?? [];
+  // Only to tell the delete confirm how long the trash keeps pages.
+  const trashQ = useQuery({ queryKey: trashKey(key), queryFn: () => api.trash(key), enabled: !!confirmDelete });
 
   // Keep the open page's ancestors expanded so it is visible in the tree.
   useEffect(() => {
@@ -299,6 +305,11 @@ export function SpaceLayout() {
             ))}
           </ul>
         )}
+        {canEdit && (
+          <NavLink to={`/s/${space.key}/trash`} className="sidebar-foot-link tree-trash-link">
+            <Trash2 size={15} aria-hidden="true" /> Trash
+          </NavLink>
+        )}
         <ErrorNote error={actions.move.error ?? actions.remove.error} />
         <div className="sidebar-foot">
           <NavLink to={`/s/${space.key}/settings`} className="sidebar-foot-link">
@@ -332,11 +343,12 @@ export function SpaceLayout() {
         />
       )}
       {deleting && (
-        <Modal title={`Delete “${pageTitle(deleting.title)}”?`} onClose={() => setConfirmDelete(null)}>
+        <Modal title={`Move “${pageTitle(deleting.title)}” to the trash?`} onClose={() => setConfirmDelete(null)}>
           <p className="muted">
             {deletingKids > 0
-              ? `This also deletes ${deletingKids} sub-page${deletingKids === 1 ? '' : 's'} under it.`
-              : 'This page will be removed from the space.'}
+              ? `The page and its ${plural(deletingKids, 'sub-page')} move to the trash. `
+              : 'The page moves to the trash. '}
+            {keptFor(trashQ.data?.retentionDays, deletingKids === 0)}
           </p>
           <div className="row row-end">
             <button className="btn btn-quiet" onClick={() => setConfirmDelete(null)}>
@@ -357,7 +369,7 @@ export function SpaceLayout() {
                 });
               }}
             >
-              Delete
+              Move to trash
             </button>
           </div>
         </Modal>

@@ -1641,3 +1641,84 @@ textarea.input {
 .spaces-head .section-title {
   margin-bottom: var(--space-1);
 }
+
+/* ---- Trash (done-check 11b) ---- */
+
+.tree-trash-link {
+  margin-top: var(--space-4);
+  padding: var(--space-1) var(--space-2);
+  align-self: flex-start;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+.trash-note {
+  margin-bottom: var(--space-4);
+  animation: fade-in var(--motion-base) var(--ease-enter);
+}
+.trash-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.trash-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition:
+    opacity var(--motion-base) var(--ease-exit),
+    transform var(--motion-base) var(--ease-exit);
+}
+.trash-item.is-leaving {
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--space-1)));
+}
+.trash-icon {
+  display: inline-flex;
+}
+.trash-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.trash-title {
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trash-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+.trash-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.deleted-spaces {
+  margin-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.deleted-spaces .section-title {
+  margin-bottom: 0;
+}
+@media (max-width: 640px) {
+  .trash-item {
+    flex-wrap: wrap;
+  }
+  .trash-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

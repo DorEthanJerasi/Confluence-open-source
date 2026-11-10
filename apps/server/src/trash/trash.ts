@@ -92,6 +92,23 @@ async function requireAnyPage(db: Db, user: SessionUser, pageId: string, needed:
   return page;
 }
 
+/**
+ * For a page that gives 404: true when it is in the trash (as a root or with
+ * the page above it) and the person may see the space's Trash view (editor and
+ * up). Viewers, non-members and missing pages get false, so they learn nothing.
+ */
+export async function isTrashedForEditor(db: Db, user: SessionUser, pageId: string): Promise<boolean> {
+  try {
+    const page = await requireAnyPage(db, user, pageId, 'editor');
+    // deletePage marks every page under the root, so deleted_at is enough.
+    return page.deletedAt !== null;
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    if (status === 404 || status === 403) return false;
+    throw err;
+  }
+}
+
 function requireTrashRoot(page: { id: string; deletedAt: Date | null; trashRootId: string | null }, live: string) {
   if (!page.deletedAt) throw badRequest(live);
   if (page.trashRootId !== page.id) {

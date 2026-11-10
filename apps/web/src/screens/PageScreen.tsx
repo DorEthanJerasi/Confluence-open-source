@@ -124,11 +124,15 @@ function isEmptyDoc(page: Page) {
 
 export function PageScreen() {
   const { pageId = '' } = useParams();
+  const { space } = useSpace();
   const q = useQuery({ queryKey: ['page', pageId], queryFn: () => api.page(pageId) });
 
   if (q.isPending) return <Loading />;
   if (q.error) {
-    if (q.error instanceof ApiFailure && q.error.status === 404) return <NotFound />;
+    if (q.error instanceof ApiFailure && q.error.status === 404) {
+      // "in_trash" only comes to editors and up; viewers just get "Nothing here".
+      return <NotFound trashLink={q.error.code === 'in_trash' ? `/s/${space.key}/trash` : undefined} />;
+    }
     return <ErrorNote error={q.error} />;
   }
   return <PageView key={pageId} page={q.data.page} />;

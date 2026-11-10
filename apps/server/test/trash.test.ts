@@ -157,6 +157,11 @@ describe('trash: pages', () => {
       expect((await c.get(`/api/pages/${root}/versions`)).status).toBe(404);
       expect((await c.get(`/api/attachments/${file}`)).status).toBe(404);
     }
+    // Editors are told it is in the trash (the screen links to Trash); viewers only get "not found".
+    expect((await ed.client.get(`/api/pages/${root}`)).body.error).toBe('in_trash');
+    expect((await ed.client.get(`/api/pages/${child}`)).body.error).toBe('in_trash');
+    expect((await vi.client.get(`/api/pages/${root}`)).body.error).toBe('not_found');
+    expect((await w.nm.client.get(`/api/pages/${root}`)).body.error).toBe('not_found');
     expect((await tree(ed.client)).map((x) => x.id)).not.toContain(root);
     expect(await searchIds(vi.client, 'quillwort')).toEqual([]);
     expect(await askIds(vi.client, 'quillwort rollback switch')).not.toContain(grandchild);

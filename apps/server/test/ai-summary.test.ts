@@ -125,6 +125,8 @@ describe('POST /api/pages/:id/summary', () => {
     expect(JSON.stringify(asked.body)).not.toContain('Secret');
 
     // Deleted (and a child of a deleted page): 404 for everyone, even the admin.
+    // GET tells editors and up that it is in the trash (done-check 11b, code
+    // "in_trash"); the summary stays a plain "not found".
     const parent = await makePage(bea.client, 'eng', 'Old', ['Old text.']);
     const childRes = await bea.client.post('/api/spaces/eng/pages', { title: 'Old child', parentId: parent });
     expect(childRes.status).toBe(201);
@@ -132,8 +134,10 @@ describe('POST /api/pages/:id/summary', () => {
     for (const pid of [parent, childRes.body.page.id as string]) {
       const g = await ada.client.get(`/api/pages/${pid}`);
       const s = await summary(ada.client, pid);
+      expect(g.status).toBe(404);
+      expect(g.body.error).toBe('in_trash');
       expect(s.status).toBe(404);
-      expect(s.body).toEqual(g.body);
+      expect(s.body).toEqual({ error: 'not_found', message: 'Page not found' });
     }
 
     // No such page, and a malformed id.

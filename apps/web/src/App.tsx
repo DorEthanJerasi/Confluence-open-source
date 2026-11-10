@@ -11,6 +11,7 @@ import { AdminUsers } from './screens/AdminUsers';
 import { NotFound } from './screens/NotFound';
 import { SearchScreen } from './screens/SearchScreen';
 import { AskScreen } from './screens/AskScreen';
+import { TrashScreen } from './screens/Trash';
 
 // The page screen brings the editor (Tiptap, ProseMirror, code highlighting),
 // which is most of the app's code. Loading it only when a page is opened keeps
@@ -53,6 +54,7 @@ export function App() {
           />
           <Route path="settings" element={<SpaceSettings />} />
           <Route path="settings/templates" element={<SpaceTemplatesSettings />} />
+          <Route path="trash" element={<TrashScreen />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

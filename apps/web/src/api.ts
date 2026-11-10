@@ -71,6 +71,31 @@ export interface Attachment {
   size: number;
 }
 
+export interface TrashPerson {
+  id: string;
+  name: string;
+}
+
+/** One trash item of a space: the page that was deleted, with `subPages` more under it. */
+export interface TrashItem {
+  id: string;
+  title: string;
+  deletedAt: string;
+  deletedBy: TrashPerson | null;
+  subPages: number;
+  /** When it is deleted for good; null when the host keeps the trash forever. */
+  purgeAt: string | null;
+}
+
+export interface TrashedSpace {
+  id: string;
+  key: string;
+  name: string;
+  deletedAt: string;
+  deletedBy: TrashPerson | null;
+  purgeAt: string | null;
+}
+
 export const api = {
   authConfig: () => get<AuthConfig>('/api/auth/config'),
   me: () => get<{ user: User }>('/api/auth/me'),
@@ -91,6 +116,7 @@ export const api = {
     request<{ space: Space }>('POST', '/api/spaces', b),
   updateSpace: (key: string, b: { name?: string; description?: string; visibility?: Visibility; defaultRole?: Role }) =>
     request<{ space: Space }>('PATCH', `/api/spaces/${enc(key)}`, b),
+  /** Moves the space to the trash (space admin). */
   deleteSpace: (key: string) => request<null>('DELETE', `/api/spaces/${enc(key)}`),
   members: (key: string) => get<{ members: SpaceMember[] }>(`/api/spaces/${enc(key)}/members`),
   setMember: (key: string, userId: string, role: Role) =>
@@ -123,7 +149,22 @@ export const api = {
   /** Writes that version's title and body as a new current version (nothing is deleted). */
   restoreVersion: (id: string, version: number, baseVersion: number) =>
     request<{ version: number }>('POST', `/api/pages/${enc(id)}/versions/${version}/restore`, { baseVersion }),
+  /** Moves the page and its sub-pages to the trash (editor and up). */
   deletePage: (id: string) => request<{ ok: true; deleted: number }>('DELETE', `/api/pages/${enc(id)}`),
+
+  /** The space's trash (editor and up): one item per delete, newest first. */
+  trash: (key: string) => get<{ retentionDays: number; items: TrashItem[] }>(`/api/spaces/${enc(key)}/trash`),
+  /** Brings a whole trash item back (editor and up). */
+  restorePage: (id: string) =>
+    request<{ page: { id: string; parentId: string | null; title: string } }>('POST', `/api/pages/${enc(id)}/restore`),
+  /** Deletes one trash item for good, files included (space admin). */
+  purgePage: (id: string) => request<null>('DELETE', `/api/pages/${enc(id)}/purge`),
+  /** Deletes every item in the space's trash for good (space admin). */
+  emptyTrash: (key: string) => request<{ purged: number }>('DELETE', `/api/spaces/${enc(key)}/trash`),
+  /** Trashed spaces this person may restore: their space admins' and, for instance admins, all. */
+  trashedSpaces: () => get<{ items: TrashedSpace[] }>('/api/trash/spaces'),
+  restoreSpace: (id: string) => request<{ space: { id: string; key: string; name: string } }>('POST', `/api/trash/spaces/${enc(id)}/restore`),
+  purgeSpace: (id: string) => request<null>('DELETE', `/api/trash/spaces/${enc(id)}`),
 
   /** Templates usable in this space (editors and up): built-ins first, then the space's own. No bodies. */
   templates: (key: string) => get<{ templates: TemplateSummary[] }>(`/api/spaces/${enc(key)}/templates`),

@@ -7,6 +7,7 @@ import { api } from '../api';
 import { ErrorNote, Field, Loading, Modal, ROLE_LABEL, RoleSelect } from '../ui';
 import { TemplatesTab } from '../templates/TemplatesTab';
 import { useSpace } from './Space';
+import { keptFor, trashedSpacesKey, trashKey } from '../trash';
 
 function Details() {
   const { space } = useSpace();
@@ -150,24 +151,30 @@ function DangerZone() {
   const navigate = useNavigate();
   const [asking, setAsking] = useState(false);
   const [typed, setTyped] = useState('');
+  // Only to say how long the trash keeps the space.
+  const trashQ = useQuery({ queryKey: trashKey(space.key), queryFn: () => api.trash(space.key) });
   const del = useMutation({
     mutationFn: () => api.deleteSpace(space.key),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['spaces'] });
+      await qc.invalidateQueries({ queryKey: trashedSpacesKey });
       navigate('/', { replace: true });
     },
   });
   return (
     <section className="panel panel-danger">
-      <h2 className="section-title">Delete this space</h2>
-      <p className="muted">Removes the space and every page in it. This cannot be undone.</p>
+      <h2 className="section-title">Move this space to the trash</h2>
+      <p className="muted">
+        The space and every page in it move to the trash. {keptFor(trashQ.data?.retentionDays, true)} Until then
+        a space admin can restore it from Deleted spaces on Home.
+      </p>
       <div className="row">
         <button className="btn btn-danger" onClick={() => setAsking(true)}>
-          Delete space
+          Move to trash
         </button>
       </div>
       {asking && (
-        <Modal title="Delete space?" onClose={() => setAsking(false)}>
+        <Modal title="Move space to the trash?" onClose={() => setAsking(false)}>
           <form
             className="stack"
             onSubmit={(e) => {
@@ -184,7 +191,7 @@ function DangerZone() {
                 Cancel
               </button>
               <button className="btn btn-danger" disabled={typed.trim().toLowerCase() !== space.key || del.isPending}>
-                Delete for good
+                Move to trash
               </button>
             </div>
           </form>

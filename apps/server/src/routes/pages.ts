@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { movePageBody, restoreVersionBody, savePageBody, versionListQuery } from '@stillwater/shared';
 import { requireUser } from '../auth/guard.js';
-import { notFound, parse, uuidParam } from '../http.js';
+import { HttpError, notFound, parse, uuidParam } from '../http.js';
 import { getVersion, listVersions, restoreVersion } from '../pages/history.js';
 import { getPageView, movePage, requirePageRole, savePage } from '../pages/pages.js';
-import { trashPage } from '../trash/trash.js';
+import { isTrashedForEditor, trashPage } from '../trash/trash.js';
 
 type IdParams = { Params: { id: string } };
 type VersionParams = { Params: { id: string; version: string } };
@@ -20,8 +20,19 @@ export async function pageRoutes(app: FastifyInstance) {
   const db = app.db;
   const pageId = (raw: string) => uuidParam(raw, 'Page not found');
 
+  // A trashed page is 404 for everyone. Editors and up, who can open the
+  // space's Trash view, get the code "in_trash" so the screen can say so.
   app.get<IdParams>('/:id', async (req) => {
-    return { page: await getPageView(db, requireUser(req), pageId(req.params.id)) };
+    const user = requireUser(req);
+    const id = pageId(req.params.id);
+    try {
+      return { page: await getPageView(db, user, id) };
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 404 && (await isTrashedForEditor(db, user, id))) {
+        throw new HttpError(404, 'in_trash', 'This page is in the trash');
+      }
+      throw err;
+    }
   });
 
   app.put<IdParams>('/:id', async (req) => {
