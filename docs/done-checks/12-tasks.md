@@ -267,17 +267,37 @@ Set-up (people, a space with an editor and a viewer, a restricted space, a page
 with a task list) goes through the API helpers in `e2e/login.ts`. **At most 2
 tests**, and the suite stays inside the limits of done-check 10: at most 18
 files, and `npm run test:e2e` under 95 s at load 15 or more.
-- [ ] An editor opens a page, gives a task to a second editor with a due date
+- [x] An editor opens a page, gives a task to a second editor with a due date
       through the Assign and Due date controls, and the chips show. The second
       person opens My tasks, sees it with the page link and date, ticks it, and
       it leaves the list. Opening the page shows the task ticked. Checked once
       in dark mode.
-- [ ] A viewer with a task (set up through the API) sees it in My tasks with the
+- [x] A viewer with a task (set up through the API) sees it in My tasks with the
       box disabled. A person outside a restricted space with a task there for
       them sees an empty My tasks. After the page is moved to the trash, the
       viewer's My tasks no longer lists it.
-- [ ] `npm run test:e2e` passes in full: 21 + the new tests, no retries, no
+- [x] `npm run test:e2e` passes in full: 21 + the new tests, no retries, no
       skips, no `.only`.
+
+### Tester proof of 12b e2e (item #139, 2026-11-11)
+Read `e2e/tests/tasks.spec.ts` and `e2e/login.ts` myself: the file holds
+exactly 2 tests (`test.describe.serial`), set up through the existing
+`addPerson`, `createPage`, `createSpace`, `logIn`, `signUp` helpers in
+`e2e/login.ts`, no new helpers added. The two tests match the two boxes above
+word for word: the first assigns a person and a due date through the Assign
+and Due date controls, ticks the task from My tasks, checks it ticked on the
+page, and takes one screenshot in dark mode; the second checks a viewer's
+disabled box, a person outside a restricted space seeing nothing, and trash
+removing the task from the viewer's My tasks. `retries: 0` in
+`e2e/playwright.config.ts`; no `.only` or `.skip` anywhere in the file.
+`e2e/tests/` still holds 16 files, inside done-check 10's limit of 18.
+
+Ran both suites myself (Node 22):
+- `npm run check`: exit 0, 7 steps ok, 379 server + 31 schema tests (includes
+  the 16 `tasks.test.ts` cases and the unknown-assignee fix from 12a
+  acceptance).
+- `npm run test:e2e`: 23 passed, exit 0, 1.9 min, no retries, no skips, no
+  `.only`. Both `tasks.spec.ts` tests passed in that run.
 
 ---
 
