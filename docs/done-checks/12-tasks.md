@@ -130,7 +130,7 @@ No back-fill (see Decisions).
 ## 12a — Server
 
 ### Build
-- [ ] In `packages/editor-schema/src/index.ts`: `taskItem` gains the attrs
+- [x] In `packages/editor-schema/src/index.ts`: `taskItem` gains the attrs
       `taskId` (default null, `keepOnSplit: false`), `assignee` (default null)
       and `due` (default null), rendered as `data-task-id`, `data-assignee`,
       `data-due` and parsed back. A browser plugin (like `BlockId`) fills
@@ -140,17 +140,17 @@ No back-fill (see Decisions).
       invalid (400 through `normalizeDoc`). An exported `docTasks(doc)` returns
       `{ taskId, assignee, due, checked, text, position }[]` and has unit tests
       in `packages/editor-schema/test/`.
-- [ ] Drizzle table in `apps/server/src/db/schema.ts` and migration
+- [x] Drizzle table in `apps/server/src/db/schema.ts` and migration
       `apps/server/drizzle/0008_tasks.sql` (with its meta snapshot), exactly as
       in the Table changes section.
 - [ ] `createPage` and `savePage` replace the page's `page_tasks` rows from
       `docTasks` in the same transaction as the page row. No other code writes
       `page_tasks`. Trash, restore from trash and purge do not touch it (purge
       removes it through the cascade).
-- [ ] `apps/server/src/tasks/tasks.ts` holds the task logic (my open tasks, tick)
+- [x] `apps/server/src/tasks/tasks.ts` holds the task logic (my open tasks, tick)
       and `apps/server/src/routes/tasks.ts` the routes. Access goes through the
       existing permission path.
-- [ ] Routes (signed out → 401 on all of them):
+- [x] Routes (signed out → 401 on all of them):
   - `GET /api/me/tasks` returns `{ tasks: [{ pageId, taskId, text, due | null,
     page: { id, title }, space: { key, name }, canTick }] }`: the user's open
     tasks as in Decisions. Order: tasks with a due date first, earliest first,
@@ -162,48 +162,72 @@ No back-fill (see Decisions).
   - `GET /api/spaces/:key/people` (viewer and up) returns `{ people: [{ id, name
     }] }`: active people who can read the space, by name, at most 500, with an
     optional `?q=` that filters by name or email.
-- [ ] No task code writes `pages.doc` or `page_versions` except through
+- [x] No task code writes `pages.doc` or `page_versions` except through
       `savePage`. Page ids and block ids are unchanged by a tick.
-- [ ] The shared request and response types (`packages/shared/src/index.ts`)
+- [x] The shared request and response types (`packages/shared/src/index.ts`)
       for the three routes.
 
 ### Checks that must exist and pass — `apps/server/test/tasks.test.ts` (Vitest, real Postgres)
-- [ ] An editor saves a page with three tasks: one for person B with a due date,
+- [x] An editor saves a page with three tasks: one for person B with a due date,
       one for B with none, one for nobody. B's My tasks lists the two, dated one
       first, with page title, space key and name, `canTick` true. The third is
       in nobody's list.
-- [ ] Task ids: a doc saved with no task ids gets one per task (nested tasks
+- [x] Task ids: a doc saved with no task ids gets one per task (nested tasks
       too); a doc with two tasks sharing an id gets a fresh id for the second;
       saving the same doc again keeps the ids. A bad `due` (`2026-02-30`,
       `tomorrow`) or `assignee` (`bob`) is a 400 and nothing is saved.
-- [ ] Tick: B ticks a task from My tasks. It leaves B's list. The page doc has
+- [x] Tick: B ticks a task from My tasks. It leaves B's list. The page doc has
       `checked: true` on that task and nothing else in the doc changed (same
       block ids, same task ids). `pages.version` went up by one and page
       history has the change by B. Unticking brings it back. Ticking twice is a
       200 with no new version.
-- [ ] Tick with a stale page: another save lands between the read and the save;
+- [x] Tick with a stale page: another save lands between the read and the save;
       the route retries and succeeds. (Test with a hook or by saving in
       between; a second conflict gives 409.)
-- [ ] Editing the page: removing a task, or changing its person to C, or
+- [x] Editing the page: removing a task, or changing its person to C, or
       ticking it in the doc, updates both people's My tasks at the next read.
       Restoring an older version of the page puts the old tasks back in My
       tasks.
-- [ ] Trash: B's task's page (or its parent) is moved to the trash, and the
+- [x] Trash: B's task's page (or its parent) is moved to the trash, and the
       task leaves B's My tasks; the tick route gives 404. Restore brings it
       back. Moving the space to the trash hides it the same way. Purge removes
       its `page_tasks` rows.
-- [ ] Access: a task for B on a page in a restricted space where B is not a
+- [x] Access: a task for B on a page in a restricted space where B is not a
       member never shows in B's list. Removing B from a space takes B's tasks
       there out of the list. A viewer B sees their task with `canTick` false
       and gets 403 on the tick route. A non-member gets 404 on the tick route
       and the people route.
-- [ ] People: in a restricted space the list is its members (plus instance
+- [x] People: in a restricted space the list is its members (plus instance
       admins); in an open space every active person; disabled people are left
       out; `?q=` filters.
-- [ ] A page made from a built-in template that has a task list gets task ids
+- [x] A page made from a built-in template that has a task list gets task ids
       and index rows.
-- [ ] Signed out → 401 on every route.
-- [ ] `npm run check` passes (this file is part of it).
+- [x] Signed out → 401 on every route.
+- [x] `npm run check` passes (this file is part of it).
+
+### Lead acceptance of 12a (item #137, 2026-11-11)
+Read commit `9e0d2e1da` line by line and ran `npm run check` myself (Node 22):
+exit 0, all 7 steps ok, 379 server + 31 schema tests, contrast and
+originality ok. Every 12a box is ticked from that **except one**:
+
+- **Open: a task given to an unknown person breaks the save.** A doc whose
+  task has an `assignee` that is a well-formed uuid but no person on this
+  instance (pasted from another wiki, an import, an old id) makes `PUT
+  /api/pages/:id` a **500**, and nothing is saved: `replaceTasks` inserts it
+  into `page_tasks.assignee_id`, whose foreign key to `users` refuses it. A
+  history restore of such a version would fail the same way. Checked with a
+  throwaway test (not committed). This goes against the Decision "the doc is
+  the truth ... the server does not refuse a save" for such an assignee.
+  **Fix (lead's decision):** the save succeeds (200) and keeps the attr in the
+  doc as sent; `replaceTasks` writes `assignee_id` null for any id that is not
+  a row in `users` (one lookup per save, in the same transaction). The editor
+  will show it as "No access" (12b). Add a test in
+  `apps/server/test/tasks.test.ts`: save with an unknown-person uuid → 200,
+  the attr is in the doc, the `page_tasks` row has `assignee_id` null, nobody's
+  My tasks lists it. Then this box is ticked.
+
+12b may start now; the screen does not depend on this fix. The fix must land
+(with its test, `npm run check` exit 0) before the lead check below.
 
 ---
 
