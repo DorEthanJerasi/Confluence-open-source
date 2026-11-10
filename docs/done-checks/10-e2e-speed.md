@@ -473,6 +473,49 @@ Still open: none of these runs is under the 95 s load-15+ target. At this
 load (14–28, against 17–22 in #121) all three settings are far over it, so
 box 1 stays unticked. #124 (the tester's three runs) settles it.
 
+## Step 6 (item #124, tester, 2026-11-10 04:00–04:09): three runs after steps 4 and 5
+
+Three `/usr/bin/time npm run test:e2e` runs in a row, right after each other,
+commit fa8c6492f, default settings (4 workers since step 5), on this shared
+box, load 16.7–22.6 throughout (well above the ≥12 the done-check asks for):
+
+| run | result | wall clock | load start → end |
+|-----|--------|-----------|-------------------|
+| 1   | 41 passed, exit 0 | **162.15 s** | 16.74 → 20.28 |
+| 2   | 1 failed, 40 passed, exit 1 | **141.98 s** | 18.29 → 22.63 |
+| 3   | 2 failed, 38 passed, exit 1, 1 did not run | **146.82 s** | 22.19 → 21.07 |
+
+Failures:
+- Run 2: `ai-ask-access.spec.ts` — "with AI off, Summarise and the Ask entry
+  are both hidden, and /ask shows the not-set-up note" —
+  `expect(locator).toBeVisible()` failed.
+- Run 3: `ai-ask.spec.ts` — "asking about a word on a page shows the answer,
+  and both the [1] link and the Sources entry open that page", and
+  `favourites.spec.ts` — "an editor stars a page, sees both Home lists in
+  order, then unstars it (dark mode too)" — `expect(locator).toHaveAttribute()`
+  failed. A third test did not run because the worker crashed/closed after
+  these failures.
+
+**Box 1 does not hold**: none of the three runs is under the 95 s load-15+
+target (162.15 s, 141.98 s, 146.82 s) — all three are well over, by 47–67 s.
+**Box 2 does not hold either on this round**: run 1 alone is clean (41
+passed, exit 0); runs 2 and 3 each have failures and run 3 has a test that
+did not run. No retries, no skipped tests and no `.only` were configured in
+any run — the failures and the one "did not run" are the suite breaking
+under load, not a setting change.
+
+**What this says**: steps 4 and 5 (smaller files, 4 workers) did not close
+the gap. At load 17–23 the suite is both slower (142–162 s, against 81–119 s
+for #121 at load 15–22) and now flaky (2 of 3 runs have real failures,
+where #121's three runs were all clean). The two failed tests are in files
+nobody split or touched in steps 4–5 (`ai-ask`, `ai-ask-access`,
+`favourites`), and neither failure is a known-flaky assertion — one is a
+visibility check, the other an attribute check, both on pages the test
+itself just created, so this is not stale state from an earlier test.
+Reported in team chat; #124 does not tick box 1 (box 2 already carried an
+`[x]` from #121's three clean runs — see team chat for whether that should
+be revisited given this round's failures).
+
 ## Who proves it
 - Coder: makes the change, ticks 1, 2, 4, 5, 6 with three timed runs recorded
   here (load at start and end), commits and pushes.
