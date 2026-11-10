@@ -193,7 +193,7 @@ describe('who can see what', () => {
     expect((await recent(bea.client)).map((x) => x.id)).toEqual([p]);
   });
 
-  it('a soft-deleted page drops out of both lists and its routes give 404; deleting the space removes the rows', async () => {
+  it('a soft-deleted page drops out of both lists and its routes give 404; purging the space from the trash removes the rows', async () => {
     const { ada, bea, a, c } = await twoSpaces();
     for (const id of [a, c]) {
       expect(await star(bea.client, id)).toBe(204);
@@ -213,7 +213,13 @@ describe('who can see what', () => {
 
     expect(await count('page_favourites')).toBe(2);
     expect(await count('page_views')).toBe(2);
-    expect((await ada.client.del('/api/spaces/eng')).status).toBeLessThan(300);
+    // Deleting the space moves it to the trash (done-check 11): the rows stay
+    // until it is purged, and then they are gone.
+    const engId = (await ada.client.get('/api/spaces/eng')).body.space.id as string;
+    expect((await ada.client.del('/api/spaces/eng')).status).toBe(204);
+    expect(await count('page_favourites')).toBe(2);
+    expect((await favourites(bea.client)).map((x) => x.id)).toEqual([]);
+    expect((await ada.client.del(`/api/trash/spaces/${engId}`)).status).toBe(204);
     expect(await count('page_favourites')).toBe(0);
     expect(await count('page_views')).toBe(0);
   });

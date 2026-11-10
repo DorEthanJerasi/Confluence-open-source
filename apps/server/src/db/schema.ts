@@ -69,6 +69,10 @@ export const spaces = pgTable(
     defaultRole: text('default_role').$type<Role>().notNull().default('viewer'),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
+    // Trash (docs/done-checks/11-trash.md): set while the space is in the
+    // trash. A trashed space is hidden everywhere; its key stays taken.
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedBy: uuid('deleted_by').references(() => users.id, { onDelete: 'set null' }),
   },
   (t) => [uniqueIndex('spaces_key_unique').on(t.key)],
 );
@@ -109,11 +113,17 @@ export const pages = pgTable(
     updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    // Trash (docs/done-checks/11-trash.md). One delete = one trash item: the
+    // page deleted and every live page under it share deleted_at, deleted_by
+    // and trash_root_id (the deleted page's id). Set only while deleted_at is.
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    deletedBy: uuid('deleted_by').references(() => users.id, { onDelete: 'set null' }),
+    trashRootId: uuid('trash_root_id'),
   },
   (t) => [
     index('pages_space_parent_idx').on(t.spaceId, t.parentId, t.position),
     index('pages_search_idx').using('gin', t.search),
+    index('pages_trash_idx').on(t.spaceId, t.trashRootId).where(sql`${t.deletedAt} is not null`),
   ],
 );
 

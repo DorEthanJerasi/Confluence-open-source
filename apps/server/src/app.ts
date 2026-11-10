@@ -21,6 +21,8 @@ import { aiPageRoutes, aiRoutes } from './routes/ai.js';
 import { commentRoutes, pageCommentRoutes } from './routes/comments.js';
 import { templateRoutes } from './routes/templates.js';
 import { meRoutes, pagePersonalRoutes } from './routes/personal.js';
+import { trashRoutes } from './routes/trash.js';
+import { startTrashSweep } from './trash/trash.js';
 import { createProvider, guardProvider, type AiProvider } from './ai/provider.js';
 import type { SafeFetchOptions } from './embeds/safeFetch.js';
 import { DiskStorage, type FileStorage } from './files/storage.js';
@@ -41,6 +43,12 @@ export interface BuildOptions {
    * null = AI off. Leave undefined to follow the config.
    */
   aiProvider?: AiProvider | null;
+  /**
+   * Run the trash purge (purgeExpired) once on start and then every hour,
+   * stopped when the app closes. index.ts turns it on; tests leave it off and
+   * call purgeExpired with a chosen time.
+   */
+  trashSweep?: boolean;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -99,6 +107,15 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(linkPreviewRoutes, { prefix: '/api', fetchOptions: opts.linkPreviewFetch });
   await app.register(searchRoutes, { prefix: '/api' });
   await app.register(aiRoutes, { prefix: '/api/ai' });
+  await app.register(trashRoutes, { prefix: '/api' });
+
+  if (opts.trashSweep) {
+    let stop: (() => void) | null = null;
+    app.addHook('onReady', async () => {
+      stop = startTrashSweep(app.db, app.storage, opts.config.trashRetentionDays, (err) => app.log.warn(err));
+    });
+    app.addHook('onClose', async () => stop?.());
+  }
 
   // The built web app, served from the same origin (one container in production).
   const webDist = opts.config.webDist;

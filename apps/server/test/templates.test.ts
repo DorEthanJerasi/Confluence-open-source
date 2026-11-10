@@ -328,7 +328,7 @@ describe('space templates', () => {
     for (const call of routes(nia.client)) expect((await call()).status).toBe(404);
   });
 
-  it('deleting the space removes its templates; deleting a page leaves templates made from it', async () => {
+  it('purging the space from the trash removes its templates; deleting a page leaves templates made from it', async () => {
     const { ada, bea, pageId } = await setup();
     const fromPage = await makeTemplate(bea.client, 'eng', { name: 'From page', fromPageId: pageId });
     await makeTemplate(bea.client, 'ops', { name: 'Ops one', doc: richDoc });
@@ -338,7 +338,13 @@ describe('space templates', () => {
     const count = async (key: string) =>
       (await ctx.pool.query('select count(*)::int as n from page_templates t join spaces s on s.id = t.space_id where s.key = $1', [key])).rows[0].n;
     expect(await count('eng')).toBe(1);
-    expect((await ada.client.del('/api/spaces/eng')).status).toBe(200);
+    // Deleting the space moves it to the trash (done-check 11): its templates are
+    // hidden but kept, and go only when the space is purged.
+    const engId = (await ada.client.get('/api/spaces/eng')).body.space.id as string;
+    expect((await ada.client.del('/api/spaces/eng')).status).toBe(204);
+    expect((await bea.client.get(`/api/spaces/eng/templates/${fromPage.id}`)).status).toBe(404);
+    expect(await count('eng')).toBe(1);
+    expect((await ada.client.del(`/api/trash/spaces/${engId}`)).status).toBe(204);
     expect((await ctx.pool.query('select count(*)::int as n from page_templates where id = $1', [fromPage.id])).rows[0].n).toBe(0);
     expect(await count('ops')).toBe(1);
   });

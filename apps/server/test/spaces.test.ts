@@ -87,13 +87,17 @@ describe('spaces', () => {
     ]);
   });
 
-  it('deleting a space removes its pages', async () => {
+  it('deleting a space moves it and its pages to the trash (done-check 11)', async () => {
     const { ed } = await team();
     await ed.client.post('/api/spaces', { key: 'tmp', name: 'Temp' });
     const page = await ed.client.post('/api/spaces/tmp/pages', { title: 'Gone soon' });
-    expect((await ed.client.del('/api/spaces/tmp')).status).toBe(200);
+    expect((await ed.client.del('/api/spaces/tmp')).status).toBe(204);
     expect((await ed.client.get(`/api/pages/${page.body.page.id}`)).status).toBe(404);
     expect((await ed.client.get('/api/spaces/tmp')).status).toBe(404);
+    // Kept in the trash, not deleted for good: the rows are still there.
+    const rows = await ctx.pool.query('select deleted_at from spaces where key = $1', ['tmp']);
+    expect(rows.rows[0].deleted_at).not.toBeNull();
+    expect((await ctx.pool.query('select 1 from pages where id = $1', [page.body.page.id])).rowCount).toBe(1);
   });
 
   it('requires a session for everything', async () => {

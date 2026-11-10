@@ -3,7 +3,8 @@ import { movePageBody, restoreVersionBody, savePageBody, versionListQuery } from
 import { requireUser } from '../auth/guard.js';
 import { notFound, parse, uuidParam } from '../http.js';
 import { getVersion, listVersions, restoreVersion } from '../pages/history.js';
-import { deletePage, getPageView, movePage, requirePageRole, savePage } from '../pages/pages.js';
+import { getPageView, movePage, requirePageRole, savePage } from '../pages/pages.js';
+import { trashPage } from '../trash/trash.js';
 
 type IdParams = { Params: { id: string } };
 type VersionParams = { Params: { id: string; version: string } };
@@ -41,11 +42,9 @@ export async function pageRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  // Moves the page and its sub-pages to the trash (done-check 11).
   app.delete<IdParams>('/:id', async (req) => {
-    const user = requireUser(req);
-    const id = pageId(req.params.id);
-    await requirePageRole(db, user, id, 'editor');
-    const deleted = await deletePage(db, id);
+    const deleted = await trashPage(db, requireUser(req), pageId(req.params.id));
     return { ok: true, deleted };
   });
 

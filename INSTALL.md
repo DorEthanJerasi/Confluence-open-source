@@ -39,8 +39,19 @@ Optional settings for this mode (environment variables):
 - `HOST`: the address to listen on (default `127.0.0.1`; `0.0.0.0` to let
   other machines reach it).
 - `DATABASE_URL`: use an existing Postgres instead of the local one.
-- `PUBLIC_URL`, `ALLOW_SIGNUP`, `MAX_UPLOAD_MB`, `AI_PROVIDER`,
-  `ANTHROPIC_API_KEY`, `AI_MODEL`: same meaning as in `.env.example`.
+- `PUBLIC_URL`, `ALLOW_SIGNUP`, `MAX_UPLOAD_MB`, `TRASH_RETENTION_DAYS`,
+  `AI_PROVIDER`, `ANTHROPIC_API_KEY`, `AI_MODEL`: same meaning as in
+  `.env.example`.
+
+## Trash
+
+Deleting a page or a space moves it to the trash, with its sub-pages, history,
+comments and files. Editors can restore it from the space's Trash view; space
+admins can delete it for good. Anything left in the trash is deleted for good,
+files included, `TRASH_RETENTION_DAYS` days after it was deleted (default 30;
+`0` = never, so only emptying the trash by hand removes it). The server checks
+once at start and then every hour. A value that is not a whole number of days,
+0 or more, stops the server with a message saying so.
 
 ## AI features
 

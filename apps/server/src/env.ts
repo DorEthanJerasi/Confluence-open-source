@@ -15,6 +15,21 @@ export interface Config {
   uploadDir: string;
   /** AI features (ARCHITECTURE.md §8). provider 'off' hides every AI control. */
   ai: AiConfig;
+  /** Days an item stays in the trash before it is deleted for good (TRASH_RETENTION_DAYS, default 30; 0 = never). */
+  trashRetentionDays: number;
+}
+
+export const DEFAULT_TRASH_RETENTION_DAYS = 30;
+
+/** TRASH_RETENTION_DAYS: unset or empty = 30; otherwise a whole number of days, 0 or more. */
+export function trashRetentionDays(v: string | undefined): number {
+  if (v === undefined || v.trim() === '') return DEFAULT_TRASH_RETENTION_DAYS;
+  const t = v.trim();
+  const n = Number(t);
+  if (!/^[0-9]{1,6}$/.test(t) || !Number.isSafeInteger(n)) {
+    throw new Error(`TRASH_RETENTION_DAYS must be a whole number of days, 0 or more (0 = never delete for good). It is "${v}".`);
+  }
+  return n;
 }
 
 export type AiProviderName = 'anthropic' | 'stub' | 'off';
@@ -77,10 +92,21 @@ export function loadConfig(e: NodeJS.ProcessEnv = process.env): Config {
     maxUploadBytes: Math.round(positive(e.MAX_UPLOAD_MB, 25) * 1024 * 1024),
     uploadDir: e.UPLOAD_DIR?.trim() || '/data/uploads',
     ai: loadAiConfig(e),
+    trashRetentionDays: trashRetentionDays(e.TRASH_RETENTION_DAYS),
   };
 }
 
-export const env = loadConfig();
+function loadOrStop(): Config {
+  try {
+    return loadConfig();
+  } catch (err) {
+    // A bad setting stops the server with one plain line, not a stack trace.
+    console.error(`server: cannot start: ${(err as Error).message}`);
+    process.exit(1);
+  }
+}
+
+export const env = loadOrStop();
 
 export function requireDatabaseUrl(): string {
   if (!env.databaseUrl) {

@@ -56,7 +56,8 @@ export async function spaceRoutes(app: FastifyInstance) {
     const user = requireInstanceRole(req, 'editor');
     const body = parse(createSpaceBody, req.body);
     const created = await db.transaction(async (tx) => {
-      const [taken] = await tx.select({ id: spaces.id }).from(spaces).where(eq(spaces.key, body.key));
+      const [taken] = await tx.select({ id: spaces.id, deletedAt: spaces.deletedAt }).from(spaces).where(eq(spaces.key, body.key));
+      if (taken?.deletedAt) throw conflict('key_taken', 'A space in the trash uses this key');
       if (taken) throw conflict('key_taken', 'A space with that key already exists');
       const [row] = await tx
         .insert(spaces)
@@ -82,11 +83,7 @@ export async function spaceRoutes(app: FastifyInstance) {
     return { space: toSpace(row!, role) };
   });
 
-  app.delete<KeyParams>('/:key', async (req) => {
-    const { space } = await requireSpaceByKey(db, requireUser(req), req.params.key, 'admin');
-    await db.delete(spaces).where(eq(spaces.id, space.id));
-    return { ok: true };
-  });
+  // DELETE /:key moves the space to the trash: see routes/trash.ts.
 
   // ---- Members ----
 

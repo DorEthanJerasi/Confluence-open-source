@@ -91,7 +91,7 @@ export const api = {
     request<{ space: Space }>('POST', '/api/spaces', b),
   updateSpace: (key: string, b: { name?: string; description?: string; visibility?: Visibility; defaultRole?: Role }) =>
     request<{ space: Space }>('PATCH', `/api/spaces/${enc(key)}`, b),
-  deleteSpace: (key: string) => request<{ ok: true }>('DELETE', `/api/spaces/${enc(key)}`),
+  deleteSpace: (key: string) => request<null>('DELETE', `/api/spaces/${enc(key)}`),
   members: (key: string) => get<{ members: SpaceMember[] }>(`/api/spaces/${enc(key)}/members`),
   setMember: (key: string, userId: string, role: Role) =>
     request<{ ok: true }>('PUT', `/api/spaces/${enc(key)}/members/${enc(userId)}`, { role }),

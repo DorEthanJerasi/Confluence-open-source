@@ -14,6 +14,8 @@ async function main(): Promise<void> {
     config: env,
     // LOG_LEVEL (default info) lets the e2e run keep its servers quiet: 'warn' skips the per-request lines.
     logger: { level: process.env.LOG_LEVEL?.trim() || 'info' },
+    // Trash older than TRASH_RETENTION_DAYS is deleted for good: on start, then hourly.
+    trashSweep: true,
     health: async () => {
       await pool.query('select 1');
     },

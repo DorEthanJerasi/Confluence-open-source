@@ -13,13 +13,13 @@ import type { SessionUser } from '../auth/session.js';
 import { badRequest, conflict, notFound } from '../http.js';
 import { normalizeDoc } from './docText.js';
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 /** Fractional-index keys compare by code unit, so sort with the C collation. */
 export const byPosition = sql`${pages.position} collate "C"`;
 
 /** Serialises tree changes (create/move) within one space. */
-async function lockSpaceTree(tx: Tx, spaceId: string) {
+export async function lockSpaceTree(tx: Tx, spaceId: string) {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${'stillwater:tree:' + spaceId}))`);
 }
 
@@ -270,14 +270,21 @@ export async function movePage(
   });
 }
 
-/** Soft-delete a page and everything under it. */
-export async function deletePage(db: Db, pageId: string): Promise<number> {
+/**
+ * Move a page and every live page under it to the trash (done-check 11), in
+ * one statement: they all get the same deleted_at, deleted_by and
+ * trash_root_id (this page's id), so the delete is one trash item. Sub-pages
+ * already in the trash on their own are left as their own items. Touches no
+ * document, version or history column.
+ */
+export async function deletePage(db: Db, pageId: string, userId: string): Promise<number> {
   const res = await db.execute(sql`
     with recursive sub as (
       select id from pages where id = ${pageId} and deleted_at is null
       union all
       select p.id from pages p join sub on p.parent_id = sub.id where p.deleted_at is null
     )
-    update pages set deleted_at = now() where id in (select id from sub)`);
+    update pages set deleted_at = now(), deleted_by = ${userId}, trash_root_id = ${pageId}
+    where id in (select id from sub)`);
   return res.rowCount ?? 0;
 }
