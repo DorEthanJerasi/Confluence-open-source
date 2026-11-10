@@ -1,10 +1,8 @@
-// Stage 07 page comments on screen (docs/done-checks/07-comments.md, 7b
-// Playwright boxes), part 1 of 3: an editor comments on a block and on the
-// page through the panel, and the marker and count survive a reload.
-// Part 2 (viewer replies, editor resolves) is comments-roles.spec.ts and
-// part 3 (author edits and deletes) is comments-author.spec.ts; each part
-// builds its own starting point through the API helpers (comments-page.ts),
-// so the three can run on different workers at once.
+// Lean suite, row 30 (docs/done-checks/10-e2e-speed.md): page comments on
+// screen (docs/done-checks/07-comments.md, 7b). An editor comments on a block
+// and on the page through the panel, and the marker and count survive a
+// reload, in light and dark. Who may reply, resolve, reopen, edit and delete
+// (rows 31-32) is proven by apps/server/test/comments.test.ts.
 import { test, expect } from '../fixtures';
 import { badge, editorB, openComments, panel, setUpSharedNotes, switchUser } from '../comments-page';
 import { resetDatabase } from '../reset-db';
@@ -12,7 +10,7 @@ import { resetDatabase } from '../reset-db';
 test.describe.serial('page comments: adding', () => {
   test.beforeAll(resetDatabase);
 
-  test('an editor comments on the second paragraph and on the page; the marker and count survive a reload', async ({
+  test('an editor comments on the second paragraph and on the page; the marker and count survive a reload, in dark mode too', async ({
     page,
   }) => {
     const { path } = await setUpSharedNotes(page);
@@ -40,5 +38,11 @@ test.describe.serial('page comments: adding', () => {
     await expect(badge(page)).toHaveText('2');
     await openComments(page);
     await expect(panel(page).locator('.comment-thread')).toHaveCount(2);
+
+    await page.screenshot({ path: 'test-results/comments-light.png', fullPage: true });
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+    await expect(page.locator(`.comment-gutter[data-block="${blockId}"] .comment-marker`)).toBeVisible();
+    await expect(badge(page)).toHaveText('2');
+    await page.screenshot({ path: 'test-results/comments-dark.png', fullPage: true });
   });
 });

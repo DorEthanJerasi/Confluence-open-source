@@ -1,19 +1,19 @@
-// Stage 2b video and link cards (docs/done-checks/02-editor.md, 2b): an mp4/webm
-// upload plays in the page; a pasted YouTube link becomes a youtube-nocookie
-// player and a Vimeo link a Vimeo player; other video hosts are refused; a bare
-// link pasted on an empty line offers "Show as preview card"; a refused fetch
-// gives a plain link card. Viewers see all of it and cannot change it.
+// Lean suite, row 16 (docs/done-checks/10-e2e-speed.md): video and link
+// cards (docs/done-checks/02-editor.md, 2b). An mp4/webm upload plays in the
+// page; a pasted YouTube link becomes a youtube-nocookie player and a Vimeo
+// link a Vimeo player; other video hosts are refused; a bare link pasted on
+// an empty line offers "Show as preview card"; a refused fetch gives a plain
+// link card. Which hosts and which cards are allowed, and what is stored, is
+// proven by apps/server/test/video.test.ts, linkPreview.test.ts and
+// embeds.test.ts; what a viewer sees is viewer.spec.ts.
 // No test touches the internet: the YouTube/Vimeo player requests are blocked,
 // the refused card uses this test server's own (loopback) address, which the
 // server's guard refuses, and the full card uses a stubbed /api/link-preview reply.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
-import { afterNextPaint } from '../paint';
+import { createPage, createSpace, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
-const viewer = { name: 'Vera Viewer', email: 'vera@stillwater.test', password: 'battery horse correct' };
-let pageUrl = '';
 
 // A real 16×16, 0.2 s VP8 webm, so the browser can actually load and play it.
 const WEBM = Buffer.from('GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIIEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggE0TbuMU6uEHFO7a1OsggHy7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjMuMTEuMTAwV0GNTGF2ZjYzLjExLjEwMESJiEBpAAAAAAAAFlSua9euAQAAAAAAAE7XgQFzxYhMFQ2eHZhwSpyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhAvrwgDgkLCBELqBEJqBAlWwhFW5gQFV7oEA7AEAAAAAAAACAAASVMNn+3NzoGPAgGfImkWjh0VOQ09ERVJEh41MYXZmNjMuMTEuMTAwc3PVY8CLY8WITBUNnh2YcEpnyKBFo4dFTkNPREVSRIeTTGF2YzYzLjIuMTAwIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDAuMjAwMDAwMDAwAB9DtnW554EAo7SBAACAMAIAnQEqEAAQAABHCIWFiIWEiAICAnT0b0+A/vnnAKvV5lX/1lf//Mr//5lf7uwAHFO7a5G7j7OBALeK94EB8YIBtPCBAw==', 'base64');
@@ -68,8 +68,7 @@ test.describe.serial('video and link cards', () => {
     // clicks through those forms); this test is about the embeds.
     await signUp(page, admin);
     await createSpace(page, { name: 'Harbour', key: 'harbour' });
-    pageUrl = (await createPage(page, 'harbour', { title: 'Films', text: 'Films of the bay' })).path;
-    await page.goto(pageUrl);
+    await page.goto((await createPage(page, 'harbour', { title: 'Films', text: 'Films of the bay' })).path);
 
     // Slash menu → Video: an uploaded webm plays in a <video>.
     await newLine(page);
@@ -159,46 +158,9 @@ test.describe.serial('video and link cards', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
     await page.screenshot({ path: 'test-results/video-links-dark.png', fullPage: true });
 
-    // The stored doc: an attachment id or an allow-listed player URL, never bytes.
-    const id = pageUrl.split('/p/')[1];
-    const { page: p } = await (await page.request.get(`/api/pages/${id}`)).json();
-    const videos = p.doc.content.filter((b: { type: string }) => b.type === 'video');
-    expect(videos.map((v: { attrs: { embedUrl: string | null } }) => v.attrs.embedUrl).sort()).toEqual(
-      [null, VIMEO_PLAYER, YT_PLAYER].sort(),
-    );
-    const upload = videos.find((v: { attrs: { attachmentId: string | null } }) => v.attrs.attachmentId);
-    expect(upload.attrs).toMatchObject({ filename: 'bay.webm', mime: 'video/webm' });
-    const cards = p.doc.content.filter((b: { type: string }) => b.type === 'linkPreview');
-    expect(cards.map((c: { attrs: { url: string } }) => c.attrs.url).sort()).toEqual([CARD_URL, refused].sort());
-    expect(JSON.stringify(p.doc)).not.toContain('data:');
-
     // The video is served inline with its own type.
-    const res = await page.request.get(`/api/attachments/${upload.attrs.attachmentId}`);
+    const res = await page.request.get((await body(page).locator('.embed-video video').getAttribute('src'))!);
     expect(res.headers()['content-type']).toBe('video/webm');
     expect(res.headers()['content-disposition'] ?? '').not.toContain('attachment;');
-  });
-
-  test('viewer sees the video, players and cards, and cannot change them', async ({ page }) => {
-    await blockPlayers(page);
-    await logIn(page, admin, null);
-    await addPerson(page, viewer, 'viewer');
-    await page.context().clearCookies();
-
-    await logIn(page, viewer, pageUrl);
-    const video = body(page).locator('.embed-video video');
-    await expect(video).toHaveCount(1);
-    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.videoWidth)).toBe(16);
-    await expect(body(page).locator(`iframe[src="${YT_PLAYER}"]`)).toHaveCount(1);
-    await expect(body(page).locator(`iframe[src="${VIMEO_PLAYER}"]`)).toHaveCount(1);
-    await expect(body(page).locator('.embed-link')).toHaveCount(2);
-    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
-
-    // Pasting a link does nothing for a viewer: no offer, no new block.
-    // Nothing takes the paste, and once the next frame is painted there is
-    // still no offer and no link.
-    expect(await pasteText(page, 'https://another.example/')).toBe(true);
-    await afterNextPaint(page);
-    await expect(page.getByRole('button', { name: 'Show as preview card' })).toHaveCount(0);
-    await expect(body(page).locator('a[href="https://another.example/"]')).toHaveCount(0);
   });
 });

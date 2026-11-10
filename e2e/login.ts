@@ -3,9 +3,8 @@
 // uses, and addPerson to the same /api/users the dialog uses; page.request
 // shares the browser context's cookies, so the session lands in the browser.
 // That skips loading pages and typing into forms in every test, which was
-// most of a test's setup. wiki.spec.ts still logs in and adds a person
-// through the real forms, and the log-out test in permissions-outsider.spec.ts
-// logs in through the form (logInWithForm), so both forms stay covered.
+// most of a test's setup. wiki.spec.ts still signs up, logs in and out and
+// adds a person through the real forms, so those forms stay covered.
 //
 // Each person logs in once per spec file: the first logIn (or signUp) saves
 // the browser's storageState, and every later logIn for that person, in any
@@ -13,7 +12,7 @@
 // instead of posting the password again (each login is an argon2 check, a
 // real cost on this busy box). resetDatabase() empties the sessions table at
 // the start of each file, so it also forgets the saved states (forgetSessions).
-import { expect, type Browser, type BrowserContext, type Page } from './fixtures';
+import { expect, type BrowserContext, type Page } from './fixtures';
 
 type Login = { email: string; password: string };
 type StorageState = Awaited<ReturnType<BrowserContext['storageState']>>;
@@ -61,27 +60,6 @@ export async function logIn(page: Page, user: Login, to: string | null = '/'): P
   if (to === '/') await expect(page).toHaveURL('/');
 }
 
-/**
- * A new browser context (its own cookies) already logged in as `user`: made
- * with Playwright's storageState option when `user` has logged in before in
- * this spec file, otherwise logged in once through the API and saved.
- */
-export async function contextFor(browser: Browser, user: Login): Promise<BrowserContext> {
-  const known = saved.get(user.email);
-  if (known) return browser.newContext({ storageState: known });
-  const context = await browser.newContext();
-  await logInOnce(context, user);
-  return context;
-}
-
-export async function logInWithForm(page: Page, user: Login): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(user.email);
-  await page.getByLabel('Password', { exact: false }).fill(user.password);
-  await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL('/');
-}
-
 type Person = Login & { name: string };
 
 /** Adds an account the way an admin's "Add a person" dialog does. The page must be logged in as an admin. Returns the new user's id. */
@@ -92,35 +70,6 @@ export async function addPerson(page: Page, user: Person, role: 'admin' | 'edito
   expect(res.status(), `add ${user.email} as ${role}`).toBe(201);
   const { user: created } = (await res.json()) as { user: { id: string } };
   return created.id;
-}
-
-/** Makes `userId` a member of a space with `role`, the call behind the space settings "Add" button. The page must be logged in as a space admin. */
-export async function addMember(page: Page, spaceKey: string, userId: string, role: 'admin' | 'editor' | 'viewer'): Promise<void> {
-  const res = await page.request.put(`/api/spaces/${spaceKey}/members/${userId}`, { data: { role } });
-  expect(res.status(), `add member to ${spaceKey} as ${role}`).toBe(200);
-}
-
-/**
- * Saves a new title and doc over version `baseVersion`, the call the editor's
- * autosave makes. Returns the page's new version number.
- */
-export async function savePage(
-  page: Page,
-  pageId: string,
-  init: { baseVersion: number; title: string; doc: object },
-): Promise<number> {
-  const res = await page.request.put(`/api/pages/${pageId}`, { data: init });
-  expect(res.status(), `save page ${pageId} over version ${init.baseVersion}`).toBe(200);
-  const { version } = (await res.json()) as { version: number };
-  return version;
-}
-
-/** Restores `version` over `baseVersion`, the call behind history's Restore button. Returns the new version number. */
-export async function restorePageVersion(page: Page, pageId: string, version: number, baseVersion: number): Promise<number> {
-  const res = await page.request.post(`/api/pages/${pageId}/versions/${version}/restore`, { data: { baseVersion } });
-  expect(res.status(), `restore version ${version} of ${pageId}`).toBe(200);
-  const body = (await res.json()) as { version: number };
-  return body.version;
 }
 
 /**
@@ -185,22 +134,4 @@ export async function pickBlankPage(page: Page): Promise<void> {
   const picker = page.getByRole('dialog', { name: 'New page' });
   await expect(picker.getByRole('option', { name: /Blank page/ })).toBeFocused();
   await picker.getByRole('button', { name: 'Create page' }).click();
-}
-
-/**
- * Adds a comment through /api/pages/:id/comments, the call behind the
- * comment composers: on a block when `blockId` is given, a reply when
- * `parentId` is given, otherwise on the page. Returns the comment's id.
- */
-export async function addComment(
-  page: Page,
-  pageId: string,
-  init: { body: string; blockId?: string; parentId?: string },
-): Promise<string> {
-  const res = await page.request.post(`/api/pages/${pageId}/comments`, {
-    data: { body: init.body, blockId: init.blockId ?? null, parentId: init.parentId ?? null },
-  });
-  expect(res.status(), `comment "${init.body}"`).toBe(201);
-  const { comment } = (await res.json()) as { comment: { id: string } };
-  return comment.id;
 }

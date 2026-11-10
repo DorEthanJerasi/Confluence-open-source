@@ -1,18 +1,17 @@
-// Stage 09 favourites and recently viewed on screen
-// (docs/done-checks/09-favourites-recent.md, 9b Playwright boxes). Two tests
-// only, so the suite stays inside its time budget: an editor stars and
-// unstars a page and sees both Home lists in order (dark mode once), and a
-// viewer's lists lose a restricted space's page once they are removed from
-// it. Set-up goes through the API helpers in e2e/login.ts.
+// Lean suite, row 36 (docs/done-checks/10-e2e-speed.md): favourites and
+// recently viewed on screen (docs/done-checks/09-favourites-recent.md, 9b).
+// An editor stars and unstars a page and sees both Home lists in order (dark
+// mode once). That a removed member's page leaves both lists (row 37) is
+// proven by apps/server/test/personal.test.ts. Set-up goes through the API
+// helpers in e2e/login.ts.
 import { test, expect, type Page } from '../fixtures';
 import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
 const editorB = { name: 'Beck Editor', email: 'beck@stillwater.test', password: 'battery horse correct' };
-const viewerC = { name: 'Cleo Viewer', email: 'cleo@stillwater.test', password: 'horse battery correct' };
 
-async function switchUser(page: Page, user: { email: string; password: string }, to: string | null) {
+async function switchUser(page: Page, user: { email: string; password: string }, to: string) {
   await page.context().clearCookies();
   await logIn(page, user, to);
 }
@@ -88,33 +87,5 @@ test.describe.serial('favourites and recently viewed', () => {
     await expect(section(page, 'Favourites')).toContainText('Star a page to keep it here.');
     await expect(rows(page, 'Favourites')).toHaveCount(0);
     await expect(rows(page, 'Recently viewed')).toHaveText([/Watering plan/, /Seed list/]);
-  });
-
-  test('a viewer stars a page in a members-only space; once removed from it, the page leaves both lists', async ({ page }) => {
-    await switchUser(page, admin, null);
-    await createSpace(page, { name: 'Vault', key: 'vault', visibility: 'restricted' });
-    const p = await createPage(page, 'vault', { title: 'Vault notes', text: 'Members only.' });
-    await addPerson(page, viewerC, 'viewer');
-    const users = (await (await page.request.get('/api/users')).json()) as { users: { id: string; email: string }[] };
-    const cleoId = users.users.find((u) => u.email === viewerC.email)!.id;
-    const add = await page.request.put(`/api/spaces/vault/members/${cleoId}`, { data: { role: 'viewer' } });
-    expect(add.ok(), `add Cleo to vault: HTTP ${add.status()}`).toBe(true);
-
-    await switchUser(page, viewerC, p.path);
-    await expect(page.getByRole('heading', { name: 'Vault notes' })).toBeVisible();
-    await page.getByRole('button', { name: 'Add to favourites' }).click();
-    await expect(page.getByRole('button', { name: 'Remove from favourites' })).toHaveAttribute('aria-pressed', 'true');
-    await goHome(page);
-    await expect(rows(page, 'Favourites')).toHaveText([/Vault notes/]);
-    await expect(rows(page, 'Recently viewed')).toHaveText([/Vault notes/]);
-
-    // Ada removes Cleo from the space; after a reload, nothing from it is in Cleo's lists.
-    await switchUser(page, admin, null);
-    const removed = await page.request.delete(`/api/spaces/vault/members/${cleoId}`);
-    expect(removed.ok(), `remove Cleo from vault: HTTP ${removed.status()}`).toBe(true);
-    await switchUser(page, viewerC, '/');
-    await expect(section(page, 'Favourites')).toContainText('Star a page to keep it here.');
-    await expect(section(page, 'Recently viewed')).toContainText('Pages you open will show up here.');
-    await expect(page.getByText('Vault notes')).toHaveCount(0);
   });
 });

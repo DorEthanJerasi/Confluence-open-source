@@ -151,10 +151,11 @@ describe('page comments', () => {
     expect((await bea.client.patch(`/api/comments/${c.id}`, { body: 'y'.repeat(4001) })).status).toBe(400);
   });
 
-  it('edit: the author can and it sets editedAt; another editor and a space admin get 403', async () => {
-    const { ada, bea, cal, sam, pageId } = await setup();
+  it('edit: the author can and it sets editedAt; another editor, a viewer and a space admin get 403', async () => {
+    const { ada, bea, cal, sam, val, pageId } = await setup();
     const c = await comment(bea.client, pageId, { body: 'Draft' });
     expect((await cal.client.patch(`/api/comments/${c.id}`, { body: 'Hijack' })).status).toBe(403);
+    expect((await val.client.patch(`/api/comments/${c.id}`, { body: 'Hijack' })).status).toBe(403);
     expect((await sam.client.patch(`/api/comments/${c.id}`, { body: 'Hijack' })).status).toBe(403);
     expect((await ada.client.patch(`/api/comments/${c.id}`, { body: 'Hijack' })).status).toBe(403);
 

@@ -1,6 +1,6 @@
-// Stage 2a editor checks (docs/done-checks/02-editor.md, E2E list), part 3
-// (see editor.spec.ts): two tabs on one page, the second save gets the 409
-// note and keeps its text until Reload.
+// Lean suite, row 13 (docs/done-checks/10-e2e-speed.md): two tabs on one
+// page, the second save gets the 409 note and keeps its text until Reload
+// (docs/done-checks/02-editor.md, E2E list; also apps/server/test/pages.test.ts).
 import { test, expect, type Page } from '../fixtures';
 import { createPage, createSpace, signUp } from '../login';
 import { resetDatabase } from '../reset-db';

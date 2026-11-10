@@ -1,57 +1,137 @@
-// Stage 2a editor checks (docs/done-checks/02-editor.md, E2E list), part 1:
-// type, save, reload; a viewer gets no editable surface; the slash menu has
-// no animation with reduced motion. The slash-command walk through every
-// block is editor-slash.spec.ts and the two-tab conflict is
-// editor-conflict.spec.ts; each sets itself up through the API helpers.
+// Lean suite, rows 10-12 (docs/done-checks/10-e2e-speed.md): the editor on
+// screen. Type, autosave, reload, the text is still there, and with reduced
+// motion the slash menu has no animation; then the slash menu filters and
+// inserts every block, code is highlighted, the table toolbar works, and
+// markdown shortcuts work. "Every block type is stored, each with a unique
+// id" is proven by apps/server/test/pages.test.ts. The two-tab conflict is
+// editor-conflict.spec.ts; what a viewer sees is viewer.spec.ts.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
+import { createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
-const viewer = { name: 'Vera Viewer', email: 'vera@stillwater.test', password: 'battery horse correct' };
-let pageUrl = '';
 
 const body = (page: Page) => page.locator('.page-editor .ProseMirror');
+const menu = (page: Page) => page.getByRole('listbox', { name: 'Insert block' });
+
+async function slash(page: Page, query: string, pick: string) {
+  await page.keyboard.type('/' + query);
+  await expect(menu(page)).toBeVisible();
+  await menu(page).getByRole('option', { name: new RegExp('^' + pick) }).click();
+}
 
 test.describe.serial('editor', () => {
   // Spec files that land on the same worker share its server; start this file from an empty database.
   test.beforeAll(resetDatabase);
 
-  test('setup + type, save, reload', async ({ page }) => {
+  test('type, save, reload; the slash menu has no animation with reduced motion', async ({ page }) => {
     // Sign-up, the space and the empty page come through the API (wiki.spec.ts
     // clicks through those forms and the title field); this test is about typing.
     await signUp(page, admin);
     await createSpace(page, { name: 'Ocean Notes', key: 'ocean-notes' });
-    pageUrl = (await createPage(page, 'ocean-notes', { title: 'Tides' })).path;
-    await page.goto(pageUrl);
+    const { path } = await createPage(page, 'ocean-notes', { title: 'Tides' });
+    await page.goto(path);
 
     await body(page).click();
     await page.keyboard.type('Hello calm world');
     await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
     await page.reload();
     await expect(body(page)).toContainText('Hello calm world');
-  });
 
-  test('viewer sees content, no editable surface', async ({ page }) => {
-    await logIn(page, admin, null);
-    await addPerson(page, viewer, 'viewer');
-    await page.context().clearCookies();
-    await logIn(page, viewer, pageUrl);
-    await expect(body(page)).toContainText('Hello calm world');
-    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
-    await expect(page.getByRole('textbox', { name: 'Page content' })).toHaveCount(0);
-  });
-
-  test('slash menu has no animation with reduced motion', async ({ page }) => {
+    // Row 12: same page, the reader asks for less motion.
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await logIn(page, admin, pageUrl);
     await body(page).click();
     await page.keyboard.press('Control+End');
     await page.keyboard.press('Enter');
     await page.keyboard.type('/');
-    const menu = page.getByRole('listbox', { name: 'Insert block' });
-    await expect(menu).toBeVisible();
-    const duration = await menu.evaluate((el) => parseFloat(getComputedStyle(el).animationDuration));
+    await expect(menu(page)).toBeVisible();
+    const duration = await menu(page).evaluate((el) => parseFloat(getComputedStyle(el).animationDuration));
     expect(duration).toBeLessThan(0.01);
+  });
+
+  test('slash filter, every block, code highlight, table toolbar, markdown shortcuts', async ({ page }) => {
+    test.setTimeout(90_000);
+    await logIn(page, admin, null);
+    const { path } = await createPage(page, 'ocean-notes', { title: 'Blocks', text: 'Hello calm world' });
+    await page.goto(path);
+    await body(page).click();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+
+    await page.keyboard.type('/head');
+    await expect(menu(page).getByRole('option')).toHaveCount(3);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('Second heading');
+    await expect(body(page).locator('h2')).toHaveText('Second heading');
+    await page.keyboard.press('Enter');
+
+    // Esc closes the menu.
+    await page.keyboard.type('/quo');
+    await expect(menu(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu(page)).toHaveCount(0);
+    for (let i = 0; i < 4; i++) await page.keyboard.press('Backspace');
+
+    for (const [q, pick, sel] of [
+      ['head', 'Heading 1', 'h1'],
+      ['head', 'Heading 3', 'h3'],
+      ['bul', 'Bullet list', 'ul:not([data-type])'],
+      ['numb', 'Numbered list', 'ol'],
+      ['task', 'Task list', 'ul[data-type="taskList"]'],
+      ['quo', 'Quote', 'blockquote'],
+      ['call', 'Callout', 'div.callout'],
+    ] as const) {
+      await slash(page, q, pick);
+      await page.keyboard.type(pick + ' text');
+      await expect(body(page).locator(sel).last()).toContainText(pick + ' text');
+      // leave the block: Enter twice exits lists/quotes/callouts
+      await page.keyboard.press('Enter');
+      await page.keyboard.press('Enter');
+      if (['h1', 'h3'].includes(sel)) await page.keyboard.press('Backspace');
+    }
+    await slash(page, 'divid', 'Divider');
+    await expect(body(page).locator('hr')).toHaveCount(1);
+
+    await slash(page, 'code', 'Code block');
+    await page.keyboard.type('const x = 1');
+    await expect(body(page).locator('pre')).toContainText('const x = 1');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+
+    await slash(page, 'tab', 'Table');
+    const table = body(page).locator('table');
+    await expect(table.locator('tr')).toHaveCount(3);
+    await expect(table.locator('tr').first().locator('th')).toHaveCount(3);
+    const tmenu = page.getByRole('toolbar', { name: 'Table' });
+    await tmenu.getByRole('button', { name: 'Add row' }).click();
+    await expect(table.locator('tr')).toHaveCount(4);
+    await tmenu.getByRole('button', { name: 'Add column' }).click();
+    await expect(table.locator('tr').first().locator('th')).toHaveCount(4);
+    await tmenu.getByRole('button', { name: 'Remove row' }).click();
+    await expect(table.locator('tr')).toHaveCount(3);
+    await tmenu.getByRole('button', { name: 'Remove column' }).click();
+    // The caret sat in the header row, so "Remove row" took that row; count cells of either kind.
+    await expect(table.locator('tr').first().locator('th, td')).toHaveCount(3);
+    await page.keyboard.type('cell');
+
+    // markdown shortcuts
+    await body(page).locator('p').first().click();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('## md heading');
+    await expect(body(page).locator('h2', { hasText: 'md heading' })).toHaveCount(1);
+
+    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await page.screenshot({ path: 'test-results/editor-light.png', fullPage: true });
+    await page.reload();
+    await expect(body(page).locator('pre code span[class^="hljs"]').first()).toBeVisible();
+    await expect(body(page).locator('table')).toContainText('cell');
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+    await page.screenshot({ path: 'test-results/editor-dark.png', fullPage: true });
   });
 });

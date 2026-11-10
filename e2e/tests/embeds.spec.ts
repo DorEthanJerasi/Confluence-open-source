@@ -1,15 +1,13 @@
-// Stage 2b image and file blocks (docs/done-checks/02-editor.md, 2b): upload
-// from the slash menu, paste and drag-drop; caption; file name, size and
-// download; the stored doc holds only attachment ids; viewers see both blocks
-// and have no way to upload.
+// Lean suite, row 15 (docs/done-checks/10-e2e-speed.md): image and file
+// blocks (docs/done-checks/02-editor.md, 2b). Upload from the slash menu,
+// paste and drag-drop; caption; file name, size and download. "The stored
+// doc holds only attachment ids" is proven by apps/server/test/embeds.test.ts;
+// what a viewer sees is viewer.spec.ts.
 import { test, expect, type Page } from '../fixtures';
-import { addPerson, logIn, pickBlankPage } from '../login';
-import { afterNextPaint } from '../paint';
+import { createPage, createSpace, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
-const viewer = { name: 'Vera Viewer', email: 'vera@stillwater.test', password: 'battery horse correct' };
-let pageUrl = '';
 
 // A 1×1 PNG, as a real image file would arrive from the picker.
 const PNG = Buffer.from(
@@ -66,21 +64,13 @@ async function sendFile(page: Page, kind: 'paste' | 'drop', name: string, type: 
 test.describe.serial('image and file blocks', () => {
   test.beforeAll(resetDatabase);
 
-  test('upload from slash menu, paste and drop; caption; file block; only ids stored', async ({ page }) => {
+  test('upload from slash menu, paste and drop; caption; file block', async ({ page }) => {
     test.setTimeout(90_000);
-    await page.goto('/signup');
-    await page.getByLabel('Name').fill(admin.name);
-    await page.getByLabel('Email').fill(admin.email);
-    await page.getByLabel('Password', { exact: false }).fill(admin.password);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await expect(page).toHaveURL('/');
-    await page.getByRole('button', { name: 'New space' }).click();
-    await page.getByLabel('Name').fill('Harbour');
-    await page.getByRole('button', { name: 'Create space' }).click();
-    await page.getByRole('complementary', { name: 'Pages in this space' }).getByRole('button', { name: 'New page' }).click();
-    await pickBlankPage(page);
-    await expect(page).toHaveURL(/\/p\/.+/);
-    pageUrl = page.url();
+    // Sign-up, the space and the empty page come through the API (wiki.spec.ts
+    // clicks through those forms); this test is about the embeds.
+    await signUp(page, admin);
+    await createSpace(page, { name: 'Harbour', key: 'harbour' });
+    await page.goto((await createPage(page, 'harbour', { title: 'Pictures' })).path);
 
     await body(page).click();
     await page.keyboard.type('Pictures of the bay');
@@ -124,59 +114,11 @@ test.describe.serial('image and file blocks', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
     await page.screenshot({ path: 'test-results/embeds-dark.png', fullPage: true });
 
-    // The stored doc holds attachment ids only — no file bytes, no URLs.
-    const id = pageUrl.split('/p/')[1];
-    const { page: p } = await (await page.request.get(`/api/pages/${id}`)).json();
-    const embeds = p.doc.content.filter((b: { type: string }) => b.type === 'image' || b.type === 'file');
-    expect(embeds).toHaveLength(4);
-    for (const b of embeds) {
-      expect(b.attrs.attachmentId).toMatch(/^[0-9a-f-]{36}$/);
-      expect(b.attrs).not.toHaveProperty('src');
-    }
-    expect(embeds.map((b: { attrs: { caption?: string } }) => b.attrs.caption)).toContain('Morning at the bay');
-    expect(embeds.find((b: { type: string }) => b.type === 'file').attrs).toMatchObject({ filename: 'tide-tables.pdf', size: PDF.length });
-    expect(JSON.stringify(p.doc)).not.toContain('data:');
-
     // The download link gives the file back.
-    const fileId = embeds.find((b: { type: string }) => b.type === 'file').attrs.attachmentId;
-    const dl = await page.request.get(`/api/attachments/${fileId}`);
+    const href = await body(page).getByRole('link', { name: 'Download tide-tables.pdf' }).getAttribute('href');
+    const dl = await page.request.get(href!);
     expect(dl.status()).toBe(200);
     expect(dl.headers()['content-disposition']).toContain('attachment');
     expect((await dl.body()).equals(PDF)).toBe(true);
-  });
-
-  test('viewer sees image, caption and file, and has no upload control', async ({ page }) => {
-    await logIn(page, admin, null);
-    await addPerson(page, viewer, 'viewer');
-    await page.context().clearCookies();
-
-    await logIn(page, viewer, pageUrl);
-    const images = body(page).locator('figure.embed-image img');
-    await expect(images).toHaveCount(3);
-    await expect.poll(() => images.first().evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
-    await expect(body(page).locator('figcaption')).toHaveText('Morning at the bay');
-    await expect(page.getByLabel('Image caption')).toHaveCount(0);
-    await expect(body(page).getByRole('link', { name: 'Download tide-tables.pdf' })).toBeVisible();
-
-    // No slash menu, no file picker, and a pasted file is not uploaded.
-    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
-    await expect(page.locator('input[type="file"]')).toHaveCount(0);
-    let uploads = 0;
-    page.on('request', (r) => {
-      if (r.method() === 'POST' && r.url().includes('/attachments')) uploads++;
-    });
-    // Nothing takes the paste (an editor's upload would), and once the next
-    // frame is painted there is still no upload and no new image.
-    expect(await sendFile(page, 'paste', 'sneaky.png', 'image/png', PNG.toString('base64'))).toBe(true);
-    await afterNextPaint(page);
-    expect(uploads).toBe(0);
-    await expect(images).toHaveCount(3);
-
-    // And the API says no.
-    const id = pageUrl.split('/p/')[1];
-    const res = await page.request.post(`/api/pages/${id}/attachments`, {
-      multipart: { file: { name: 'x.png', mimeType: 'image/png', buffer: PNG } },
-    });
-    expect(res.status()).toBe(403);
   });
 });
