@@ -399,8 +399,8 @@ take **at most 6 s** of test time in Playwright's per-test output.
       context) sees the bell count 1, opens the panel, sees "… mentioned you
       on …", clicks it and lands on the page; the count is gone. The viewer
       presses Follow and sees Following.
-- [ ] `npm run test:e2e` passes in full: 25 + 1 = 26 tests, no retries, no
-      skips, no `.only`.
+- [x] `npm run test:e2e` passes in full: 25 + 1 = 26 tests, no retries, no
+      skips, no `.only` (item #161, Node 22, three runs below).
 - [ ] Time, under done-check 10's rule as rewritten in item #147: at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with
       `mentions.spec.ts` in the suite, load noted at the start and end of
@@ -410,6 +410,29 @@ take **at most 6 s** of test time in Playwright's per-test output.
       more, or any run fails, the box stays open and the mentions test is cut
       back first; no limit is raised and no other test is dropped to make
       room.
+
+      Tester's three timed runs (item #161, Node 22, back to back):
+
+      | run | exit | result | wall time | load at start | load at end | mentions test time |
+      |-----|------|--------|-----------|----------------|--------------|------------------|
+      | 1   | 0    | 26 passed | 1:19.28 (79.28s) | 1.94, 4.43, 6.57 | 10.00, 6.40, 7.09 | 6.8s |
+      | 2   | 0    | 26 passed | 1:02.36 (62.36s) | 9.20, 6.30, 7.05 | 12.45, 7.71, 7.48 | 5.4s |
+      | 3   | 0    | 26 passed | 1:10.16 (70.16s) | 12.26, 7.75, 7.50 | 15.86, 9.91, 8.27 | 6.6s |
+
+      All three runs passed with exit 0, no retries, no skips, no `.only`.
+      Middle run (sorted by wall time: 62.36s, 70.16s, 79.28s) is 70.16s,
+      well under the 95 s limit and the checker's ~110 s limit, even with
+      load climbing across the back-to-back runs (own CPU load, not an
+      outside spike).
+
+      **But the mentions test itself was over its 6 s cap in two of the three
+      runs (6.8s, 5.4s, 6.6s)**, not just "right at the cap" as the lead's
+      and coder's single runs showed (6.0s, 6.2s). Per this box's own rule
+      and the open note the lead left on `c4f555a98`, the box stays open and
+      the mentions test needs to be cut back by the coder before it can be
+      ticked. Raw logs at `/tmp/e2e_mentions_run1.log`, `/tmp/e2e_mentions_run2.log`,
+      `/tmp/e2e_mentions_run3.log` on this machine (not committed; outside
+      the workspace's git repo).
 
 ---
 
