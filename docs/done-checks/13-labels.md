@@ -128,17 +128,17 @@ needs no extra code. No back-fill.
 ## 13a — Server
 
 ### Build
-- [ ] `normaliseLabel(raw): string | null` in `packages/shared/src/index.ts`,
+- [x] `normaliseLabel(raw): string | null` in `packages/shared/src/index.ts`,
       as in Decisions, and the shared request and response types for the
       routes below.
-- [ ] Drizzle tables in `apps/server/src/db/schema.ts` and migration
+- [x] Drizzle tables in `apps/server/src/db/schema.ts` and migration
       `apps/server/drizzle/0009_labels.sql` (with its meta snapshot), exactly
       as in the Table changes section.
-- [ ] `apps/server/src/labels/labels.ts` holds the label logic and
+- [x] `apps/server/src/labels/labels.ts` holds the label logic and
       `apps/server/src/routes/labels.ts` the routes. Access goes through the
       existing permission path. No label code writes `pages`, `page_versions`
       or calls `savePage`.
-- [ ] Routes (signed out → 401 on all of them):
+- [x] Routes (signed out → 401 on all of them):
   - `GET /api/pages/:id` gains `labels: [{ id, name }]`, by name.
   - `POST /api/pages/:id/labels` with `{ name }` (editor and up) adds it
     (making the `labels` row if the name is new) and returns
@@ -155,45 +155,51 @@ needs no extra code. No back-fill.
     the user can see that have the label, newest change first, at most 200,
     `truncated` true when there were more. `:name` goes through
     `normaliseLabel` first.
-- [ ] `GET /api/search` takes `label=` (repeatable) and reads `label:name`
+- [x] `GET /api/search` takes `label=` (repeatable) and reads `label:name`
       words in `q`, as in Decisions, inside `searchPages`. Each result gains
       `labels: [{ id, name }]`.
 
 ### Checks that must exist and pass — `apps/server/test/labels.test.ts` (Vitest, real Postgres)
-- [ ] `normaliseLabel`: `"  Team Notes "` → `team-notes`; `"Año_2026"` →
+- [x] `normaliseLabel`: `"  Team Notes "` → `team-notes`; `"Año_2026"` →
       `año_2026`; `""`, `"   "`, `"a/b"`, `"<b>"` and 41 characters → null.
-- [ ] An editor adds `design` and `q4-plans` to a page. `GET /api/pages/:id`
+- [x] An editor adds `design` and `q4-plans` to a page. `GET /api/pages/:id`
       lists both, by name. Adding `Design` again is 200 and the page still has
       two. Removing `design` leaves one; removing it again is 200. The 21st
       label is a 400 and nothing is added. A bad name is a 400.
-- [ ] Ids are stable: `design` added to a second page uses the same label id.
+- [x] Ids are stable: `design` added to a second page uses the same label id.
       After every page loses it, adding it again uses the same id.
-- [ ] Labels do not touch the page: after adding and removing labels,
+- [x] Labels do not touch the page: after adding and removing labels,
       `pages.doc`, `pages.version`, `pages.updated_at` and the number of
       `page_versions` rows are unchanged, and a save with the old base version
       still succeeds (no 409). Restoring an older version keeps today's labels.
-- [ ] Roles: a viewer sees the labels and gets 403 on add and remove. A
+- [x] Roles: a viewer sees the labels and gets 403 on add and remove. A
       non-member of a restricted space gets 404 on add, remove and the page.
       An instance admin who is no member can add.
-- [ ] Label views: `design` on a page in open space A, one in restricted space
+- [x] Label views: `design` on a page in open space A, one in restricted space
       R and one in space B. A member of A and B but not R gets two pages from
       the whole-wiki view and one from A's view; R's view is 404 for them; a
       member of R gets all three. `GET /api/labels` for the outsider has
       `design` with count 2, and a label used only in R is not listed at all.
       Its whole-wiki view gives 200 with `pages: []`, the same as a name that
       was never used.
-- [ ] Trash: moving a labelled page (or its parent) to the trash takes it out
+- [x] Trash: moving a labelled page (or its parent) to the trash takes it out
       of both views, the counts and search; restore brings it back with its
       labels. Moving the space to the trash hides all its pages the same way.
       Purge removes the `page_labels` rows; the `labels` row stays.
-- [ ] Search: `?label=design` lists only labelled pages the user can see,
+- [x] Search: `?label=design` lists only labelled pages the user can see,
       newest first; `?q=budget&label=design` needs both; two `label=` need
       both labels; `q=label:design budget` gives the same as the second. A
       trashed or restricted page never shows. Results carry `labels`.
-- [ ] Order and limits: views are newest change first, at most 200, with
+- [x] Order and limits: views are newest change first, at most 200, with
       `truncated`; suggestions put names starting with `q` first, at most 50.
-- [ ] Signed out → 401 on every route.
-- [ ] `npm run check` passes (this file is part of it).
+- [x] Signed out → 401 on every route.
+- [x] `npm run check` passes (this file is part of it).
+
+Lead check of 13a (item #149, 2026-11-11): read the migration, labels.ts,
+labelSql.ts, routes/labels.ts and the search change; no label code writes
+`pages` or `page_versions`. `npm run check` run by the lead with Node 22:
+exit 0, all 7 steps, 22 files, 396 tests, the 10 in labels.test.ts among them,
+at load 11-15. Accepted; 13b may start.
 
 ---
 
