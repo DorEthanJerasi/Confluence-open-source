@@ -5,6 +5,12 @@
 // markdown shortcuts work. "Every block type is stored, each with a unique
 // id" is proven by apps/server/test/pages.test.ts. The two-tab conflict is
 // editor-conflict.spec.ts; what a viewer sees is viewer.spec.ts.
+// The first test types key by key. After that, plain text inside a block
+// goes in with keyboard.insertText (one step, the way a paste or an input
+// method puts it in, still through the editor and its autosave): key-by-key
+// typing cost about 1 s per line on this busy box (item #145). The slash
+// queries and the "## " shortcut are still typed key by key, since keys are
+// what they react to.
 import { test, expect, type Page } from '../fixtures';
 import { createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
@@ -62,7 +68,7 @@ test.describe.serial('editor', () => {
     await expect(menu(page).getByRole('option')).toHaveCount(3);
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
-    await page.keyboard.type('Second heading');
+    await page.keyboard.insertText('Second heading');
     await expect(body(page).locator('h2')).toHaveText('Second heading');
     await page.keyboard.press('Enter');
 
@@ -83,7 +89,7 @@ test.describe.serial('editor', () => {
       ['call', 'Callout', 'div.callout'],
     ] as const) {
       await slash(page, q, pick);
-      await page.keyboard.type(pick + ' text');
+      await page.keyboard.insertText(pick + ' text');
       await expect(body(page).locator(sel).last()).toContainText(pick + ' text');
       // leave the block: Enter twice exits lists/quotes/callouts
       await page.keyboard.press('Enter');
@@ -94,7 +100,7 @@ test.describe.serial('editor', () => {
     await expect(body(page).locator('hr')).toHaveCount(1);
 
     await slash(page, 'code', 'Code block');
-    await page.keyboard.type('const x = 1');
+    await page.keyboard.insertText('const x = 1');
     await expect(body(page).locator('pre')).toContainText('const x = 1');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
@@ -115,13 +121,14 @@ test.describe.serial('editor', () => {
     await tmenu.getByRole('button', { name: 'Remove column' }).click();
     // The caret sat in the header row, so "Remove row" took that row; count cells of either kind.
     await expect(table.locator('tr').first().locator('th, td')).toHaveCount(3);
-    await page.keyboard.type('cell');
+    await page.keyboard.insertText('cell');
 
     // markdown shortcuts
     await body(page).locator('p').first().click();
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
-    await page.keyboard.type('## md heading');
+    await page.keyboard.type('## ');
+    await page.keyboard.insertText('md heading');
     await expect(body(page).locator('h2', { hasText: 'md heading' })).toHaveCount(1);
 
     await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });

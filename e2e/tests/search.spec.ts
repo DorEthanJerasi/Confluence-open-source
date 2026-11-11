@@ -34,15 +34,16 @@ test.describe.serial('search', () => {
     page,
   }) => {
     // Sign-up, the restricted space and both pages come through the API
-    // (wiki.spec.ts clicks through those forms); the word is typed into the
-    // editor and saved, as a person would.
+    // (wiki.spec.ts clicks through those forms); the word goes into the
+    // editor in one step (keyboard.insertText; key-by-key typing is
+    // editor.spec.ts) and the editor saves it, as it would for a person.
     await signUp(page, admin);
     await createSpace(page, { name: 'Quiet Room', key: 'quiet-room', visibility: 'restricted' });
     const oddUrl = (await createPage(page, 'quiet-room', { title: `Odd ${TAG}`, text: NASTY })).path;
     const pageUrl = (await createPage(page, 'quiet-room', { title: 'Night shift' })).path;
     await page.goto(pageUrl);
     await body(page).click();
-    await page.keyboard.type(`The ${WORD} sleeps here`);
+    await page.keyboard.insertText(`The ${WORD} sleeps here`);
     await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
 
     // Row 17. The focus is still in the editor: Ctrl+K must reach the search field.

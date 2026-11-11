@@ -73,7 +73,7 @@ test.describe.serial('image and file blocks', () => {
     await page.goto((await createPage(page, 'harbour', { title: 'Pictures' })).path);
 
     await body(page).click();
-    await page.keyboard.type('Pictures of the bay');
+    await page.keyboard.insertText('Pictures of the bay');
     await page.keyboard.press('Enter');
 
     // Slash menu → Image

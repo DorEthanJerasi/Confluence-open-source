@@ -26,11 +26,11 @@ test.describe.serial('editor save conflict', () => {
     await b.goto(pageUrl);
     await body(a).click();
     await a.keyboard.press('Control+End');
-    await a.keyboard.type(' from A');
+    await a.keyboard.insertText(' from A');
     await expect(a.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
     await body(b).click();
     await b.keyboard.press('Control+End');
-    await b.keyboard.type(' from B');
+    await b.keyboard.insertText(' from B');
     await expect(b.getByRole('alert')).toContainText('changed somewhere else', { timeout: 10_000 });
     await expect(b.getByRole('button', { name: 'Reload' })).toBeVisible();
     await expect(body(b)).toContainText('from B');

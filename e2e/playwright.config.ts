@@ -30,7 +30,11 @@ export default defineConfig({
       process.env.E2E_TRACE === '1'
         ? { mode: 'retain-on-failure', screenshots: process.env.E2E_TRACE_SCREENSHOTS === '1', snapshots: true }
         : 'off',
-    screenshot: 'only-on-failure',
+    // Off here; fixtures.ts takes the screenshot of a failed test's page
+    // itself. Playwright's 'only-on-failure' shoots every page as every test
+    // closes it, passing or not, which cost 4-11 s per test on this box
+    // (item #145, docs/done-checks/12-tasks.md).
+    screenshot: 'off',
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 });

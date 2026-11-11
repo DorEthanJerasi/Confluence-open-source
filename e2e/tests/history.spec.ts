@@ -25,7 +25,7 @@ async function replaceText(page: Page, text: string) {
   await page.keyboard.down('Shift');
   await page.keyboard.press('End');
   await page.keyboard.up('Shift');
-  await page.keyboard.type(text);
+  await page.keyboard.insertText(text);
   await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
 }
 
@@ -95,7 +95,7 @@ test.describe.serial('page history', () => {
     // Row 24: typing after the restore saves cleanly.
     await body(page).click();
     await page.keyboard.press('End');
-    await page.keyboard.type(' and more');
+    await page.keyboard.insertText(' and more');
     await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
     await expect(page.locator('.conflict-note')).toHaveCount(0);
   });

@@ -549,3 +549,134 @@ busy shared box can actually hold.
 **Also needed before this can be signed off again:** the coder's #145 diff
 (six files listed above) is still uncommitted on `master`. It should be
 committed with its own timing notes before anyone relies on this state.
+
+### Coder e2e time cut, timing and second cut (item #145, 2026-11-11)
+
+The first half of this item (each worker waits for its own server; the page
+editor is fetched earlier) was committed inside the tester's #146 commit
+`b91da8fec`. This is the second half: the per-file and per-test timing, and
+the cuts it pointed to. Not a sign-off; the 95 s box above stays for the
+tester's re-proof and the lead.
+
+**How it was timed.** `npm run test:e2e` with Playwright's own timing
+(`--reporter=list,json`, each test's `duration`), plus a small step reporter
+(kept outside the repo) that adds up each test's steps: clicks, page loads,
+typing, set-up and clean-up hooks.
+
+**What the timing showed** (run 2 below, before the cut, load 8.6 → 13.0):
+
+1. **Clean-up after each test: 30.8 s of the 264.5 s of test time.** Closing a
+   test's browser took 4–11 s in some tests (trash, viewer, templates, wiki,
+   history). Cause: with `screenshot: 'only-on-failure'`, Playwright 1.64
+   screenshots every page of *every* test as it closes it, passing or not,
+   and only throws the picture away afterwards. On this busy box a
+   screenshot can take seconds.
+2. **Typing plain text key by key: 19.9 s.** One line such as "Numbered list
+   text" took about 1 s under load, and `editor.spec.ts`'s block test types
+   about ten of them. The AI test typed a whole sentence only to have
+   something to summarise.
+3. Set-up before tests (~30 s in all) is mostly fixed cost: waiting for the
+   servers at the start, emptying the database per file (0.3–2 s), opening
+   the page (0.2–0.5 s). All set-up already goes through the `e2e/login.ts`
+   API helpers; no spec still signs up, makes a space or a page through
+   the screens except `wiki.spec.ts`, whose subject that is.
+4. Wall clock = ~10 s of start-up + the busiest worker's share + a tail
+   of 10–12 s where three workers wait for the fourth.
+
+**What changed:**
+
+- `e2e/playwright.config.ts`: `screenshot: 'off'`. `e2e/fixtures.ts` now
+  overrides `page` and takes the screenshot itself, only when a test failed
+  (`test-failed-1.png`, attached to the report as before). Checked with a
+  throwaway failing test: the screenshot was saved and attached; the test
+  file was deleted afterwards.
+- Plain text inside a block now goes in with `keyboard.insertText` (one
+  step, the way a paste or an input method puts it in; still through the
+  editor and its autosave) in `editor.spec.ts` (block test), `embeds`,
+  `history`, `search` and `editor-conflict`. Key-by-key typing stays where keys are the
+  subject: `editor.spec.ts`'s first test ("type, save, reload"), the slash
+  queries and the `## ` markdown shortcut.
+- `ai.spec.ts`: the page to summarise is made through `createPage` with its
+  text, instead of typed and autosaved; the test is about Summarise.
+  Typing and autosave are `editor.spec.ts`; the stub summary reads the
+  saved page either way.
+- `tasks.spec.ts` was already cut in the first half (set-up through the API;
+  the "not in My tasks when you can't open the space" and "trashed page
+  hides its tasks" checks moved to `apps/server/test/tasks.test.ts`, named
+  in the file's header). Its timing now is 14.0 s for the file; nothing more
+  was moved off the screen.
+
+No check, limit, timeout or retry was changed, and no test was dropped:
+23 tests before, 23 after.
+
+**Per file and per test, seconds** (Playwright's `duration` per test; file =
+sum of its tests). Run 2 = before this cut, load 8.6 → 13.0, wall 95.1 s.
+Run 8 = after, load 20.7 → 15.1, wall 71.4 s.
+
+| file / test | run 2 | run 8 |
+|---|---:|---:|
+| **editor.spec.ts** | **42.4** | **21.3** |
+| &nbsp;&nbsp;:27 type, save, reload; the slash menu has no animation with reduced mo… | 15.1 | 6.3 |
+| &nbsp;&nbsp;:52 slash filter, every block, code highlight, table toolbar, markdown … | 27.3 | 15.1 |
+| **ai.spec.ts** | **23.9** | **9.4** |
+| &nbsp;&nbsp;:24 writing a page and pressing Summarise shows the first sentence in t… | 11.3 | 4.6 |
+| &nbsp;&nbsp;:49 asking about a word on a page shows the answer, and both the [1] li… | 12.5 | 4.8 |
+| **video-links.spec.ts** | **23.2** | **17.5** |
+| &nbsp;&nbsp;:64 upload a video, paste YouTube, add Vimeo, refuse other hosts, link … | 23.2 | 17.5 |
+| **history.spec.ts** | **20.9** | **14.0** |
+| &nbsp;&nbsp;:35 two editors each save a version, history lists both names, and the … | 10.2 | 6.0 |
+| &nbsp;&nbsp;:71 restoring the old version puts its text back, survives a reload, an… | 10.7 | 8.0 |
+| **templates.spec.ts** | **18.7** | **16.9** |
+| &nbsp;&nbsp;:18 a new page from a built-in template has its headings, and Blank pag… | 10.2 | 8.5 |
+| &nbsp;&nbsp;:43 saving a page as a template, and reusing it for a new page (dark mo… | 8.6 | 8.4 |
+| **wiki.spec.ts** | **17.6** | **11.6** |
+| &nbsp;&nbsp;:38 the first sign-up becomes admin, makes a space, a page and a sub-pa… | 14.1 | 8.3 |
+| &nbsp;&nbsp;:91 an admin adds a viewer in the "Add a person" dialog; logging out en… | 3.5 | 3.3 |
+| **tasks.spec.ts** | **16.7** | **14.0** |
+| &nbsp;&nbsp;:62 an editor gives a task a person and a due date; that person ticks i… | 12.5 | 10.2 |
+| &nbsp;&nbsp;:134 a viewer sees their overdue task in My tasks with the box disabled,… | 4.2 | 3.7 |
+| **trash.spec.ts** | **15.6** | **17.0** |
+| &nbsp;&nbsp;:29 an editor deletes a page with a sub-page from the tree and restores… | 10.8 | 11.1 |
+| &nbsp;&nbsp;:94 a space admin empties the trash after a confirm; a viewer has no Tr… | 4.8 | 5.9 |
+| **comments.spec.ts** | **13.4** | **8.0** |
+| &nbsp;&nbsp;:13 an editor comments on the second paragraph and on the page; the mar… | 13.4 | 8.0 |
+| **embeds.spec.ts** | **13.1** | **10.9** |
+| &nbsp;&nbsp;:67 upload from slash menu, paste and drop; caption; file block | 13.1 | 10.9 |
+| **favourites.spec.ts** | **12.1** | **5.9** |
+| &nbsp;&nbsp;:38 an editor stars a page, sees both Home lists in order, then unstars… | 12.1 | 5.9 |
+| **search.spec.ts** | **12.0** | **9.4** |
+| &nbsp;&nbsp;:33 a typed word is found with Ctrl+K, highlighted and opens its page; … | 12.0 | 9.4 |
+| **editor-conflict.spec.ts** | **11.8** | **8.2** |
+| &nbsp;&nbsp;:16 two tabs: second save gets 409 note and keeps text | 11.8 | 8.2 |
+| **permissions.spec.ts** | **10.4** | **7.1** |
+| &nbsp;&nbsp;:16 Ada adds Eve to a members-only space in its settings; Otto, outside… | 10.4 | 7.1 |
+| **ai-off.spec.ts** | **7.8** | **4.3** |
+| &nbsp;&nbsp;:13 with AI off, Summarise and the Ask entry are both hidden, and /ask … | 7.8 | 4.3 |
+| **viewer.spec.ts** | **5.1** | **6.3** |
+| &nbsp;&nbsp;:54 a viewer sees the page, its image, caption, file, video, players an… | 5.1 | 6.3 |
+| **all tests, summed** | **264.5** | **181.9** |
+
+Clean-up after tests: 30.8 s before, 3.4 s after (4.3 s in run 7). Typing: 19.9 s
+before, 5.2 s after (8.5 s in run 7).
+
+**All my timed `npm run test:e2e` runs this item, in order, every one
+23 passed, exit 0:**
+
+| run | code | wall clock | load start → end | under 95 s |
+|-----|------|-----------|-------------------|------------|
+| 1 | before | 80.47 s | 7.4 → 11.6 | yes |
+| 2 | before | 95.11 s | 8.6 → 13.0 | no |
+| 3 | before | 82.01 s | 11.3 → 13.7 | yes |
+| 4 | screenshot fix only | 93.25 s | 9.4 → 23.4 | yes |
+| 5 | screenshot fix only | 93.24 s | 23.4 → 20.6 | yes |
+| 6 | both cuts | 103.92 s | 15.5 → 21.9 | **no** |
+| 7 | both cuts | 93.62 s | 21.9 → 20.7 | yes |
+| 8 | both cuts | 71.37 s | 20.7 → 15.1 | yes |
+| 9 | both cuts | 87.71 s | 10.4 → 20.4 | yes |
+
+**Plainly:** the suite does less work now. Test time summed over all tests
+fell from 225–265 s before (load 7–13) to 182 s at load 15–21 (run 8). But
+at load 20 and over one run still went over (run 6, 103.9 s), so this cut
+alone does not promise three in a row under 95 s at any load. The
+remaining time is mostly the app itself loading and drawing pages on a
+4-core box that other work keeps at load 15–24.

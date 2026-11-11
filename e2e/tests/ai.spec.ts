@@ -22,17 +22,18 @@ test.describe.serial('ai', () => {
   test.beforeAll(resetDatabase);
 
   test('writing a page and pressing Summarise shows the first sentence in the card', async ({ page }) => {
-    // Sign-up, the space and the empty page come through the API (wiki.spec.ts
-    // clicks through those forms); the text is typed and saved on screen.
+    // Sign-up, the space and both pages, text and all, come through the API
+    // (wiki.spec.ts clicks through those forms; typing and autosave are
+    // editor.spec.ts); this test is about Summarise (item #145).
     await signUp(page, admin);
     await createSpace(page, { name: 'Open Room', key: 'open-room', defaultRole: 'editor' });
     gardenUrl = (await createPage(page, 'open-room', { title: 'Garden notes', text: `A ${WORD} visited the feeder at dawn.` })).path;
-    const { path } = await createPage(page, 'open-room', { title: 'Quiet page' });
+    const { path } = await createPage(page, 'open-room', {
+      title: 'Quiet page',
+      text: 'The lake was still at dawn. A heron stood in the shallows.',
+    });
     await page.goto(path);
-
-    await body(page).click();
-    await page.keyboard.type('The lake was still at dawn. A heron stood in the shallows.');
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(body(page)).toContainText('The lake was still at dawn.');
 
     const summariseButton = page.getByRole('button', { name: 'Summarise' });
     await expect(summariseButton).toBeVisible();
