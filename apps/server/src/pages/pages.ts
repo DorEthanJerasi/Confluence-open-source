@@ -4,7 +4,10 @@
 // only writers of page_versions (§5), always in the same transaction as the
 // page row, so a page and its history never disagree. The same two are the
 // only writers of page_tasks (done-check 12): the task index is rebuilt from
-// the saved doc in the same transaction (replaceTasks).
+// the saved doc in the same transaction (replaceTasks). They also write the
+// mention, edit and follow rows of done-check 15 in that same transaction
+// (notifications/notifications.ts); those never write pages or page_versions,
+// so a save's version and history are the same with or without followers.
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { generateKeyBetween } from 'fractional-indexing';
 import { EMPTY_DOC, type Crumb, type Doc, type Page, type Role } from '@stillwater/shared';
@@ -13,9 +16,10 @@ import { pageFavourites, pageTasks, pageVersions, pages, spaces, users } from '.
 import { requireSpaceRole } from '../auth/permissions.js';
 import type { SessionUser } from '../auth/session.js';
 import { badRequest, conflict, notFound } from '../http.js';
-import type { DocTask } from '@stillwater/editor-schema';
+import { docMentions, type DocTask } from '@stillwater/editor-schema';
 import { normalizeDoc } from './docText.js';
 import { labelsJson } from '../labels/labelSql.js';
+import { followingSql, onPageCreated, onPageSaved } from '../notifications/notifications.js';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -73,7 +77,7 @@ export async function createPage(
   db: Db,
   input: { spaceId: string; userId: string; title: string; parentId: string | null; doc?: Doc },
 ): Promise<string> {
-  const { doc, text, tasks } = normalizeDoc(input.doc ?? EMPTY_DOC);
+  const { doc, text, tasks, mentions } = normalizeDoc(input.doc ?? EMPTY_DOC);
   return db.transaction(async (tx) => {
     await lockSpaceTree(tx, input.spaceId);
     if (input.parentId) await requireLiveParent(tx, input.spaceId, input.parentId);
@@ -106,6 +110,7 @@ export async function createPage(
       savedAt: row!.updatedAt,
     });
     await replaceTasks(tx, row!.id, input.spaceId, tasks);
+    await onPageCreated(tx, { pageId: row!.id, spaceId: input.spaceId, actorId: input.userId, mentions });
     return row!.id;
   });
 }
@@ -152,6 +157,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
       updatedByName: users.name,
       favourite: sql<boolean>`exists (select 1 from ${pageFavourites} where ${pageFavourites.userId} = ${user.id} and ${pageFavourites.pageId} = ${pages.id})`,
       labels: labelsJson(pages.id),
+      following: followingSql(user.id, pages.id),
     })
     .from(pages)
     .innerJoin(spaces, eq(spaces.id, pages.spaceId))
@@ -174,6 +180,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
     myRole: role,
     favourite: row.favourite,
     labels: row.labels,
+    following: row.following,
   };
 }
 
@@ -228,6 +235,17 @@ export async function savePage(
 ): Promise<{ version: number }> {
   const body = change.doc !== undefined ? normalizeDoc(change.doc) : undefined;
   return db.transaction(async (tx) => {
+    // Who was mentioned before this save, read under the row lock, so only
+    // people newly mentioned are told. Not needed when the new doc names nobody.
+    let before = new Set<string>();
+    if (body && body.mentions.size > 0) {
+      const [old] = await tx
+        .select({ doc: pages.doc })
+        .from(pages)
+        .where(and(eq(pages.id, pageId), eq(pages.version, baseVersion), isNull(pages.deletedAt)))
+        .for('update');
+      if (old) before = docMentions(old.doc);
+    }
     const [row] = await tx
       .update(pages)
       .set({
@@ -250,6 +268,7 @@ export async function savePage(
         savedAt: row.updatedAt,
         restoredFrom: opts.restoredFrom ?? null,
       });
+      await onPageSaved(tx, { pageId, spaceId: row.spaceId, actorId: userId, before, after: body?.mentions ?? new Set() });
       return { version: row.version };
     }
     const [current] = await tx

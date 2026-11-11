@@ -17,7 +17,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import type { Doc, Role, Visibility } from '@stillwater/shared';
+import type { Doc, NotificationKind, Role, Visibility } from '@stillwater/shared';
 
 const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
 const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
@@ -325,4 +325,53 @@ export const pageLabels = pgTable(
     addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.pageId, t.labelId] }), index('page_labels_label_idx').on(t.labelId)],
+);
+
+// Following and notifications (docs/done-checks/15-mentions.md). Both hold only
+// ids and times, never page text or titles: the screen reads titles and names
+// when it lists them. Notifications are written by createPage, savePage and
+// createComment in their own transaction (notifications/notifications.ts) and
+// filtered when read (live pages in visibleSpaceIds), never cleaned up when
+// access changes; purge removes them by cascade. Nothing here writes pages or
+// page_versions, so co-editing can be added without touching these tables.
+export const pageFollows = pgTable(
+  'page_follows',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.pageId] }), index('page_follows_page_idx').on(t.pageId)],
+);
+
+// An unread edit notification folds further saves into itself (count, actor,
+// created_at move on): the partial unique index is the upsert's target.
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<NotificationKind>().notNull(),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    commentId: uuid('comment_id').references(() => pageComments.id, { onDelete: 'cascade' }),
+    count: integer('count').notNull().default(1),
+    createdAt: createdAt(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('notifications_user_idx').on(t.userId, t.createdAt.desc()),
+    uniqueIndex('notifications_edit_unread_idx')
+      .on(t.userId, t.pageId)
+      .where(sql`kind = 'edit' and read_at is null`),
+    check('notifications_kind_check', sql`${t.kind} in ('mention', 'comment', 'edit')`),
+  ],
 );

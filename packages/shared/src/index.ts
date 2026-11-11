@@ -162,6 +162,8 @@ export interface Page {
   favourite: boolean;
   /** The page's labels, by name (kept beside the page, not in `doc`). */
   labels: Label[];
+  /** Whether the person asking follows this page (done-check 15). */
+  following: boolean;
 }
 
 // ---------- Page history ----------
@@ -587,6 +589,54 @@ export interface LabelView {
   pages: LabelPage[];
   truncated: boolean;
 }
+
+// ---------- Mentions, following and notifications (docs/done-checks/15-mentions.md) ----------
+
+/** Reply of PUT and DELETE /api/pages/:id/follow. */
+export interface FollowReply {
+  following: boolean;
+}
+
+export const NOTIFICATION_KINDS = ['mention', 'comment', 'edit'] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+
+/** At most this many notifications in one GET /api/me/notifications. */
+export const NOTIFICATIONS_PAGE_SIZE = 30;
+
+/** Query of GET /api/me/notifications: `before` is the id of the last one already shown. */
+export const notificationsQuery = z.object({ before: z.string().uuid().optional() });
+
+/** One entry of GET /api/me/notifications (newest first). Title and names are read when listed. */
+export interface Notification {
+  id: string;
+  kind: NotificationKind;
+  page: { id: string; title: string; space: { key: string; name: string } };
+  /** Who did it; null when their account was removed. For an edit, the newest editor. */
+  actor: { id: string; name: string } | null;
+  /** Set for a comment notification. */
+  commentId: string | null;
+  /** Saves folded into an edit notification; 1 for the other kinds. */
+  count: number;
+  createdAt: string;
+  readAt: string | null;
+}
+export interface NotificationList {
+  notifications: Notification[];
+  /** There are older ones: ask again with `before` = the last id. */
+  more: boolean;
+}
+
+/** Reply of GET /api/me/notifications/unread and POST /api/me/notifications/read. */
+export interface UnreadCount {
+  count: number;
+}
+
+/** Body of POST /api/me/notifications/read: some of yours by id, or all of yours. */
+export const markReadBody = z.union([
+  z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }).strict(),
+  z.object({ all: z.literal(true) }).strict(),
+]);
+export type MarkReadBody = z.infer<typeof markReadBody>;
 
 export interface ApiError {
   error: string;

@@ -6,6 +6,8 @@
 // Comments are stored in page_comments only. Nothing here writes pages,
 // page_versions or pages.version, so saving, history and a later Yjs document
 // never see comments. Anchors are top-level block ids (or null = whole page).
+// Posting a comment also makes the commenter follow the page and tells its
+// followers (done-check 15), in the same transaction as the comment row.
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { roleAtLeast, type Comment, type CommentList, type CommentPerson, type CommentReply, type CommentThread } from '@stillwater/shared';
@@ -14,6 +16,7 @@ import { pageComments, pages, users } from '../db/schema.js';
 import { requirePageRole } from '../pages/pages.js';
 import type { SessionUser } from '../auth/session.js';
 import { badRequest, forbidden, notFound } from '../http.js';
+import { onCommentPosted } from '../notifications/notifications.js';
 
 const authors = alias(users, 'comment_author');
 const resolvers = alias(users, 'comment_resolver');
@@ -168,7 +171,7 @@ export async function createComment(
   pageId: string,
   input: { body: string; blockId?: string | null; parentId?: string | null },
 ): Promise<Comment> {
-  await requirePageRole(db, user, pageId, 'viewer');
+  const { space } = await requirePageRole(db, user, pageId, 'viewer');
   let blockId: string | null = null;
   let parentId: string | null = null;
   if (input.parentId) {
@@ -184,11 +187,15 @@ export async function createComment(
     if (!(await topLevelBlockIds(db, pageId)).has(input.blockId)) throw badRequest('That block is not on this page');
     blockId = input.blockId;
   }
-  const [row] = await db
-    .insert(pageComments)
-    .values({ pageId, parentId, blockId, authorId: user.id, body: input.body })
-    .returning({ id: pageComments.id });
-  return toComment((await loadRow(db, row!.id))!);
+  const id = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(pageComments)
+      .values({ pageId, parentId, blockId, authorId: user.id, body: input.body })
+      .returning({ id: pageComments.id });
+    await onCommentPosted(tx, { pageId, spaceId: space.id, actorId: user.id, commentId: row!.id });
+    return row!.id;
+  });
+  return toComment((await loadRow(db, id))!);
 }
 
 /** PATCH /api/comments/:id: the author only. */

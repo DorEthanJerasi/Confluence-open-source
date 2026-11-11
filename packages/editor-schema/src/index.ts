@@ -297,6 +297,75 @@ export const LinkPreview = Node.create({
   },
 });
 
+/** True for a user id as the server makes them (a uuid). */
+export function isPersonId(v: unknown): v is string {
+  return typeof v === 'string' && UUID.test(v);
+}
+
+/**
+ * A mention of a person (done-check 15): an inline atom that keeps the
+ * person's user id, the same way a task keeps its assignee, plus `label`, the
+ * name they had when they were mentioned (used only if the name cannot be
+ * looked up). HTML: `<span data-mention data-user-id="…">@Name</span>`. A span
+ * whose id is not a uuid is not read as a mention.
+ */
+export const Mention = Node.create({
+  name: 'mention',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: false,
+  addAttributes() {
+    return {
+      userId: {
+        default: null as string | null,
+        parseHTML: (el: HTMLElement) => {
+          const v = el.getAttribute('data-user-id');
+          return isPersonId(v) ? v : null;
+        },
+        renderHTML: (attrs: Record<string, unknown>) => (attrs.userId ? { 'data-user-id': attrs.userId } : {}),
+      },
+      label: {
+        default: '',
+        parseHTML: (el: HTMLElement) => (el.textContent ?? '').replace(/^@/, ''),
+        renderHTML: () => ({}),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-mention]', getAttrs: (el) => (isPersonId((el as HTMLElement).getAttribute('data-user-id')) ? null : false) }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes, { 'data-mention': '', class: 'mention' }), `@${String(node.attrs.label ?? '')}`];
+  },
+  renderText({ node }) {
+    return `@${String(node.attrs.label ?? '')}`;
+  },
+});
+
+/**
+ * The user ids mentioned in a page, lower-cased, each once. Takes a parsed
+ * doc or stored JSON (already checked, so it is walked as is, not parsed).
+ */
+export function docMentions(doc: PmNode | unknown): Set<string> {
+  const ids = new Set<string>();
+  if (doc instanceof PmNode) {
+    doc.descendants((n) => {
+      if (n.type.name === 'mention' && isPersonId(n.attrs.userId)) ids.add(n.attrs.userId.toLowerCase());
+    });
+    return ids;
+  }
+  const walk = (n: unknown) => {
+    if (!n || typeof n !== 'object') return;
+    const node = n as Json;
+    const userId = (node.attrs as Json | undefined)?.userId;
+    if (node.type === 'mention' && isPersonId(userId)) ids.add(userId.toLowerCase());
+    if (Array.isArray(node.content)) node.content.forEach(walk);
+  };
+  walk(doc);
+  return ids;
+}
+
 /** "2.4 MB", "830 KB", "12 bytes". */
 export function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n < 1024) return `${Math.max(0, Math.round(n || 0))} bytes`;
@@ -504,7 +573,7 @@ export interface ExtensionOptions {
    * Interactive views for the embed blocks (the web editor's upload and caption
    * UI). They change only how a block is drawn, never its schema.
    */
-  nodeViews?: Partial<Record<'image' | 'file' | 'video' | 'linkPreview' | 'taskItem', NodeViewRenderer>>;
+  nodeViews?: Partial<Record<'image' | 'file' | 'video' | 'linkPreview' | 'taskItem' | 'mention', NodeViewRenderer>>;
 }
 
 /** The single list of nodes and marks. */
@@ -533,6 +602,7 @@ export function getExtensions(opts: ExtensionOptions = {}): AnyExtension[] {
     withView(FileBlock, opts.nodeViews?.file),
     withView(Video, opts.nodeViews?.video),
     withView(LinkPreview, opts.nodeViews?.linkPreview),
+    withView(Mention, opts.nodeViews?.mention),
     BlockId,
     TaskId,
   ];
@@ -563,6 +633,9 @@ function checkEmbed(node: Json, path: string) {
   }
   if (node.type === 'linkPreview' && !(typeof a.url === 'string' && a.url)) {
     throw new InvalidDocError(`${path}.url: a link card needs its address`);
+  }
+  if (node.type === 'mention' && !isPersonId(a.userId)) {
+    throw new InvalidDocError(`${path}.userId: a mention must name a person by id`);
   }
 }
 
@@ -649,6 +722,7 @@ export function withBlockIds(doc: PmNode): PmNode {
 /** Text of a leaf block for search: an image's caption, a file's or video's name, a card's title and address. */
 function leafText(leaf: PmNode): string {
   if (leaf.type.name === 'hardBreak') return '\n';
+  if (leaf.type.name === 'mention') return `@${String(leaf.attrs.label ?? '')}`;
   if (leaf.type.name === 'image') return String(leaf.attrs.caption ?? '');
   if (leaf.type.name === 'file') return String(leaf.attrs.filename ?? '');
   if (leaf.type.name === 'video') return String(leaf.attrs.filename ?? '');

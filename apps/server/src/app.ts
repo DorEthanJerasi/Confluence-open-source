@@ -24,6 +24,7 @@ import { meRoutes, pagePersonalRoutes } from './routes/personal.js';
 import { trashRoutes } from './routes/trash.js';
 import { taskRoutes } from './routes/tasks.js';
 import { labelRoutes } from './routes/labels.js';
+import { notificationRoutes, pageFollowRoutes } from './routes/notifications.js';
 import { startTrashSweep } from './trash/trash.js';
 import { createProvider, guardProvider, type AiProvider } from './ai/provider.js';
 import type { SafeFetchOptions } from './embeds/safeFetch.js';
@@ -105,6 +106,8 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(commentRoutes, { prefix: '/api/comments' });
   await app.register(pagePersonalRoutes, { prefix: '/api/pages' });
   await app.register(meRoutes, { prefix: '/api/me' });
+  await app.register(pageFollowRoutes, { prefix: '/api/pages' });
+  await app.register(notificationRoutes, { prefix: '/api/me/notifications' });
   await app.register(attachmentRoutes, { prefix: '/api' });
   await app.register(linkPreviewRoutes, { prefix: '/api', fetchOptions: opts.linkPreviewFetch });
   await app.register(searchRoutes, { prefix: '/api' });
