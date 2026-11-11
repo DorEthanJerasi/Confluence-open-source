@@ -234,32 +234,32 @@ originality ok. Every 12a box is ticked from that **except one**:
 ## 12b — Screen
 
 ### Build
-- [ ] In the editor, each task row shows its person and due date as small quiet
+- [x] In the editor, each task row shows its person and due date as small quiet
       chips after the text when they are set (for viewers too, read-only). For
       editors, a task row that has the pointer or the caret shows "Assign" and
       "Due date" controls; they can be reached by keyboard and have labels for
       screen readers. "Assign" opens a small searchable list from the people
       route; "Due date" opens a date picker. Both can be cleared. Setting them
       is a normal edit (autosave, history).
-- [ ] An open task whose date is before today shows "Overdue" in words (not by
+- [x] An open task whose date is before today shows "Overdue" in words (not by
       colour alone) in a soft warm token colour; today and tomorrow read
       "Today" and "Tomorrow". A ticked task's chips are muted.
-- [ ] A person the editor cannot name shows as "No access".
-- [ ] A "My tasks" link in the top bar opens `/tasks`. The My tasks screen
+- [x] A person the editor cannot name shows as "No access".
+- [x] A "My tasks" link in the top bar opens `/tasks`. The My tasks screen
       lists each task with its tick box, its text, a link to "space name ·
       page title" that opens the page, and its date. Overdue tasks are easy to
       spot. The designer picks whether to group by date.
-- [ ] Ticking a task there: the box ticks at once, the row fades out after a
+- [x] Ticking a task there: the box ticks at once, the row fades out after a
       short pause, and a short note offers Undo (which unticks it through the
       same route). A 409 shows "The page just changed, try again" and leaves
       the row. When `canTick` is false the box is disabled with "You can view
       this page but not edit it".
-- [ ] An empty My tasks shows a calm empty state that says how to give someone
+- [x] An empty My tasks shows a calm empty state that says how to give someone
       a task.
-- [ ] Styles use only the design tokens. Light and dark both look right. Motion
+- [x] Styles use only the design tokens. Light and dark both look right. Motion
       is soft and short and turns off under `prefers-reduced-motion`. Text and
       controls pass the contrast check (c6).
-- [ ] Nothing in the new code or text uses another product's names or assets
+- [x] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
 ### Checks that must exist and pass — `e2e/tests/tasks.spec.ts` (Playwright)
@@ -352,19 +352,19 @@ load 15 or more, and my own runs must agree.
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] As admin: make a space with an editor and a viewer, and a page with a
+- [x] As admin: make a space with an editor and a viewer, and a page with a
       task list (one nested task).
-- [ ] As the editor: give tasks to yourself, to the viewer and to nobody, with
+- [x] As the editor: give tasks to yourself, to the viewer and to nobody, with
       and without dates, one overdue. Reload: the chips are still there.
-- [ ] My tasks as the editor: the order is right, Overdue is clear, ticking
+- [x] My tasks as the editor: the order is right, Overdue is clear, ticking
       fades the row and Undo brings it back. The page shows the tick and its
       history has the change. With the page open in another tab, the next edit
       there gets the usual conflict note, not lost work.
-- [ ] As the viewer: the chips show, nothing can be set, My tasks shows the
+- [x] As the viewer: the chips show, nothing can be set, My tasks shows the
       task with the box disabled.
-- [ ] Trash the page: it leaves both people's My tasks; restore it and it is
+- [x] Trash the page: it leaves both people's My tasks; restore it and it is
       back.
-- [ ] Light and dark: calm, spaced out, no harsh colours. Motion is quiet, and
+- [x] Light and dark: calm, spaced out, no harsh colours. Motion is quiet, and
       with reduced motion turned on it is instant.
 
 ## Lead check (before labels start)
@@ -372,12 +372,66 @@ load 15 or more, and my own runs must agree.
       Table changes sections, there is one permission path, `page_tasks` is
       written only inside `createPage` / `savePage`, and a tick goes through
       `savePage` with page, block and task ids unchanged.
-- [ ] Ran `npm run check` myself: exit 0.
-- [ ] Ran `npm run test:e2e` myself: all passed, exit 0, count and time noted
+- [x] Ran `npm run check` myself: exit 0.
+- [x] Ran `npm run test:e2e` myself: all passed, exit 0, count and time noted
       here.
-- [ ] Hand check above done and ticked.
-- [ ] Committed on `master` (pushing is done from outside the workspace, as
+- [x] Hand check above done and ticked.
+- [x] Committed on `master` (pushing is done from outside the workspace, as
       the owner said).
-- [ ] ARCHITECTURE.md gets a short "Tasks" section: the doc is the truth,
+- [x] ARCHITECTURE.md gets a short "Tasks" section: the doc is the truth,
       `page_tasks` is an index rebuilt on save, ticks go through `savePage`,
       and why this keeps co-editing possible.
+
+### Lead sign-off attempt (item #140, 2026-11-11): not signed off, two things open
+**What passed (seen myself, Node 22):**
+- **Diff.** Read `9e0d2e1da` (12a) and `31415d7f9` (12b). Attrs, `page_tasks`,
+  the three routes and the role table match the Decisions; `page_tasks` is
+  written only by `replaceTasks` from `createPage` / `savePage`; `tickTask`
+  flips one attr and saves through `savePage` with the read version as base
+  (one retry on 409). One permission path (`requirePageRole`,
+  `requireSpaceByKey`, `visibleSpaceIds`, `effectiveRole`). The new styles use
+  only tokens (no raw colours or timings in the diff).
+- **`npm run check`:** exit 0, all 7 steps ok, 379 server + 31 schema tests,
+  originality and contrast ok, 139.6 s (load 10.8 → 15.1).
+- **`npm run test:e2e`:** **23 passed, exit 0, no retries, 100.71 s** (load
+  15.0 → 21.2). All passed, but **over the 95 s limit** (see below).
+- **Hand check**, scripted Chromium against the built app on a fresh database
+  (`scripts/local-start.mjs`), as admin, editor and viewer, light and dark:
+  admin made a restricted space with an editor and a viewer and a page with a
+  task list and one nested task; the editor gave tasks to themselves (one
+  overdue, one today, the nested one with no date), to the viewer (tomorrow)
+  and left one for nobody through Assign and Due date (also Alt+Shift+D);
+  chips survived a reload; "Overdue · Sun 8 Nov" in words in the warm token.
+  Clearing a person and a date through the controls saved both as null.
+  My tasks for the editor: Overdue, Today, No date in that order; ticking
+  ticked at once, the row left after about 1.5 s with an Undo note, and Undo
+  brought it back on the server too. Ticking for good: the page showed it
+  ticked and the newest history version is by the editor. A second tab with
+  the page open got the conflict note on its next edit, and its typed text
+  stayed on screen. The viewer saw chips, had no controls and a read-only
+  body, and in My tasks the box was disabled with "You can view this page but
+  not edit it". Trashing the page emptied both lists ("No open tasks for you"
+  with how to give a task); restoring brought both back. Taking the viewer
+  out of the space turned their chip into "No access". With reduced motion
+  the row's transition is 0 and it left in 126 ms. Screens in light and dark
+  are calm, spaced out and soft. Two script mistakes of mine were found and
+  fixed on the way (a parent task's own controls sit after its sub-list in the
+  page, so "first Assign button" meant the sub-task's); neither was an app
+  fault.
+- **ARCHITECTURE.md** §17 Tasks and §12 item 10 written.
+
+**Still open (so labels do not start):**
+1. **A task naming a person who is not on this wiki still makes the save a
+   500.** Seen again in the browser pass: `PUT /api/pages/:id` with such a
+   task → 500, nothing saved. `replaceTasks` in `apps/server/src/pages/pages.ts`
+   still inserts the id straight into `page_tasks.assignee_id`, and there is no
+   test for it in `apps/server/test/tasks.test.ts`. The tester's note above
+   that `npm run check` "includes the unknown-assignee fix" is wrong: the fix
+   was never made. The fix and its test are as written in "Lead acceptance of
+   12a"; the 12a box and the first lead box stay unticked until it lands.
+2. **The e2e time limit.** My run today, 100.71 s at load 15–21, makes four
+   of four lead runs over 95 s. The fix decided in #139 (a cheaper password
+   hash used only by the e2e stack, set in the e2e config, never read by
+   production or compose, with a unit test that the normal settings apply
+   when it is absent) has not been made. Then three timed runs in a row under
+   95 s at load 15 or more, and the lead's own run must agree.

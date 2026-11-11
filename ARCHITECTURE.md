@@ -305,6 +305,11 @@ someone on the team has done it by hand in a browser against the compose stack.
    `TRASH_RETENTION_DAYS` go by themselves, file bytes included; nothing in
    the trash shows in search or AI answers. Full check, split into items 11a
    (server) and 11b (screen): `docs/done-checks/11-trash.md`. Design: §16.
+10. **Task lists** — a task can have a person and a due date, set from the
+   editor; My tasks lists a person's open tasks on pages they can read now,
+   and ticking one there is a normal page save; trashed pages and lost access
+   drop out at once. Full check, split into items 12a (server) and 12b
+   (screen): `docs/done-checks/12-tasks.md`. Design: §17.
 
 ## 13. Comments
 
@@ -456,3 +461,50 @@ someone on the team has done it by hand in a browser against the compose stack.
   trashed and open again on restore.
 - **Not yet:** trash for single comments, templates or files; choosing where
   to restore to; restoring one sub-page out of a larger item.
+
+## 17. Tasks
+
+- **The page document is the truth.** A task is a `taskItem` node in
+  `pages.doc` with the attrs `taskId`, `assignee` (a user id or null), `due`
+  (`YYYY-MM-DD` or null, a calendar day with no time zone) and the old
+  `checked`. They are part of the one editor schema
+  (`packages/editor-schema/src/index.ts`) and round-trip through HTML as
+  `data-task-id`, `data-assignee` and `data-due`. A bad date or a person id
+  that is not a uuid makes the doc invalid (400).
+- **Stable task ids.** Filled like block ids: the schema's `taskId` plugin in the browser
+  gives a new task an id and a pasted or split copy a fresh one
+  (`keepOnSplit: false`); `parseDoc` on the server fills any task with no id
+  or a repeated one, nested tasks included. Ids are unique within a page.
+- **`page_tasks` is an index, rebuilt on save.** Migration `0008_tasks` adds
+  `page_tasks`, keyed by `(page_id, task_id)`, with the partial index
+  `page_tasks_open_idx` on `(assignee_id, due) where checked = false`.
+  `createPage` and `savePage` replace a page's rows from `docTasks(doc)` in the
+  same transaction as the page row (`replaceTasks` in `pages/pages.ts`), the
+  way `doc_text` is kept. Nothing else writes it. So a history restore, a
+  template or an old doc keep it right with no extra code, and trash leaves it
+  alone (purge removes it by cascade).
+- **My tasks is filtered when read.** `GET /api/me/tasks` lists open tasks
+  given to the person, on live pages, in spaces from `visibleSpaceIds`, with
+  `canTick` from `effectiveRole` (`apps/server/src/tasks/tasks.ts`). Losing
+  access or trashing a page hides a task at once, and a restore brings it
+  back. The picker (`GET /api/spaces/:key/people`) lists active people who
+  can read the space; a save naming someone else is not refused, the task
+  just never shows for them, and the editor shows them as "No access".
+- **A tick is a page save.** `PATCH /api/pages/:id/tasks/:taskId` reads the
+  doc and version, flips `checked` on that one node and saves through
+  `savePage` with that version as the base: a normal version in history by
+  the person who ticked, page, block and task ids unchanged. A save in between
+  (409) is retried once, then shown as "The page just changed, try again".
+  Anyone with the page open meets the usual save-conflict note.
+- **Screens.** Chips and the Assign / Due date controls are a node view on
+  `taskItem` (`apps/web/src/editor/tasks.tsx`), also on Alt+Shift+A and
+  Alt+Shift+D. My tasks is `/tasks` (`apps/web/src/screens/MyTasks.tsx`),
+  grouped Overdue, Today, Coming up, No date, with tick, fade and Undo.
+- **Why co-editing stays possible.** Everything about a task lives in node
+  attrs, which Yjs keeps as they are, and the index is rebuilt from whatever
+  doc is saved, so a co-editing server that saves through `savePage` keeps My
+  tasks right with no change. A tick is an ordinary edit of one attr; under
+  co-editing it can become a small Yjs update to that node instead of a whole
+  save, with the same ids.
+- **Not yet:** notifications or email, @mentions, more than one person per
+  task, reminders, repeating tasks, a list of done tasks, a team task board.
