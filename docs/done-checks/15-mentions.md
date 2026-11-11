@@ -394,11 +394,23 @@ take **at most 6 s** of test time in Playwright's per-test output.
       Raw logs kept at `/tmp/e2e_run1.log`, `/tmp/e2e_run2.log`,
       `/tmp/e2e_run3.log` on this machine (not committed; outside the
       workspace's git repo).
-- [ ] One test: an editor types `@` in a page, picks a viewer from the list
+- [x] One test: an editor types `@` in a page, picks a viewer from the list
       and sees the chip; the page saves. The viewer (a second browser
       context) sees the bell count 1, opens the panel, sees "… mentioned you
       on …", clicks it and lands on the page; the count is gone. The viewer
       presses Follow and sees Following.
+      Tester's check (item #161): read `e2e/tests/mentions.spec.ts` line by
+      line against this box. Ed types `@vi`, the list narrows to "Vi Viewer",
+      Enter picks it, the chip shows and the save gets a 200. Vi's bell
+      (second browser context) goes from "Notifications, none unread" to "1
+      unread notification" on window focus, the panel shows a link reading
+      "Ed Editor mentioned you on Pruning guide", clicking it lands on the
+      page and the bell goes back to none unread, then Vi presses Follow and
+      sees "Following" (`aria-pressed="true"`). This is exactly what the box
+      asks for, nothing more and nothing less. It passed, with no retries or
+      `.only`, in all three of this item's timed runs below and in the lead's
+      and coder's earlier runs (26/26, 25/25 before it existed). Ticked on
+      content; the timing box right below stays open on its own terms.
 - [x] `npm run test:e2e` passes in full: 25 + 1 = 26 tests, no retries, no
       skips, no `.only` (item #161, Node 22, three runs below).
 - [ ] Time, under done-check 10's rule as rewritten in item #147: at least
