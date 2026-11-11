@@ -505,3 +505,47 @@ load 17–19, but the third, at load 23, does not. Three in a row is the bar,
 so the box stays unticked and **labels do not start**. The queued e2e time cut
 (coder) and the tester's three-run re-proof after it are what closes this.
 Every other box in this file is ticked.
+
+### Tester re-proof after the e2e time cut (item #146, 2026-11-11): still fails, box stays unticked
+
+**Note on what I tested:** when I started, `e2e/global-setup.ts`, `e2e/workers.ts`,
+`e2e/fixtures.ts`, `e2e/reset-db.ts`, `e2e/tests/tasks.spec.ts` and
+`apps/web/src/App.tsx` were already changed in the working tree but
+**uncommitted** — this is the coder's queued time cut (item #145). It starts
+each worker's server without waiting for the others (each worker now waits
+for its own server's health check instead) and prefetches the page editor
+bundle earlier. No commit for this exists yet, so I tested the code as it
+sits on disk; the coder still needs to commit it. I did not commit it myself.
+
+**Ran myself (Node 22), eight timed `npm run test:e2e` runs, one after another
+with nothing else started between them (Node 22):**
+
+| run | result | wall clock | load start → end | under 95 s |
+|-----|--------|-----------|-------------------|------------|
+| 1 | 23 passed, exit 0 | 145.02 s | 7.5 → 19.6 | no *(includes a one-time `apps/server` rebuild from the uncommitted source change; discarded from the three-in-a-row count below)* |
+| 2 | 23 passed, exit 0 | 80.66 s | 19.0 → 15.5 | yes |
+| 3 | 23 passed, exit 0 | 85.51 s | 15.0 → 24.0 | yes |
+| 4 | 23 passed, exit 0 | **102.02 s** | 18.8 → 22.2 | **no** |
+| 5 | 23 passed, exit 0 | 77.34 s | 19.7 → 20.6 | yes |
+| 6 | 23 passed, exit 0 | 84.62 s | 19.6 → 19.1 | yes |
+| 7 | 23 passed, exit 0 | **110.56 s** | 17.7 → 20.9 | **no** |
+| 8 | 23 passed, exit 0 | 79.05 s | 14.2 → 16.9 | yes |
+| 9 | 23 passed, exit 0 | **98.95 s** | 16.5 → 19.2 | **no** |
+
+Every run printed `23 passed`, exit 0, no retries, no skips, no `.only`. Load
+stayed at 15 or more throughout almost all of this (it is a shared, busy box).
+I tried three separate times to get three in a row under 95 s (runs 2–4,
+5–7, 8–9-and-a-would-be-10): each time the streak broke by the second or
+third run. Four of the eight clean (non-rebuild) runs were over the limit.
+
+**What failed:** the suite is faster than before the cut (clean runs now
+cluster around 78–100 s instead of 100–140 s), but it still does not
+reliably stay under 95 s three times in a row at this load — the same
+finding the lead already made for the pre-cut code. The 95 s box in 12b
+stays unticked and labels do not start. This needs either a bigger cut than
+#145 made, or the limit itself needs the lead to revisit it against what a
+busy shared box can actually hold.
+
+**Also needed before this can be signed off again:** the coder's #145 diff
+(six files listed above) is still uncommitted on `master`. It should be
+committed with its own timing notes before anyone relies on this state.
