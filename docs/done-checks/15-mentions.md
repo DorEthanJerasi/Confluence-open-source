@@ -446,45 +446,104 @@ take **at most 6 s** of test time in Playwright's per-test output.
       `/tmp/e2e_mentions_run3.log` on this machine (not committed; outside
       the workspace's git repo).
 
+      Lead's run (item #162, Node 22), added to this record: `/usr/bin/time
+      npm run test:e2e` **exit 0, 26 passed**, 83.88 s wall time, load
+      3.74, 5.66, 7.06 at the start and 10.12, 7.29, 7.52 at the end; the
+      mentions test took **6.0 s**, right at the cap again. With this run the
+      mentions test has measured 6.0, 6.2, 6.8, 5.4, 6.6 and 6.0 s, so it is
+      over 6 s in two of six runs and at the cap in two more. **This box stays
+      open**: the test is cut back first, then the tester re-times it.
+
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] As admin: two spaces (one restricted) with an editor, a viewer and a
+- [x] As admin: two spaces (one restricted) with an editor, a viewer and a
       person who is not in the restricted space.
-- [ ] As the editor in the restricted space: `@` lists only people who can see
+- [x] As the editor in the restricted space: `@` lists only people who can see
       it (the outsider never appears, typed or not), by mouse and by keyboard;
       Escape leaves plain `@`. A pasted mention of the outsider saves and
       shows "No access", and the outsider is never told.
-- [ ] As the viewer: the bell shows the mention; edits by the editor on a
+- [x] As the viewer: the bell shows the mention; edits by the editor on a
       followed page fold into one line with a count; a comment shows its own
       line and opens on the comment. Mark all as read clears the count. The
       viewer cannot add a mention (cannot edit) but can follow and unfollow.
-- [ ] Trash the page: its notifications leave the list and the count at once;
+- [x] Trash the page: its notifications leave the list and the count at once;
       restore brings them back. Remove the viewer from the space: the same.
-- [ ] A second tab with the page open saves with no conflict note after
+- [x] A second tab with the page open saves with no conflict note after
       someone followed or was told (follows and notifications never touch the
       page's version).
-- [ ] Light and dark: calm, spaced out, no harsh colours; the count badge is
+- [x] Light and dark: calm, spaced out, no harsh colours; the count badge is
       soft, not alarming. Motion is quiet, and with reduced motion turned on
       it is instant.
+- Lead's hand check (item #162, 2026-11-11), with a throwaway Playwright
+  walk-through in real Chromium that I deleted afterwards and did not commit,
+  plus screenshots I looked at:
+  - Set-up as admin: Garden (open) and Vault (restricted), Ed an editor
+    member of Vault, Vi a viewer member, Otto an editor who is not a member.
+  - Ed in Vault: `@` alone lists Ada Admin, Ed Editor and Vi Viewer, never
+    Otto; `@ot` says "No one who can see this space by that name". Escape
+    left `@ot` as plain text. Keyboard pick (`@v`, Enter) and mouse pick
+    (click on Ed Editor) both put a chip; the save was 200. A pasted mention
+    of Otto saved (200) and shows "@Otto Outsider · No access" after reload;
+    Otto's unread count stayed 0, Vi's became 1.
+  - Vi (viewer): the editor is read-only (`contenteditable="false"`), so no
+    mention can be added. Follow → Following → Follow → Following all work.
+    After three edits and a comment by Ed, the bell reads "3 unread
+    notifications" and the panel shows three lines, newest first: "Ed Editor
+    commented on Seed vault plan", "Ed Editor edited Seed vault plan (3
+    changes)", "Ed Editor mentioned you on Seed vault plan". The comment line
+    opens the page with the comments panel on that comment (the page then
+    removes `?comment=` from the address), and the count drops to 2. Mark
+    all as read brings it to "Notifications, none unread".
+  - Trash: with Vi at 2 unread, trashing the page gave 0 and an empty list;
+    restore gave 2 again. Removing Vi from Vault gave 0 and an empty list;
+    adding Vi back gave 2.
+  - Second tab: with Ed's page open in a fresh tab, Vi unfollowed and
+    followed, marked all read, Otto tried to follow (404), and Ada commented.
+    The page version stayed 6 → 6. Ed's tab then saved with 200 and no
+    conflict note. (An older tab opened before Ed's three edits did get the
+    normal conflict note, as it should: those were real saves.)
+  - Light and dark: the panel, the soft unread tint and the small
+    sage-coloured count badge look calm and readable in both, with nothing
+    red or loud. The panel fades in over 0.2 s; with reduced motion turned on
+    the panel and the badge animations are 0.001 ms, which is instant.
 
 ## Lead check
-- [ ] Read the diff myself: the node, tables and routes match the Decisions
+- [x] Read the diff myself: the node, tables and routes match the Decisions
       and Table changes sections; there is one permission path; notifications
       are written in the same transaction as the save or comment; no
       notification or follow code writes `pages` or `page_versions`; every
       read filters live pages in `visibleSpaceIds`, and the count and the list
       share one filter.
-- [ ] Ran `npm run check` myself: exit 0.
-- [ ] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
+      15a diff read in item #158 and 15b in #159 and #160. Re-read in item
+      #162: `onPageCreated`, `onPageSaved` and `onCommentPosted` take the
+      caller's `tx` and are called only from `createPage`, `savePage` and
+      `createComment`. `notifications.ts` inserts and updates only
+      `notifications` and `page_follows`. `unreadCount` and
+      `listNotifications` both filter with the one `visibleTo(user)`, which
+      is live pages in `visibleSpaceIds`, with deleted comments hidden.
+- [x] Ran `npm run check` myself: exit 0.
+      Item #162, Node 22: exit 0, all 7 steps ok, 84.65 s; server 416 passed,
+      editor-schema 31 passed, originality and contrast (58 pairs) ok.
+- [x] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
       and load noted here, and my run is added to the time record above.
-- [ ] Hand check above done and ticked.
+- [x] Hand check above done and ticked.
 - [ ] Committed on `master` and pushed to GitHub, as the owner asked. If the
       workspace still has no GitHub remote, this box stays open and the lead
       says so in the team chat; export does not start until the owner has
       answered.
-- [ ] ARCHITECTURE.md gets a short "Mentions, following and notifications"
+- [x] ARCHITECTURE.md gets a short "Mentions, following and notifications"
       section: a mention is a person id in the doc like a task assignee;
       notifications are written in the save's or comment's transaction and
       filtered when read by live pages and `visibleSpaceIds`; edits fold; and
       why this keeps co-editing possible.
+      Done in item #162: section 19 of `ARCHITECTURE.md`.
+- Lead sign-off (item #162, 2026-11-11): **not signed off yet.** Two boxes
+  are still open:
+  1. **Time**: the mentions test is over its 6 s cap in two of six runs and
+     at the cap in two more. The coder cuts it back, keeping what the One test
+     box asks for, and the tester re-times it with three runs.
+  2. **Pushed to GitHub**: the workspace has no GitHub remote (`git remote
+     -v` is empty), so nothing can be pushed. The owner needs to give the
+     GitHub address and credentials.
+  Export does not start until both are closed.

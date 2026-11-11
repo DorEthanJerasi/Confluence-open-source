@@ -573,3 +573,49 @@ someone on the team has done it by hand in a browser against the compose stack.
   shared document, and the ids stay the same either way.
 - **Not yet:** label colours, renaming or merging labels, an admin screen for
   labels, labels on spaces, templates or comments, labels in page history.
+
+## 19. Mentions, following and notifications
+
+- **A mention is a person id in the document, like a task assignee.** It is
+  an inline atom node `mention` in the one editor schema with `userId` (a
+  uuid, required) and `label` (the name when mentioned, a fallback only). It
+  round-trips through HTML as `span[data-mention][data-user-id]`; a non-uuid
+  id makes the doc a 400. `docMentions(doc)` reads the ids out. In plain text
+  (search, AI) it reads `@label`; the screen shows the person's current name,
+  or "No access" / "Unknown person". Naming someone who cannot read the space
+  is never refused; they are simply never told. `@` suggestions use the same
+  `GET /api/spaces/:key/people` as the task picker.
+- **Notifications are written in the transaction of the thing they are
+  about** (`apps/server/src/notifications/notifications.ts`, migration
+  `0010_mentions_notifications`): `createPage` and `savePage` tell each person
+  newly mentioned (old mentions read under a row lock), `savePage` tells every
+  follower about the edit, and `createComment` tells every follower about the
+  comment. So a notification is never lost or doubled. Never the actor, never
+  a disabled person, and only people who can read the space at that moment.
+- **Edits fold.** A partial unique index on unread edit notifications per
+  person and page makes a further save an upsert: newest editor, time and a
+  count of saves on the one row ("edited … (3 changes)"). Once read, the next
+  save starts a new row.
+- **Filtered when read, one filter.** The list and the unread count both use
+  `visibleTo(user)`: the page is live and in a space from `visibleSpaceIds`,
+  and a comment notification's comment is not deleted. Trash or losing access
+  hides them at once; restore or getting access back brings them back; purge
+  removes them by cascade. There is no clean-up job.
+- **Following.** `page_follows` keyed by `(user_id, page_id)`. You follow on
+  create and on commenting (insert if missing, so a later unfollow sticks);
+  anyone who can read a page can follow it, through `requirePageRole`, so
+  anyone else gets 404.
+- **Screens.** The `@` list and chips (`apps/web/src/editor/mentions.tsx`),
+  the Follow button on the page, and the bell with its count and panel
+  (`apps/web/src/notifications/`). The bell asks for the count on open, every
+  60 s while visible, on window focus and after opening the list. A comment
+  notification opens the comments panel on that comment (`?comment=`).
+- **Why co-editing stays possible.** A mention is an atom node with attrs,
+  which Yjs keeps as they are, and the "who is newly mentioned" diff runs
+  inside `savePage`, so a co-editing server that saves through `savePage`
+  tells the same people with no change. Follows and notifications hold only
+  ids and a time and sit in their own tables; they never write `pages.doc`,
+  `pages.version`, `pages.updated_at` or `page_versions`, so following or
+  being told never causes a save conflict.
+- **Not yet:** email or push, live push of the count, mentions in comments,
+  mentioning a group, following a space or a page tree, per-kind settings.
