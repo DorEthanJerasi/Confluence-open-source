@@ -1,0 +1,131 @@
+{
+  "base": "http://127.0.0.1:4317",
+  "ran": "2026-11-11T11:06:56.876Z",
+  "results": [
+    {
+      "step": "1a first sign-up through the form becomes admin",
+      "ok": true,
+      "ms": 1435
+    },
+    {
+      "step": "1b admin adds an editor and a viewer in \"Add a person\"",
+      "ok": true,
+      "ms": 1243
+    },
+    {
+      "step": "1c a second person signs up through the form and logs out and back in",
+      "ok": true,
+      "ms": 1805
+    },
+    {
+      "step": "1d the people list shows all four with their roles",
+      "ok": true,
+      "ms": 693
+    },
+    {
+      "step": "1e Eve and Vera log in with the passwords the admin set",
+      "ok": true,
+      "ms": 1928
+    },
+    {
+      "step": "2a admin makes an open space and a members-only space in the dialog",
+      "ok": true,
+      "ms": 2740
+    },
+    {
+      "step": "2b space settings: Eve joins Lighthouse as editor, Vera as viewer",
+      "ok": true,
+      "ms": 1183
+    },
+    {
+      "step": "2c nested pages: parent, sub-page, sub-sub-page in the tree and breadcrumb",
+      "ok": true,
+      "ms": 4533
+    },
+    {
+      "step": "2d Sam (editor, not a member) cannot see Lighthouse in the list or by URL",
+      "ok": true,
+      "ms": 1516
+    },
+    {
+      "step": "2e Vera (viewer member) reads Lighthouse but cannot edit or add pages",
+      "ok": true,
+      "ms": 1311
+    },
+    {
+      "step": "3a slash commands: heading, list, task list, quote, code, divider",
+      "ok": true,
+      "ms": 4881
+    },
+    {
+      "step": "3b embeds: image upload with caption, file upload with download",
+      "ok": true,
+      "ms": 2298
+    },
+    {
+      "step": "3c embeds: uploaded video plays; YouTube and Vimeo links become players",
+      "ok": true,
+      "ms": 2399
+    },
+    {
+      "step": "3d embeds: link preview cards (rich from a canned reply, refused fetch gives a plain card); table",
+      "ok": true,
+      "ms": 5703
+    },
+    {
+      "step": "4a search: members find Lighthouse pages; the outsider does not",
+      "ok": true,
+      "ms": 4914
+    },
+    {
+      "step": "5 history: Eve changes the page, Ada opens the earlier version and restores it",
+      "ok": true,
+      "ms": 7787
+    },
+    {
+      "step": "6a AI summary of a page",
+      "ok": true,
+      "ms": 1484
+    },
+    {
+      "step": "6b Ask: answer with sources that link back to the page",
+      "ok": true,
+      "ms": 1306
+    },
+    {
+      "step": "6c Ask as the outsider never cites the members-only page",
+      "ok": true,
+      "ms": 3862
+    },
+    {
+      "step": "7 trash: delete a sub-page, gone from tree and search, viewer cannot restore, editor restores",
+      "ok": true,
+      "ms": 6041
+    },
+    {
+      "step": "8a comment on a page, read by a viewer",
+      "ok": true,
+      "ms": 3100
+    },
+    {
+      "step": "8b label a page and find it by the label",
+      "ok": true,
+      "ms": 2789
+    },
+    {
+      "step": "8c favourite a page; it shows on Home",
+      "ok": true,
+      "ms": 1613
+    },
+    {
+      "step": "8d My tasks lists the task from the page",
+      "ok": true,
+      "ms": 1793
+    },
+    {
+      "step": "9 dark mode and reduced motion across the main screens",
+      "ok": true,
+      "ms": 3487
+    }
+  ]
+}

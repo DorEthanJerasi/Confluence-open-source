@@ -71,6 +71,12 @@
       "kind": "video",
       "path": "docs/showcase/showcase.mp4",
       "note": "Recorded 2026-11-07: the wiki in use. Preview GIF at docs/showcase/preview.gif."
+    },
+    {
+      "title": "Final walk of the brief: results and screenshots",
+      "kind": "document",
+      "path": "docs/final-walk",
+      "note": "25 of 25 browser steps passed on a fresh install.sh start (item #153); see docs/done-checks/14-final-walk.md"
     }
   ]
 }
