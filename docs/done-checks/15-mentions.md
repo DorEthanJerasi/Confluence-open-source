@@ -295,7 +295,7 @@ Accepted. 15b may start.
   after a reload. A refused follow went back with the quiet note. Vi got 1
   mention notification and Otto got 0. Light and dark both look calm. The
   bell, the styles box and the e2e test are still open (next item).
-- [ ] A bell in the top bar with the unread count (nothing shown at 0, "9+"
+- [x] A bell in the top bar with the unread count (nothing shown at 0, "9+"
       above nine, a screen-reader label like "3 unread notifications"). It
       opens a panel listing notifications newest first in plain words
       ("Ana mentioned you on Pruning guide", "Ana commented on …", "Ana and
@@ -304,11 +304,40 @@ Accepted. 15b may start.
       Opening one marks it read; "Mark all as read" marks all; "Show more"
       pages back. An empty list says so plainly. All of it works by keyboard
       and the panel closes on Escape with focus back on the bell.
-- [ ] Styles use only the design tokens. Light and dark both look right. Motion
+- [x] Styles use only the design tokens. Light and dark both look right. Motion
       is soft and short and turns off under `prefers-reduced-motion`. Text and
       controls pass the contrast check (c6).
-- [ ] Nothing in the new code or text uses another product's names or assets
+- [x] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
+- Lead check of item #160 (commit c71742149), 2026-11-11: the three boxes
+  above are ticked.
+  - Read the diff: `Bell.tsx`, the Shell top bar, `?comment=` in
+    `PageScreen`, reply ids in `CommentsPanel`, the count refreshing after
+    trash and restore, and the new styles. The styles use `var(--…)` tokens
+    only, and their motion goes through the global reduced-motion rule in
+    `tokens.css`. Two new pairs are in `check-contrast.mjs`.
+  - `npm run check` (Node 22): **exit 0**, all 7 steps ok, 101 s.
+  - `npm run test:e2e`: **exit 0**, 26 passed, 71.4 s wall time, load 3.9
+    going to 9.3. The mentions test took 6.0 s.
+  - My own browser walk-through, with a throwaway spec that I deleted
+    afterwards and did not commit. The viewer follows a page and the editor
+    posts 11 comments. These all worked:
+    - The empty list says so, and Escape puts focus back on the bell.
+    - The bell shows "9+" and reads "11 unread notifications".
+    - It opens by keyboard and shows 11 lines, newest first: "Ed Editor
+      commented on Pruning guide".
+    - Tab then Escape closes it, with focus back on the bell.
+    - Clicking the oldest one lands on the page with the comments panel open
+      on "Comment 1", and the count drops to 10.
+    - The bell can still be clicked while the comments panel is open.
+    - Trashing the page brings the count to 0, and restoring it brings back 10.
+    - Mark all as read clears the count.
+  - Screenshots in light and dark (after the theme fade) look calm and
+    readable.
+  - Open for the tester: the e2e test box and the timing box. The mentions
+    test took 6.0 s in my run and 6.2 s in the coder's, right at the 6 s cap.
+    Per the timing box, if the tester's three runs show it over, the test is
+    cut back first.
 
 ### Check that must exist and pass — e2e (Playwright)
 **Time cost of this feature's browser tests: at most one short test.** The
