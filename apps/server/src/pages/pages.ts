@@ -15,6 +15,7 @@ import type { SessionUser } from '../auth/session.js';
 import { badRequest, conflict, notFound } from '../http.js';
 import type { DocTask } from '@stillwater/editor-schema';
 import { normalizeDoc } from './docText.js';
+import { labelsJson } from '../labels/labelSql.js';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -150,6 +151,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
       spaceKey: spaces.key,
       updatedByName: users.name,
       favourite: sql<boolean>`exists (select 1 from ${pageFavourites} where ${pageFavourites.userId} = ${user.id} and ${pageFavourites.pageId} = ${pages.id})`,
+      labels: labelsJson(pages.id),
     })
     .from(pages)
     .innerJoin(spaces, eq(spaces.id, pages.spaceId))
@@ -171,6 +173,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
     breadcrumbs: await breadcrumbs(db, p.parentId),
     myRole: role,
     favourite: row.favourite,
+    labels: row.labels,
   };
 }
 

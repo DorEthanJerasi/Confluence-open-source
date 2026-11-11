@@ -23,6 +23,7 @@ import { templateRoutes } from './routes/templates.js';
 import { meRoutes, pagePersonalRoutes } from './routes/personal.js';
 import { trashRoutes } from './routes/trash.js';
 import { taskRoutes } from './routes/tasks.js';
+import { labelRoutes } from './routes/labels.js';
 import { startTrashSweep } from './trash/trash.js';
 import { createProvider, guardProvider, type AiProvider } from './ai/provider.js';
 import type { SafeFetchOptions } from './embeds/safeFetch.js';
@@ -110,6 +111,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(aiRoutes, { prefix: '/api/ai' });
   await app.register(trashRoutes, { prefix: '/api' });
   await app.register(taskRoutes, { prefix: '/api' });
+  await app.register(labelRoutes, { prefix: '/api' });
 
   if (opts.trashSweep) {
     let stop: (() => void) | null = null;

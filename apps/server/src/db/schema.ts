@@ -296,3 +296,33 @@ export const pageTasks = pgTable(
     index('page_tasks_open_idx').on(t.assigneeId, t.due).where(sql`${t.checked} = false`),
   ],
 );
+
+// Labels (docs/done-checks/13-labels.md). A label is a named tag kept beside a
+// page, never in pages.doc: adding or removing one does not change the doc,
+// its version, updated_at or page history, so it never causes a save conflict
+// and co-editing can be added without touching labels. One row per name, for
+// the whole wiki, with an id that never changes (the row stays when no page
+// uses it). page_labels is a set keyed by (page, label). Every read filters it
+// by live pages in visibleSpaceIds; trash and restore leave it alone, purge
+// removes it by cascade.
+export const labels = pgTable('labels', {
+  id: id(),
+  name: text('name').notNull().unique(),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+});
+
+export const pageLabels = pgTable(
+  'page_labels',
+  {
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    labelId: uuid('label_id')
+      .notNull()
+      .references(() => labels.id, { onDelete: 'cascade' }),
+    addedBy: uuid('added_by').references(() => users.id, { onDelete: 'set null' }),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.pageId, t.labelId] }), index('page_labels_label_idx').on(t.labelId)],
+);

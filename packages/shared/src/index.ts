@@ -160,6 +160,8 @@ export interface Page {
   myRole: Role;
   /** Whether the person asking has this page in their favourites. */
   favourite: boolean;
+  /** The page's labels, by name (kept beside the page, not in `doc`). */
+  labels: Label[];
 }
 
 // ---------- Page history ----------
@@ -353,6 +355,8 @@ export interface SearchResult {
   snippet: string;
   /** Ancestors from the top of the space down to the parent. */
   breadcrumbs: Crumb[];
+  /** The page's labels, by name. */
+  labels: Label[];
 }
 
 /** Split a snippet into plain-text parts, each marked as a hit or not. */
@@ -508,6 +512,80 @@ export interface SpacePerson {
 }
 export interface SpacePeopleList {
   people: SpacePerson[];
+}
+
+// ---------- Labels (docs/done-checks/13-labels.md) ----------
+
+/** Longest label name, in characters. */
+export const LABEL_MAX_CHARS = 40;
+/** At most this many labels on one page. */
+export const LABELS_PER_PAGE = 20;
+/** At most this many names in GET /api/labels. */
+export const LABEL_SUGGESTIONS_LIMIT = 50;
+/** At most this many pages in a label view. */
+export const LABEL_VIEW_LIMIT = 200;
+/** At most this many labels in one search filter. */
+export const SEARCH_LABELS_LIMIT = 20;
+
+const LABEL_RE = /^[\p{L}\p{N}_-]+$/u;
+
+/**
+ * The one name rule for labels, used by the server and the screen: trim,
+ * lower-case, runs of spaces become one `-`, then only letters (any
+ * language), digits, `-` and `_`, 1 to 40 characters. null = not allowed.
+ */
+export function normaliseLabel(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const name = raw.normalize('NFC').trim().toLowerCase().replace(/\s+/g, '-');
+  const length = Array.from(name).length;
+  if (length < 1 || length > LABEL_MAX_CHARS || !LABEL_RE.test(name)) return null;
+  return name;
+}
+
+/** The plain message for a name normaliseLabel refuses. */
+export const LABEL_NAME_MESSAGE = `A label can only use letters, digits, - and _, up to ${LABEL_MAX_CHARS} characters`;
+
+export interface Label {
+  id: string;
+  name: string;
+}
+
+/** Body of POST /api/pages/:id/labels. The name goes through normaliseLabel. */
+export const addLabelBody = z.object({ name: z.string().max(200) }).strict();
+export type AddLabelBody = z.infer<typeof addLabelBody>;
+
+/** Reply of POST /api/pages/:id/labels and DELETE /api/pages/:id/labels/:labelId (by name). */
+export interface PageLabelsReply {
+  labels: Label[];
+}
+
+/** Query of GET /api/labels. */
+export const labelSuggestionsQuery = z.object({ q: z.string().max(100).optional() });
+export interface LabelSuggestion extends Label {
+  /** How many live pages the person can see have this label. */
+  count: number;
+}
+export interface LabelSuggestionList {
+  labels: LabelSuggestion[];
+}
+
+/** One page of a label view. `labels` are all of the page's labels, by name. */
+export interface LabelPage {
+  id: string;
+  title: string;
+  space: { key: string; name: string };
+  updatedAt: string;
+  labels: Label[];
+}
+/**
+ * GET /api/labels/:name/pages and GET /api/spaces/:key/labels/:name/pages.
+ * `label` is null when no page the person can see has it (the same answer as
+ * for a name never used).
+ */
+export interface LabelView {
+  label: Label | null;
+  pages: LabelPage[];
+  truncated: boolean;
 }
 
 export interface ApiError {
