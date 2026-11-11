@@ -276,8 +276,48 @@ proves what only a browser can. The test goes in a new
 set-up (people, spaces, pages, follows, and every notification other than the
 one made in the test) goes through the API in `e2e/login.ts`. The test must
 take **at most 6 s** of test time in Playwright's per-test output.
-- [ ] Tester's baseline: three timed `/usr/bin/time npm run test:e2e` runs of
-      the 25-test suite before 15b, with load at start and end.
+- [x] Tester's baseline (item #157, Node 22): three timed `/usr/bin/time npm
+      run test:e2e` runs of the current 25-test suite, before `mentions.spec.ts`
+      is added, with load noted at the start and end of each.
+
+      | run | exit | result | wall time | load at start | load at end |
+      |-----|------|--------|-----------|----------------|--------------|
+      | 1   | 0    | 25 passed | 1:04.96 (64.96s) | 2.00, 5.17, 7.43 | 7.56, 6.34, 7.69 |
+      | 2   | 0    | 25 passed | 1:14.04 (74.04s) | 7.11, 6.27, 7.66 | 14.25, 8.72, 8.41 |
+      | 3   | 0    | 25 passed | 1:14.80 (74.80s) | 13.75, 8.71, 8.41 | 16.08, 10.50, 9.05 |
+
+      All three runs passed with exit 0, no retries, no skips. Middle run
+      (sorted by wall time: 64.96s, 74.04s, 74.80s) is 74.04s, well under the
+      95 s limit this done-check sets for the run with `mentions.spec.ts`
+      added. Load climbed across the three back-to-back runs (own CPU load,
+      not an outside load spike) but none of them slowed past 75s, so the
+      suite has headroom before the new test is added.
+
+      Per-file time, summed when a file has more than one test (seconds, runs 1 / 2 / 3):
+
+      | file | run 1 | run 2 | run 3 | tests |
+      |------|-------|-------|-------|-------|
+      | ai.spec.ts | 11.2 | 9.0 | 10.3 | 2 |
+      | ai-off.spec.ts | 5.0 | 4.5 | 4.5 | 1 |
+      | comments.spec.ts | 9.2 | 8.8 | 9.0 | 1 |
+      | editor.spec.ts | 20.9 | 27.5 | 25.6 | 2 |
+      | editor-conflict.spec.ts | 8.1 | 7.8 | 8.4 | 1 |
+      | embeds.spec.ts | 22.1 | 26.0 | 24.8 | 2 |
+      | favourites.spec.ts | 6.3 | 10.5 | 6.7 | 1 |
+      | history.spec.ts | 13.9 | 19.4 | 16.7 | 2 |
+      | labels.spec.ts | 4.5 | 6.1 | 6.2 | 1 |
+      | permissions.spec.ts | 5.6 | 7.4 | 7.2 | 1 |
+      | search.spec.ts | 8.3 | 9.5 | 10.4 | 1 |
+      | tasks.spec.ts | 13.3 | 15.3 | 14.2 | 2 |
+      | templates.spec.ts | 11.2 | 14.1 | 15.4 | 2 |
+      | trash.spec.ts | 12.0 | 14.5 | 14.9 | 2 |
+      | video-links.spec.ts | 12.9 | 16.3 | 17.9 | 1 |
+      | viewer.spec.ts | 4.2 | 4.4 | 6.0 | 1 |
+      | wiki.spec.ts | 9.6 | 12.4 | 11.9 | 2 |
+
+      Raw logs kept at `/tmp/e2e_run1.log`, `/tmp/e2e_run2.log`,
+      `/tmp/e2e_run3.log` on this machine (not committed; outside the
+      workspace's git repo).
 - [ ] One test: an editor types `@` in a page, picks a viewer from the list
       and sees the chip; the page saves. The viewer (a second browser
       context) sees the bell count 1, opens the panel, sees "… mentioned you
