@@ -272,16 +272,29 @@ Accepted. 15b may start.
 ## 15b — Screen
 
 ### Build
-- [ ] Typing `@` in the editor (editors and up) opens a small list of people
+- [x] Typing `@` in the editor (editors and up) opens a small list of people
       from `GET /api/spaces/:key/people?q=` that narrows as you type. Arrow
       keys, Enter and Tab pick, Escape closes and leaves the `@` as text.
       Picking puts a mention chip in the text. A chip shows the person's
       current name; one whose person cannot read the space shows "No access",
       an unknown id "Unknown person". `@` also appears in the slash menu as
       "Mention someone".
-- [ ] A Follow / Following button on the page (for everyone who can read it,
+- [x] A Follow / Following button on the page (for everyone who can read it,
       viewers included), next to the favourite star, shown at once and put
       back with a short quiet note if the server refuses.
+- Lead check of item #159 (commit dd0e1b453), 2026-11-11: the two boxes
+  above are ticked. I read the diff, ran `npm run check` (exit 0, 416 + 31
+  tests, 92 s) and `npm run test:e2e` (exit 0, 25 passed, 66 s), and ran my
+  own throwaway browser walk-through. Setup: a members-only space with Ed
+  (editor), Vi (viewer) and Otto, an editor who is not a member. The `@`
+  list showed exactly Ada, Ed and Vi, never Otto, and narrowed to Vi on
+  "vi". Enter, Tab, the arrow keys, a click and the slash menu's "Mention
+  someone" all put a chip, and the saved doc kept the person ids. Escape
+  left "@e" as plain text. The "No access" and "Unknown person" chips show,
+  and the viewer sees them. Vi followed the page and it stayed "Following"
+  after a reload. A refused follow went back with the quiet note. Vi got 1
+  mention notification and Otto got 0. Light and dark both look calm. The
+  bell, the styles box and the e2e test are still open (next item).
 - [ ] A bell in the top bar with the unread count (nothing shown at 0, "9+"
       above nine, a screen-reader label like "3 unread notifications"). It
       opens a panel listing notifications newest first in plain words
