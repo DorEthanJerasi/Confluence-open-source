@@ -206,7 +206,7 @@ at load 11-15. Accepted; 13b may start.
 ## 13b — Screen
 
 ### Build
-- [ ] Under the page title, the page's labels show as small soft chips (for
+- [x] Under the page title, the page's labels show as small soft chips (for
       viewers too, read-only). Each chip opens the space's label view. Editors
       also get an "Add label" control: a small input with suggestions from
       `GET /api/labels?q=` that shows the normalised name as it is typed and
@@ -215,18 +215,18 @@ at load 11-15. Accepted; 13b may start.
       input moves to the last chip, each remove has a screen-reader label).
       Adding and removing show at once and are put back with a short quiet
       note if the server refuses.
-- [ ] The per-space label view at `/s/:key/labels/:name` lists the pages with
+- [x] The per-space label view at `/s/:key/labels/:name` lists the pages with
       title, last change and their other labels, each linking to the page,
       with a link "In all spaces" to the whole-wiki view at `/labels/:name`,
       which also shows each page's space. An empty view says plainly that no
       page you can see has this label. A truncated list says so.
-- [ ] The search screen takes `label:name` in the box and shows the active
+- [x] The search screen takes `label:name` in the box and shows the active
       labels as removable chips; results show their labels. Clicking a label
       in a result adds it to the filter.
-- [ ] Styles use only the design tokens. Light and dark both look right. Motion
+- [x] Styles use only the design tokens. Light and dark both look right. Motion
       is soft and short and turns off under `prefers-reduced-motion`. Text and
       controls pass the contrast check (c6).
-- [ ] Nothing in the new code or text uses another product's names or assets
+- [x] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
 ### Check that must exist and pass — e2e (Playwright)
@@ -240,13 +240,13 @@ chips, the Add label control and the views on screen. The test goes in a new
 set-up (people, spaces, pages, and labels other than the one typed in the
 test) goes through the API helpers in `e2e/login.ts`. The test must take
 **at most 6 s** of test time in Playwright's per-test timing output.
-- [ ] One test: an editor opens a page, adds a label with the Add label
+- [x] One test: an editor opens a page, adds a label with the Add label
       control and sees its chip; opens the chip's space view and sees the page
       (and a second labelled page made through the API); "In all spaces"
       shows a page from a second space; the search screen with `label:` finds
       the page. A viewer is not part of this test (the server tests prove the
       403); dark mode is checked by hand, not here.
-- [ ] `npm run test:e2e` passes in full: 23 + 1 = 24 tests, no retries, no
+- [x] `npm run test:e2e` passes in full: 23 + 1 = 24 tests, no retries, no
       skips, no `.only`.
 - [ ] Time, under done-check 10's rule as rewritten in item #147: at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with
@@ -257,6 +257,16 @@ test) goes through the API helpers in `e2e/login.ts`. The test must take
       middle run is 95 s or more, or any run fails, the box stays open and the
       labels test is cut back first; no limit is raised and no other test is
       dropped to make room.
+
+Lead check of 13b (item #150, 2026-11-11): read PageLabels.tsx, LabelScreens.tsx,
+labels.ts, the SearchScreen and PageScreen changes, labels.css (tokens only,
+motion through the tokens.css reduced-motion rule) and the two new contrast
+pairs. Remove buttons and Add label show only for editors and up; viewers get
+read-only chips. Ran with Node 22: `npm run check` exit 0, all 7 steps, 396
+tests (load 15-17); `/usr/bin/time npm run test:e2e` 24 passed, exit 0, no
+retries, 65.86 s wall, load 12.6 at start and 14.1 at end, the labels test
+5.2 s. 13b build and test boxes ticked; the timed-runs box (tester), the hand
+check and the lead check below stay open.
 
 ---
 
