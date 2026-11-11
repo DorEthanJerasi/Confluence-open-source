@@ -493,7 +493,10 @@ someone on the team has done it by hand in a browser against the compose stack.
   access or trashing a page hides a task at once, and a restore brings it
   back. The picker (`GET /api/spaces/:key/people`) lists active people who
   can read the space; a save naming someone else is not refused, the task
-  just never shows for them, and the editor shows them as "No access".
+  just never shows for them, and the editor shows them as "No access". A
+  person id that is not anyone on this wiki is kept in the doc as sent, but
+  its `page_tasks` row gets `assignee_id` null (one `users` lookup per save,
+  same transaction), so the save never fails on it.
 - **A tick is a page save.** `PATCH /api/pages/:id/tasks/:taskId` reads the
   doc and version, flips `checked` on that one node and saves through
   `savePage` with that version as the base: a normal version in history by
