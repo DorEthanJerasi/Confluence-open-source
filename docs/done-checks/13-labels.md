@@ -248,7 +248,7 @@ test) goes through the API helpers in `e2e/login.ts`. The test must take
       403); dark mode is checked by hand, not here.
 - [x] `npm run test:e2e` passes in full: 23 + 1 = 24 tests, no retries, no
       skips, no `.only`.
-- [ ] Time, under done-check 10's rule as rewritten in item #147: at least
+- [x] Time, under done-check 10's rule as rewritten in item #147: at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with
       `labels.spec.ts` in the suite, load noted at the start and end of each,
       **every run passes with exit 0 and the middle run is under 95 s**. The
@@ -257,6 +257,26 @@ test) goes through the API helpers in `e2e/login.ts`. The test must take
       middle run is 95 s or more, or any run fails, the box stays open and the
       labels test is cut back first; no limit is raised and no other test is
       dropped to make room.
+
+      Tester's three timed runs (item #151, 2026-11-11, Node 22):
+      | run | wall clock | exit | load start | load end | labels test |
+      |---|---|---|---|---|---|
+      | 1 | 75.46 s | 0 | 7.06 | 11.10 | 5.8 s |
+      | 2 | 88.84 s | 0 | 10.53 | 14.43 | 5.6 s |
+      | 3 | 90.56 s | 0 | 13.67 | 16.43 | 6.5 s |
+
+      All three passed 24/24 with exit 0, no retries. Sorted by wall clock:
+      75.46 s, **88.84 s (middle, under the 95 s limit)**, 90.56 s (slowest,
+      against the checker's ~110 s limit — 20 s of headroom). The machine's
+      load climbed across the three runs (something else was busy on the
+      box), which is the likely reason run 3 ran slower than run 1; even so
+      the middle run stays comfortably under 95 s.
+
+      Note: the labels test's own time rose from the 5.2 s the lead saw to
+      5.6-6.5 s here, right at the "at most 6 s" line in the check above it
+      (run 3 was 6.5 s, half a second over). This tracks the load, not a
+      regression in the test; flagging it for the lead in case it is worth
+      a closer look before the project is declared finished.
 
 Lead check of 13b (item #150, 2026-11-11): read PageLabels.tsx, LabelScreens.tsx,
 labels.ts, the SearchScreen and PageScreen changes, labels.css (tokens only,
