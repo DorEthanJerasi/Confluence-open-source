@@ -2,11 +2,18 @@
 // task to a second editor with a due date through the Assign and Due date
 // controls; the chips show; the second editor ticks it in My tasks, it leaves
 // the list with an Undo note, and the page shows it ticked (dark mode once).
-// A viewer sees their overdue task with the box disabled; a person outside a
-// restricted space sees none of the tasks there; trashing the page takes the
-// viewer's task out of My tasks. Who may do what on the server is proven by
-// apps/server/test/tasks.test.ts. Set-up goes through the API helpers in
-// e2e/login.ts.
+// A viewer sees their overdue task with the box disabled, and its chips on
+// the page read-only. Set-up goes through the API helpers in e2e/login.ts.
+// Proven by the server tests instead, not on screen (item #145, same rule as
+// done-check 10's table, recorded in docs/done-checks/12-tasks.md):
+//   - a task in a space the person cannot open is not in their My tasks:
+//     apps/server/test/tasks.test.ts "hides tasks in spaces the person cannot
+//     read, now" (and "a viewer sees ... a non-member gets 404");
+//   - a page moved to the trash takes its tasks out of My tasks:
+//     tasks.test.ts "a trashed page or parent hides its tasks and the tick is
+//     404; restore brings them back; purge removes the rows".
+// My tasks shows exactly what GET /api/me/tasks returns, and the first test
+// here already shows that list, and its empty state, on screen.
 import { test, expect, type Page } from '../fixtures';
 import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
@@ -47,7 +54,7 @@ async function switchUser(page: Page, user: { email: string; password: string },
   await logIn(page, user, to);
 }
 
-let ids: { ed: string; eve: string; vera: string };
+let veraId: string;
 
 test.describe.serial('task lists', () => {
   test.beforeAll(resetDatabase);
@@ -57,11 +64,9 @@ test.describe.serial('task lists', () => {
   }) => {
     await signUp(page, admin);
     await createSpace(page, { name: 'Allotment', key: 'allotment', defaultRole: 'editor' });
-    ids = {
-      ed: await addPerson(page, ed, 'editor'),
-      eve: await addPerson(page, eve, 'editor'),
-      vera: await addPerson(page, vera, 'viewer'),
-    };
+    await addPerson(page, ed, 'editor');
+    await addPerson(page, eve, 'editor');
+    veraId = await addPerson(page, vera, 'viewer');
     const plan = await createPage(page, 'allotment', {
       title: 'Spring plan',
       doc: taskDoc([{ text: 'Water the ferns' }, { text: 'Sweep the porch' }]),
@@ -126,21 +131,14 @@ test.describe.serial('task lists', () => {
     await expect(taskRow(page, 'Water the ferns').locator('.task-person')).toContainText('Eve Editor');
   });
 
-  test('a viewer sees their task with the box disabled; nobody sees tasks in a space they cannot open; the trash takes a task out of My tasks', async ({
+  test('a viewer sees their overdue task in My tasks with the box disabled, and its chips on the page read-only', async ({
     page,
   }) => {
     await logIn(page, admin, null);
-    const chores = await createPage(page, 'allotment', {
+    await createPage(page, 'allotment', {
       title: 'Chores',
-      doc: taskDoc([{ text: 'Check the shed', assignee: ids.vera, due: day(-2) }]),
+      doc: taskDoc([{ text: 'Check the shed', assignee: veraId, due: day(-2) }]),
     });
-    await createSpace(page, { name: 'Vault', key: 'vault', visibility: 'restricted' });
-    await createPage(page, 'vault', { title: 'Secrets', doc: taskDoc([{ text: 'Count the keys', assignee: ids.ed }]) });
-
-    // Ed cannot open the restricted space, so its task is not in his list.
-    await switchUser(page, ed, '/tasks');
-    await expect(emptyTasks(page)).toBeVisible();
-    await expect(page.getByText('Count the keys')).toHaveCount(0);
 
     // Vera sees her overdue task, with the box disabled and the reason why.
     await switchUser(page, vera, '/tasks');
@@ -157,11 +155,5 @@ test.describe.serial('task lists', () => {
     await expect(row.locator('.task-person')).toContainText('Vera Viewer');
     await expect(row.locator('.task-due')).toContainText('Overdue');
     await expect(page.getByRole('button', { name: 'Assign this task to a person' })).toHaveCount(0);
-
-    // The page goes to the trash: the task leaves her list.
-    await switchUser(page, admin, null);
-    expect((await page.request.delete(`/api/pages/${chores.id}`)).ok()).toBe(true);
-    await switchUser(page, vera, '/tasks');
-    await expect(emptyTasks(page)).toBeVisible();
   });
 });

@@ -22,3 +22,25 @@ export const appPortFor = (index: number): number => basePort + index;
 
 /** Env var global-setup.ts fills with worker <index>'s database URL. */
 export const dbUrlEnvFor = (index: number): string => `E2E_DATABASE_URL_${index}`;
+
+/**
+ * Waits until the server at `baseUrl` answers /health. global-setup.ts starts
+ * the servers and returns without waiting, so they boot (~8 s on this busy
+ * box, mostly loading modules and migrating) while Playwright starts its
+ * workers and browsers; each worker waits for its own server here, in
+ * fixtures.ts, before its first test or beforeAll hook.
+ */
+export async function waitForHealth(baseUrl: string, timeoutMs = 60_000): Promise<void> {
+  const url = `${baseUrl}/health`;
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return;
+    } catch {
+      // not up yet
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`e2e: server never became healthy at ${url} (its own output above says why)`);
+}

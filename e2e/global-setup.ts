@@ -2,6 +2,12 @@
 // (built and migrated the same way the compose stack does on first start),
 // then one built apps/server/dist/index.js per test worker, each on its own
 // database and port, serving the built web app.
+// It starts the servers and returns without waiting for them: a server takes
+// ~8 s to boot on this busy box (loading its modules, then migrating), and
+// Playwright needs ~5 s after set-up to start its workers and browsers, so
+// the two now overlap. Each worker waits for its own server's /health before
+// its first hook or test (fixtures.ts, waitForHealth in workers.ts); a
+// server that fails to start prints why here and fails that worker's tests.
 // Returns a teardown closure, which Playwright runs after the whole run.
 import { mkdtempSync, rmSync, existsSync, cpSync, renameSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -25,19 +31,6 @@ function freePort(): Promise<number> {
       srv.close(() => resolve(port));
     });
   });
-}
-
-async function waitForHealth(url: string, tries = 90): Promise<void> {
-  for (let i = 0; i < tries; i++) {
-    try {
-      const res = await fetch(url);
-      if (res.ok) return;
-    } catch {
-      // not up yet
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`e2e: server never became healthy at ${url}`);
 }
 
 function embeddedPgVersion(): string {
@@ -107,7 +100,9 @@ export default async function globalSetup() {
   // One database and one server per worker, so spec files can run in
   // parallel without emptying each other's data (see workers.ts).
   const servers: ChildProcess[] = [];
+  let stopping = false;
   const teardown = async () => {
+    stopping = true;
     // Let each server close its pool before Postgres goes away, or it logs a
     // "terminating connection" error dump on the way out.
     await Promise.all(
@@ -126,41 +121,42 @@ export default async function globalSetup() {
     // One at a time: Postgres refuses CREATE DATABASE while template1 is busy.
     for (let i = 0; i < workerCount; i++) await pg.createDatabase(`stillwater_e2e_${i}`);
     mark('create databases');
-    await Promise.all(
-      Array.from({ length: workerCount }, async (_, i) => {
-        const dbName = `stillwater_e2e_${i}`;
-        const databaseUrl = `postgres://stillwater:stillwater@127.0.0.1:${pgPort}/${dbName}`;
-        // Test workers inherit this, so each spec file can empty its worker's tables (reset-db.ts).
-        process.env[dbUrlEnvFor(i)] = databaseUrl;
-        const appPort = appPortFor(i);
-        const server = spawn(process.execPath, [serverEntry], {
-          cwd: repoRoot,
-          env: {
-            ...process.env,
-            DATABASE_URL: databaseUrl,
-            PORT: String(appPort),
-            PUBLIC_URL: `http://127.0.0.1:${appPort}`,
-            ALLOW_SIGNUP: 'true',
-            // One log line per request costs CPU on a busy box and buries failures.
-            // Set E2E_SERVER_LOG=info to see every request again.
-            LOG_LEVEL: process.env.E2E_SERVER_LOG ?? 'warn',
-            // Uploads go in the same temp dir, removed in teardown.
-            UPLOAD_DIR: join(dir, `uploads-${i}`),
-            // The AI suite runs against the deterministic stub, never the network.
-            AI_PROVIDER: 'stub',
-            ANTHROPIC_API_KEY: '',
-            // Cheap argon2 settings for the many test sign-ups and logins
-            // (apps/server/src/auth/password.ts). Set only here, for these
-            // throwaway servers; compose and real installs never set it.
-            E2E_FAST_PASSWORD_HASH: '1',
-          },
-          stdio: 'inherit',
-        });
-        servers.push(server);
-        await waitForHealth(`http://127.0.0.1:${appPort}/health`);
-      }),
-    );
-    mark('servers healthy');
+    for (let i = 0; i < workerCount; i++) {
+      const dbName = `stillwater_e2e_${i}`;
+      const databaseUrl = `postgres://stillwater:stillwater@127.0.0.1:${pgPort}/${dbName}`;
+      // Test workers inherit this, so each spec file can empty its worker's tables (reset-db.ts).
+      process.env[dbUrlEnvFor(i)] = databaseUrl;
+      const appPort = appPortFor(i);
+      const server = spawn(process.execPath, [serverEntry], {
+        cwd: repoRoot,
+        env: {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+          PORT: String(appPort),
+          PUBLIC_URL: `http://127.0.0.1:${appPort}`,
+          ALLOW_SIGNUP: 'true',
+          // One log line per request costs CPU on a busy box and buries failures.
+          // Set E2E_SERVER_LOG=info to see every request again.
+          LOG_LEVEL: process.env.E2E_SERVER_LOG ?? 'warn',
+          // Uploads go in the same temp dir, removed in teardown.
+          UPLOAD_DIR: join(dir, `uploads-${i}`),
+          // The AI suite runs against the deterministic stub, never the network.
+          AI_PROVIDER: 'stub',
+          ANTHROPIC_API_KEY: '',
+          // Cheap argon2 settings for the many test sign-ups and logins
+          // (apps/server/src/auth/password.ts). Set only here, for these
+          // throwaway servers; compose and real installs never set it.
+          E2E_FAST_PASSWORD_HASH: '1',
+        },
+        stdio: 'inherit',
+      });
+      servers.push(server);
+      // Said at once, rather than only as a /health timeout in the tests.
+      server.once('exit', (code, signal) => {
+        if (!stopping) console.error(`e2e: the server for worker ${i} stopped early (code ${code}, signal ${signal})`);
+      });
+    }
+    mark('servers started');
     console.log(`e2e: set-up took ${((Date.now() - t0) / 1000).toFixed(1)}s (${lap.join(', ')})`);
   } catch (err) {
     await teardown();

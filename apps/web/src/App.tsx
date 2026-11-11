@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useMe } from './auth';
 import { Loading } from './ui';
@@ -17,11 +17,29 @@ import { MyTasksScreen } from './screens/MyTasks';
 // The page screen brings the editor (Tiptap, ProseMirror, code highlighting),
 // which is most of the app's code. Loading it only when a page is opened keeps
 // sign-in, home, search, settings and ask quick to start.
-const PageScreen = lazy(() => import('./screens/PageScreen').then((m) => ({ default: m.PageScreen })));
+const loadPageScreen = () => import('./screens/PageScreen');
+// When the app starts on a page's own address (a shared link, a reload), the
+// editor is needed first thing: start fetching it now, while the sign-in check
+// and the space load, instead of after them. The same import() is reused by
+// the lazy screen below, so it is fetched once. A failure here is ignored; the
+// lazy screen tries again and shows the error the usual way.
+if (/^\/s\/[^/]+\/p\/[^/]+/.test(window.location.pathname)) loadPageScreen().catch(() => {});
+const PageScreen = lazy(() => loadPageScreen().then((m) => ({ default: m.PageScreen })));
 
 export function App() {
   const { user } = useMe();
   const location = useLocation();
+  // Once someone is signed in, opening a page is the next thing they are
+  // most likely to do: fetch the editor while the browser is idle, so the
+  // first page they open does not wait for it.
+  const signedIn = Boolean(user);
+  useEffect(() => {
+    if (!signedIn) return;
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1500));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const id = idle(() => void loadPageScreen().catch(() => {}));
+    return () => cancel(id);
+  }, [signedIn]);
   if (user === undefined) return <Loading />;
 
   if (!user) {
