@@ -7,6 +7,7 @@ import { useCurrentUser } from '../auth';
 import { currentTheme, setTheme, type Theme } from '../theme';
 import { ROLE_LABEL } from '../ui';
 import { useAiEnabled } from '../ai/SummaryCard';
+import { NotificationBell } from '../notifications/Bell';
 
 export function Logo() {
   return (
@@ -104,6 +105,24 @@ export function Shell() {
   const navigate = useNavigate();
   const aiOn = useAiEnabled();
 
+  // The side panels (history, comments) start below the top bar, so the bell,
+  // the theme switch and Log out stay reachable while one is open. The bar
+  // can wrap on narrow screens, so its height is measured, not assumed.
+  const bar = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const set = () => root.style.setProperty('--topbar-height', `${el.getBoundingClientRect().height}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--topbar-height');
+    };
+  }, []);
+
   async function logout() {
     await api.logout().catch(() => undefined);
     qc.clear();
@@ -113,7 +132,7 @@ export function Shell() {
 
   return (
     <div className="app">
-      <header className="topbar">
+      <header className="topbar" ref={bar}>
         <Link to="/" className="brand">
           <Logo />
           <span className="brand-name">Stillwater</span>
@@ -138,6 +157,7 @@ export function Shell() {
           </NavLink>
         )}
         <div className="topbar-end">
+          <NotificationBell />
           <ThemeToggle />
           <span className="who" title={user.email}>
             <span className="avatar" aria-hidden="true">

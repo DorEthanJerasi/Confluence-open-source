@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, FolderOpen, RotateCcw, Trash2 } from 'lucide-react';
 import { roleAtLeast } from '@stillwater/shared';
-import { api, ApiFailure, type TrashPerson } from '../api';
+import { api, ApiFailure, unreadKey, type TrashPerson } from '../api';
 import { pageTitle } from '../tree';
 import { exactTime, timeAgo } from '../time';
 import { keptFor, plural, trashKey, trashedSpacesKey } from '../trash';
@@ -125,6 +125,7 @@ export function TrashScreen() {
       setLeaving((s) => new Set(s).add(page.id));
       // Pages under it may have been cached as "not found" while it was in the trash.
       qc.removeQueries({ queryKey: ['page'] });
+      void qc.invalidateQueries({ queryKey: unreadKey });
       await qc.invalidateQueries({ queryKey: ['tree', space.key] });
       afterFade(() => {
         setBack({ id: page.id, title: page.title });

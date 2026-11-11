@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
@@ -254,6 +254,22 @@ function PageView({ page }: { page: Page }) {
     },
     [panel, panelClosing, openPanel],
   );
+  // A comment notification links here with ?comment=<id>: open the comments
+  // panel on that comment, then drop the parameter so a reload stays quiet.
+  const [params, setParams] = useSearchParams();
+  const commentParam = params.get('comment');
+  useEffect(() => {
+    if (!commentParam) return;
+    openComments({ thread: commentParam });
+    setParams(
+      (p) => {
+        p.delete('comment');
+        return p;
+      },
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentParam]);
   const jumpToBlock = useCallback(
     (blockId: string) => {
       const el = blockElement(editor, blockId);

@@ -383,7 +383,8 @@ export function CommentsPanel({
   // A marker was clicked: show that thread (open the resolved list if needed) and highlight it.
   useEffect(() => {
     if (!focusThread || !threads) return;
-    const t = threads.find((x) => x.id === focusThread.id);
+    // The id may be a reply's (a notification links to the comment it is about).
+    const t = threads.find((x) => x.id === focusThread.id || x.replies.some((r) => r.id === focusThread.id));
     if (!t) return;
     if (t.resolvedAt) setShowResolved(true);
     setHighlight(t.id);

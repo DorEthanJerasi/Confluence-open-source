@@ -52,6 +52,11 @@ const PAIRS = [
   // refused name's hint is danger text on the page background.
   ['color-accent-strong', 'color-accent-soft', 'AA'],
   ['color-danger', 'color-bg', 'AA'],
+  // Notifications (done-check 15b): an unread line is body text with muted
+  // space and time on accent-soft, its dot is accent on accent-soft; the
+  // bell's count is accent-strong on accent-soft (checked above).
+  ['color-text-muted', 'color-accent-soft', 'AA'],
+  ['color-accent', 'color-accent-soft', 'AA-large'],
 ];
 
 const THRESHOLDS = { AA: 4.5, 'AA-large': 3 };

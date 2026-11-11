@@ -13,7 +13,9 @@ import type {
   LabelSuggestionList,
   LabelView,
   LinkPreview,
+  MarkReadBody,
   MyTaskList,
+  NotificationList,
   Page,
   PageSummary,
   PageTemplate,
@@ -29,6 +31,7 @@ import type {
   SpacePeopleList,
   TemplateSummary,
   TickTaskReply,
+  UnreadCount,
   User,
   Visibility,
 } from '@stillwater/shared';
@@ -206,6 +209,13 @@ export const api = {
     request<null>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/favourite`),
   /** Follow (on) or unfollow a page (viewer and up). Idempotent both ways; 404 if they cannot read it. */
   setFollow: (pageId: string, on: boolean) => request<FollowReply>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/follow`),
+  /** Own notifications on pages they can read now, newest first, 30 a time; `before` = the last id shown. */
+  notifications: (before?: string) =>
+    get<NotificationList>(`/api/me/notifications${before ? `?before=${enc(before)}` : ''}`),
+  /** Unread count with exactly the list's filter. */
+  unreadCount: () => get<UnreadCount>('/api/me/notifications/unread'),
+  /** Marks some of yours (`ids`) or all of yours (`all`) as read; returns the unread count left. */
+  markRead: (b: MarkReadBody) => request<UnreadCount>('POST', '/api/me/notifications/read', b),
   /** Records that the person opened this page (once per open; never on autosave or refetch). */
   recordView: (pageId: string) => request<null>('POST', `/api/pages/${enc(pageId)}/viewed`),
   /** The person's own favourites they can still read, newest first. */
@@ -238,6 +248,8 @@ export const api = {
 /** Query keys of the two personal lists on Home. */
 export const favouritesKey = ['me', 'favourites'] as const;
 export const recentKey = ['me', 'recent'] as const;
+/** The bell's unread count; refresh it after anything that can hide or show notifications. */
+export const unreadKey = ['me', 'notifications', 'unread'] as const;
 
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';

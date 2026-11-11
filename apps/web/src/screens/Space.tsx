@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useOutletContext, useParams } from 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, ChevronRight, CornerDownRight, FileText, Lock, MoreHorizontal, Plus, Settings, Trash2 } from 'lucide-react';
 import { roleAtLeast, type PageTreeItem, type Space } from '@stillwater/shared';
-import { api, ApiFailure } from '../api';
+import { api, ApiFailure, unreadKey } from '../api';
 import { buildTree, pageTitle, subtreeIds, type TreeNode } from '../tree';
 import { ErrorNote, Field, Loading, Modal, ROLE_LABEL } from '../ui';
 import { keptFor, plural, trashKey } from '../trash';
@@ -49,6 +49,7 @@ function useTreeActions(spaceKey: string) {
   const remove = useMutation({
     mutationFn: (id: string) => api.deletePage(id),
     onSuccess: async () => {
+      void qc.invalidateQueries({ queryKey: unreadKey });
       await refresh();
       await qc.invalidateQueries({ queryKey: trashKey(spaceKey) });
     },
