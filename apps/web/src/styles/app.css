@@ -525,6 +525,12 @@ textarea.input {
 .page-head-top .btn {
   white-space: nowrap;
 }
+/* The page's buttons (star, Follow, History, …) flow onto a second line
+ * rather than pushing the page sideways when they don't fit. */
+.page-head-top > .row {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
 .page-title {
   font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
@@ -1612,6 +1618,14 @@ textarea.input {
 }
 .star-note {
   margin-bottom: var(--space-4);
+}
+/* Follow / Following (done-check 15b): a .btn-quiet with aria-pressed beside
+ * the star; when on, the eye takes the accent like the filled star. */
+.btn-follow svg {
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+.btn-follow.is-on svg {
+  color: var(--color-accent);
 }
 .personal {
   display: grid;

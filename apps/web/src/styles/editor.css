@@ -473,6 +473,58 @@
   color: var(--color-text-muted);
 }
 
+/* Mentions (done-check 15b): a soft chip in the text, and the `@` list,
+ * which is the slash menu's panel with one row per person. A chip whose
+ * person cannot be told is muted and italic, with a short tag after the name. */
+.doc .mention {
+  display: inline-block;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-weight: var(--weight-medium);
+  line-height: 1.45;
+  white-space: nowrap;
+  cursor: default;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+.doc .mention[data-status='no-access'],
+.doc .mention[data-status='unknown'] {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.mention-tag {
+  font-weight: var(--weight-regular);
+  font-size: var(--text-xs);
+}
+.mention-tag[hidden] {
+  display: none;
+}
+.mention-menu {
+  width: 240px;
+}
+.mention-option {
+  padding: var(--space-1) var(--space-2);
+}
+.mention-initial {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+.mention-initial::before {
+  content: attr(data-initial);
+}
+
 /* Bubble menus: text marks and table rows/columns */
 .bubble-menu > [role='toolbar'] {
   display: flex;

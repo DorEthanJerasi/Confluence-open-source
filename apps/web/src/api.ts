@@ -9,6 +9,7 @@ import type {
   CommentList,
   Doc,
   FavouritePage,
+  FollowReply,
   LabelSuggestionList,
   LabelView,
   LinkPreview,
@@ -203,6 +204,8 @@ export const api = {
   /** Star (on) or unstar a page for the person asking. Idempotent both ways; 404 if they cannot read it. */
   setFavourite: (pageId: string, on: boolean) =>
     request<null>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/favourite`),
+  /** Follow (on) or unfollow a page (viewer and up). Idempotent both ways; 404 if they cannot read it. */
+  setFollow: (pageId: string, on: boolean) => request<FollowReply>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/follow`),
   /** Records that the person opened this page (once per open; never on autosave or refetch). */
   recordView: (pageId: string) => request<null>('POST', `/api/pages/${enc(pageId)}/viewed`),
   /** The person's own favourites they can still read, newest first. */
@@ -216,7 +219,8 @@ export const api = {
   tickTask: (pageId: string, taskId: string, checked: boolean) =>
     request<TickTaskReply>('PATCH', `/api/pages/${enc(pageId)}/tasks/${enc(taskId)}`, { checked }),
   /** Active people who can read the space, by name (the task picker). */
-  spacePeople: (key: string) => get<SpacePeopleList>(`/api/spaces/${enc(key)}/people`),
+  spacePeople: (key: string, q?: string) =>
+    get<SpacePeopleList>(`/api/spaces/${enc(key)}/people${q ? `?q=${enc(q)}` : ''}`),
 
   /** Adds a label to a page (editor and up); a name the page has is a 200 with no change. */
   addLabel: (pageId: string, name: string) => request<PageLabelsReply>('POST', `/api/pages/${enc(pageId)}/labels`, { name }),

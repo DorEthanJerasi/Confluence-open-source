@@ -6,6 +6,7 @@ import { ReactRenderer } from '@tiptap/react';
 import { pickAttachment, promptLinkCard, promptVideoLink } from './embeds';
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion';
 import {
+  AtSign,
   CheckSquare,
   Code2,
   Heading1,
@@ -35,6 +36,8 @@ export interface SlashItem {
   run?: (chain: ChainedCommands) => ChainedCommands;
   /** Or do something after the `/query` text is gone (open the file picker). */
   action?: (editor: Editor) => void;
+  /** Shown only when the editor has this extension (the template editor has no `@` list). */
+  needs?: string;
 }
 
 /** Every block the editor offers, in menu order. */
@@ -92,12 +95,22 @@ export const SLASH_ITEMS: SlashItem[] = [
     icon: Link2,
     action: (editor) => promptLinkCard(editor),
   },
+  {
+    title: 'Mention someone',
+    hint: 'Name a person so they are told',
+    keywords: ['mention', 'person', 'people', '@', 'tag', 'notify'],
+    icon: AtSign,
+    needs: 'mentionSuggest',
+    // Types the `@`, which opens the list of people (editor/mentions.tsx).
+    action: (editor) => editor.chain().focus().insertContent('@').run(),
+  },
 ];
 
-export function filterSlashItems(query: string): SlashItem[] {
+export function filterSlashItems(query: string, has: (extension: string) => boolean = () => true): SlashItem[] {
   const q = query.trim().toLowerCase();
-  if (!q) return SLASH_ITEMS;
-  return SLASH_ITEMS.filter((i) => i.title.toLowerCase().includes(q) || i.keywords.some((k) => k.startsWith(q)));
+  return SLASH_ITEMS.filter(
+    (i) => (!i.needs || has(i.needs)) && (!q || i.title.toLowerCase().includes(q) || i.keywords.some((k) => k.startsWith(q))),
+  );
 }
 
 interface MenuProps {
@@ -190,7 +203,8 @@ export const SlashCommand = Extension.create({
         editor: this.editor,
         char: '/',
         allow: ({ state }) => !state.selection.$from.parent.type.spec.code,
-        items: ({ query }) => filterSlashItems(query),
+        items: ({ query, editor }) =>
+          filterSlashItems(query, (name) => editor.extensionManager.extensions.some((e) => e.name === name)),
         command: ({ editor, range, props }: { editor: Editor; range: Range; props: SlashItem }) => {
           const chain = editor.chain().focus().deleteRange(range);
           (props.run ? props.run(chain) : chain).run();

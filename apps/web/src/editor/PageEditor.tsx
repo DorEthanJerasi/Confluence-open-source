@@ -13,6 +13,7 @@ import { DocEndKey } from './keys';
 import { AttachmentUpload, CardOfferButton, embedViews, type UploadNote } from './embeds';
 import type { PageSaver, SaveState } from './saver';
 import { TaskCaret, TaskController, TaskPopover, taskItemView, type TaskOpen } from './tasks';
+import { MentionController, MentionSuggest, mentionView } from './mentions';
 import { api } from '../api';
 import { spacePeopleKey } from '../tasks';
 
@@ -176,6 +177,17 @@ export function PageEditor({
   });
   const peopleList = people.data?.people ?? null;
   useEffect(() => tasks.setPeople(peopleList), [tasks, peopleList]);
+  // Mentions: the same people list; the directory of everyone active is
+  // loaded only when a chip names someone outside it ("No access" or
+  // "Unknown person").
+  const [mentions] = useState(() => new MentionController());
+  mentions.spaceKey = spaceKey ?? '';
+  const [wantDirectory, setWantDirectory] = useState(false);
+  mentions.needDirectory = () => setWantDirectory(true);
+  const directory = useQuery({ queryKey: ['directory'], queryFn: api.directory, enabled: wantDirectory, staleTime: 60_000 });
+  const directoryList = directory.data?.users ?? null;
+  useEffect(() => mentions.setPeople(peopleList), [mentions, peopleList]);
+  useEffect(() => mentions.setDirectory(directoryList), [mentions, directoryList]);
 
   const flush = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -188,15 +200,16 @@ export function PageEditor({
   const editor = useEditor(
     {
       extensions: [
-        ...getExtensions({ history: true, nodeViews: { ...embedViews, taskItem: taskItemView(tasks) } }),
+        ...getExtensions({ history: true, nodeViews: { ...embedViews, taskItem: taskItemView(tasks), mention: mentionView(mentions) } }),
         ...(editable
           ? [
               SlashCommand,
               DocEndKey,
               TaskCaret.configure({ ctrl: tasks }),
+              MentionSuggest.configure({ ctrl: mentions }),
               AttachmentUpload.configure({ pageId: page.id, onNote: setNote }),
               Placeholder.configure({
-                placeholder: ({ node }) => (node.type.name === 'paragraph' ? 'Write, or type / for blocks' : ''),
+                placeholder: ({ node }) => (node.type.name === 'paragraph' ? 'Write, type / for blocks or @ to mention someone' : ''),
                 showOnlyCurrent: true,
               }),
             ]

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
+import { Eye, FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
 import type { Page } from '@stillwater/shared';
 import { SummaryCard, useAiEnabled } from '../ai/SummaryCard';
@@ -117,6 +117,45 @@ function FavouriteButton({ page, onFailed }: { page: Page; onFailed: (failed: bo
   );
 }
 
+/**
+ * Follow / Following, next to the star (done-check 15, 15b). Anyone who can
+ * read the page (viewers too) can follow it and is then told about comments
+ * and edits. Like the star: it changes at once, requests go out in order, and
+ * if the server refuses it goes back and a quiet note says so.
+ */
+function FollowButton({ page, onFailed }: { page: Page; onFailed: (failed: boolean) => void }) {
+  const qc = useQueryClient();
+  const [on, setOn] = useState(page.following);
+  const queue = useRef<Promise<void>>(Promise.resolve());
+
+  function toggle() {
+    const next = !on;
+    setOn(next);
+    onFailed(false);
+    queue.current = queue.current.then(async () => {
+      try {
+        const { following } = await api.setFollow(page.id, next);
+        qc.setQueryData<{ page: Page }>(['page', page.id], (old) => (old ? { page: { ...old.page, following } } : old));
+      } catch {
+        setOn(!next);
+        onFailed(true);
+      }
+    });
+  }
+
+  return (
+    <button
+      className={`btn btn-quiet btn-follow${on ? ' is-on' : ''}`}
+      onClick={toggle}
+      aria-pressed={on}
+      title={on ? 'You are told about comments and edits here. Click to stop.' : 'Be told about comments and edits on this page'}
+    >
+      <Eye size={16} aria-hidden="true" />
+      {on ? 'Following' : 'Follow'}
+    </button>
+  );
+}
+
 /** True when the body holds no text and no non-paragraph block. */
 function isEmptyDoc(page: Page) {
   const blocks = (page.doc.content ?? []) as { type?: string; content?: unknown[] }[];
@@ -165,12 +204,18 @@ function PageView({ page }: { page: Page }) {
   const closeSummary = useCallback(() => setSummaryOpen(false), []);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState<string | null>(null);
-  const [starFailed, setStarFailed] = useState(false);
+  // A quiet note when the star or Follow could not be changed; it fades on its own.
+  const [headNote, setHeadNote] = useState<string | null>(null);
   useEffect(() => {
-    if (!starFailed) return;
-    const t = window.setTimeout(() => setStarFailed(false), 4000);
+    if (!headNote) return;
+    const t = window.setTimeout(() => setHeadNote(null), 4000);
     return () => window.clearTimeout(t);
-  }, [starFailed]);
+  }, [headNote]);
+  const starFailed = useCallback((failed: boolean) => setHeadNote(failed ? 'Couldn’t update favourites. Try again in a moment.' : null), []);
+  const followFailed = useCallback(
+    (failed: boolean) => setHeadNote(failed ? 'Couldn’t change following for this page. Try again in a moment.' : null),
+    [],
+  );
   // The confirmation fades on its own after a few seconds.
   useEffect(() => {
     if (!templateSaved) return;
@@ -314,7 +359,8 @@ function PageView({ page }: { page: Page }) {
           <PageLabels page={page} spaceKey={space.key} canEdit={canEdit} />
         </div>
         <div className="row">
-          <FavouriteButton page={page} onFailed={setStarFailed} />
+          <FavouriteButton page={page} onFailed={starFailed} />
+          <FollowButton page={page} onFailed={followFailed} />
           <button
             className={`btn btn-quiet${historyOpen ? ' is-on' : ''}`}
             onClick={() => (historyOpen && !panelClosing ? closePanel() : openPanel('history'))}
@@ -362,9 +408,9 @@ function PageView({ page }: { page: Page }) {
         </div>
       </div>
 
-      {starFailed && (
+      {headNote && (
         <p className="note star-note fade-in" role="status">
-          Couldn’t update favourites. Try again in a moment.
+          {headNote}
         </p>
       )}
       {templateSaved && (
