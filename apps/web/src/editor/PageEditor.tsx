@@ -9,6 +9,7 @@ import { getExtensions } from '@stillwater/editor-schema';
 import type { Doc, Page } from '@stillwater/shared';
 import { Bold, Code, Italic, Link2, Strikethrough } from 'lucide-react';
 import { SlashCommand } from './slash';
+import { DocEndKey } from './keys';
 import { AttachmentUpload, CardOfferButton, embedViews, type UploadNote } from './embeds';
 import type { PageSaver, SaveState } from './saver';
 import { TaskCaret, TaskController, TaskPopover, taskItemView, type TaskOpen } from './tasks';
@@ -191,6 +192,7 @@ export function PageEditor({
         ...(editable
           ? [
               SlashCommand,
+              DocEndKey,
               TaskCaret.configure({ ctrl: tasks }),
               AttachmentUpload.configure({ pageId: page.id, onNote: setNote }),
               Placeholder.configure({

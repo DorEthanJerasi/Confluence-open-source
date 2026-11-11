@@ -126,7 +126,12 @@ scratch.
   image, video or link card at the very end of a page, the next block went
   in above that embed, not below it. A person clicking where they want to
   write is not affected. Typing below a last-place embed with only the
-  keyboard deserves a look in a later round.
+  keyboard deserves a look in a later round. **Fixed in item #154:**
+  Ctrl+End (Cmd+Down on a Mac) now puts the caret in the gap below a
+  last-place card (`apps/web/src/editor/keys.ts`), so Enter or typing
+  starts a new line under it. Proven by the e2e test "Ctrl+End then Enter
+  after a last-place card writes below it" in `e2e/tests/embeds.spec.ts`
+  (image, video and link card), which failed before the fix.
 - In full-page screenshots the left sidebar's background ends at the window
   height. On a real screen the sidebar stays put while the page scrolls, so
   nobody sees this.

@@ -4,7 +4,7 @@
 // doc holds only attachment ids" is proven by apps/server/test/embeds.test.ts;
 // what a viewer sees is viewer.spec.ts.
 import { test, expect, type Page } from '../fixtures';
-import { createPage, createSpace, signUp } from '../login';
+import { createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -120,5 +120,47 @@ test.describe.serial('image and file blocks', () => {
     expect(dl.status()).toBe(200);
     expect(dl.headers()['content-disposition']).toContain('attachment');
     expect((await dl.body()).equals(PDF)).toBe(true);
+  });
+
+  // Item #154: on a page that ends with an image, video or link card,
+  // Ctrl+End then Enter must start a new line *below* the card (the final
+  // walk saw it land above). Keyboard only: no click near the card.
+  test('Ctrl+End then Enter after a last-place card writes below it', async ({ page }) => {
+    await logIn(page, admin, null);
+    const made = await createPage(page, 'harbour', { title: 'Cards at the end', text: 'Intro' });
+    const up = await page.request.post(`/api/pages/${made.id}/attachments`, {
+      multipart: { file: { name: 'end.png', mimeType: 'image/png', buffer: PNG } },
+    });
+    expect(up.status()).toBe(201);
+    const imageId = ((await up.json()) as { id: string }).id;
+    const cards = [
+      { type: 'image', attrs: { attachmentId: imageId, caption: '' } },
+      { type: 'video', attrs: { embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ' } },
+      { type: 'linkPreview', attrs: { url: 'https://almanac.example/tides', title: 'Tides' } },
+    ];
+    // Never load the real player: this test stays off the internet.
+    await page.route(/^https:\/\/www\.youtube-nocookie\.com\//, (r) => r.abort());
+    for (const card of cards) {
+      const intro = { type: 'paragraph', content: [{ type: 'text', text: 'Intro' }] };
+      const res = await page.request.put(`/api/pages/${made.id}`, {
+        data: { baseVersion: made.version, doc: { type: 'doc', content: [intro, card] } },
+      });
+      expect(res.status(), `save a page ending with ${card.type}`).toBe(200);
+      made.version = ((await res.json()) as { version: number }).version;
+
+      await page.goto(made.path);
+      const blocks = body(page).locator(':scope > *');
+      await expect(blocks).toHaveCount(2);
+      await body(page).press('Control+End');
+      await page.keyboard.press('Enter');
+      await page.keyboard.type(`After the ${card.type}`);
+      await expect(blocks, `${card.type}: one new block`).toHaveCount(3);
+      // In the editor each card is drawn by its own view, a wrapper with class node-<type>.
+      await expect(blocks.nth(1), `${card.type} stays in second place`).toHaveClass(new RegExp(`\\bnode-${card.type}\\b`));
+      await expect(blocks.nth(2), `${card.type}: the new line is below the card`).toHaveText(`After the ${card.type}`);
+      await waitForFreshSave(page);
+      const now = await page.request.get(`/api/pages/${made.id}`);
+      made.version = ((await now.json()) as { page: { version: number } }).page.version;
+    }
   });
 });
