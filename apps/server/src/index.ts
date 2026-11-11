@@ -3,6 +3,7 @@ import { runMigrations } from './db/migrate.js';
 import { createDb } from './db/client.js';
 import { buildApp } from './app.js';
 import { purgeExpiredSessions } from './auth/session.js';
+import { usingE2eFastHash } from './auth/password.js';
 
 async function main(): Promise<void> {
   const databaseUrl = requireDatabaseUrl();
@@ -24,6 +25,9 @@ async function main(): Promise<void> {
   const aiNote = aiSetupNote();
   if (aiNote) app.log.warn(aiNote);
   app.log.info(`AI features: ${app.ai ? 'on' : 'off'}`);
+  if (usingE2eFastHash) {
+    app.log.warn('E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install.');
+  }
 
   const purge = setInterval(() => purgeExpiredSessions(db).catch((err) => app.log.warn(err)), 6 * 60 * 60 * 1000);
   purge.unref();

@@ -149,6 +149,10 @@ export default async function globalSetup() {
             // The AI suite runs against the deterministic stub, never the network.
             AI_PROVIDER: 'stub',
             ANTHROPIC_API_KEY: '',
+            // Cheap argon2 settings for the many test sign-ups and logins
+            // (apps/server/src/auth/password.ts). Set only here, for these
+            // throwaway servers; compose and real installs never set it.
+            E2E_FAST_PASSWORD_HASH: '1',
           },
           stdio: 'inherit',
         });

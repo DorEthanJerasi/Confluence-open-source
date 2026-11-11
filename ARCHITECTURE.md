@@ -149,7 +149,11 @@ Core tables:
 ## 7. Auth, roles and space permissions
 
 - **Accounts:** email + password. Passwords hashed with argon2id
-  (`@node-rs/argon2`). Login is rate-limited per IP and per email.
+  (`@node-rs/argon2`), library defaults (19 MiB, t=2, p=1). Login is
+  rate-limited per IP and per email. The e2e stack alone sets
+  `E2E_FAST_PASSWORD_HASH=1` on its throwaway servers for a cheap hash
+  (`e2e/global-setup.ts`); compose, `.env.example` and the Dockerfile never
+  set it, and `apps/server/test/password.test.ts` checks both.
 - **Sessions:** server-side, in Postgres. The browser holds an opaque random
   token in an `httpOnly`, `SameSite=Lax`, `Secure`-when-HTTPS cookie
   (`stillwater_session`); only its sha256 is stored. 30-day sliding expiry.

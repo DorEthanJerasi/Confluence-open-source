@@ -441,3 +441,31 @@ load 15 or more, and my own runs must agree.
    production or compose, with a unit test that the normal settings apply
    when it is absent) has not been made. Then three timed runs in a row under
    95 s at load 15 or more, and the lead's own run must agree.
+
+### Coder: cheaper e2e password hash (item #142, 2026-11-11)
+
+- `apps/server/src/auth/password.ts`: `passwordHashOptions()` gives the
+  normal argon2id settings (library defaults: 19 MiB, t=2, p=1) unless
+  `E2E_FAST_PASSWORD_HASH` is exactly `1`; then 1 MiB, t=1, p=1. The server
+  logs a warning at start when it is on. Logins still verify, because argon2
+  reads the settings from each stored hash.
+- `e2e/global-setup.ts` is the only place that sets it, on the servers it
+  starts. It is not in `docker-compose.yml`, `.env.example` or
+  `docker/Dockerfile`.
+- `apps/server/test/password.test.ts` (6 tests): when it is not set, a real
+  hash comes out at m=19456, t=2, p=1. Any value other than `1` keeps the
+  normal settings. The unit test run itself uses the normal settings. Cheap
+  hashes still verify. And the three files above never mention the name.
+- No test, check, retry or time limit changed.
+- `npm run check`: exit 0, 7 steps, 386 server + 31 schema tests, 116 s
+  (load 15–21).
+- `npm run test:e2e`: two runs, both 23 passed, exit 0. Run 1 took 137.96 s,
+  including the server rebuild; Playwright counted 1.7 min; load 16–24.
+  Run 2 took 134.35 s with the build cached; Playwright counted 2.0 min;
+  load 19–23. **Both are over 95 s.** The load was higher than in any
+  earlier timed run.
+- What the change saves: at this load, one normal hash plus verify took
+  ~215 ms and a cheap one ~4 ms. The suite does a few dozen of these per run.
+  That is seconds of CPU, not the 40 s gap at load 20. The proof is for #143:
+  three timed runs at load 15 or more. On today's numbers this fix alone may
+  not be enough.
