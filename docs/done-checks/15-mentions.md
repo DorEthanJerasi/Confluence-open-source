@@ -413,7 +413,7 @@ take **at most 6 s** of test time in Playwright's per-test output.
       content; the timing box right below stays open on its own terms.
 - [x] `npm run test:e2e` passes in full: 25 + 1 = 26 tests, no retries, no
       skips, no `.only` (item #161, Node 22, three runs below).
-- [ ] Time, under done-check 10's rule as rewritten in item #147: at least
+- [x] Time, under done-check 10's rule as rewritten in item #147: at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with
       `mentions.spec.ts` in the suite, load noted at the start and end of
       each, **every run passes with exit 0 and the middle run is under 95 s**.
@@ -451,8 +451,33 @@ take **at most 6 s** of test time in Playwright's per-test output.
       3.74, 5.66, 7.06 at the start and 10.12, 7.29, 7.52 at the end; the
       mentions test took **6.0 s**, right at the cap again. With this run the
       mentions test has measured 6.0, 6.2, 6.8, 5.4, 6.6 and 6.0 s, so it is
-      over 6 s in two of six runs and at the cap in two more. **This box stays
-      open**: the test is cut back first, then the tester re-times it.
+      over 6 s in two of six runs and at the cap in two more. This box stayed
+      open until the test was cut back.
+
+      **The speed fix (item #164):** the mentions test's set-up was mostly
+      serial API calls and two serial logins; it now overlaps work that does
+      not depend on each other — the viewer's browser context opens and logs
+      in while the admin is still adding the editor and making the page, and
+      three independent checks at the end (landing URL, bell cleared, Follow
+      button visible) run as one `Promise.all` instead of one after another.
+      No step was removed or weakened; the same clicks, same `expect`s, same
+      people and page.
+
+      Tester's three re-timed runs (item #164, Node 22, back to back):
+
+      | run | exit | result | wall time | load at start | load at end | mentions test time |
+      |-----|------|--------|-----------|----------------|--------------|------------------|
+      | 1   | 0    | 26 passed | 65.54s | 2.15, 6.20, 7.66 | 8.16, 7.17, 7.90 | 3.5s |
+      | 2   | 0    | 26 passed | 68.28s | 9.75, 7.52, 8.01 | 11.61, 8.48, 8.30 | 3.6s |
+      | 3   | 0    | 26 passed | 69.25s | 11.61, 8.48, 8.30 | 10.89, 8.97, 8.49 | 4.2s |
+
+      All three runs passed with exit 0, 26 passed, no retries, no skips, no
+      `.only`. Middle run (sorted by wall time: 65.54s, 68.28s, 69.25s) is
+      68.28s, well under the 95 s limit. The mentions test itself ran 3.5s,
+      3.6s and 4.2s — at or under its 6 s cap in every run, with margin this
+      time instead of sitting right on the line. **This box is ticked.** Raw
+      logs at `/tmp/e2e_run1.log`, `/tmp/e2e_run2.log`, `/tmp/e2e_run3.log` on
+      this machine (not committed; outside the workspace's git repo).
 
 ---
 
