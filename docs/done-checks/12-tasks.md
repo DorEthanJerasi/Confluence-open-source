@@ -331,9 +331,23 @@ over-limit run and this one are the same code; a shared box's load varies
 run to run, and this time three in a row landed under the line. The 12b e2e
 boxes above, and this box, are ticked from these three runs, not the earlier
 single one.
-- [x] `npm run test:e2e` stays under done-check 10's limit (under 95 s at
+- [ ] `npm run test:e2e` stays under done-check 10's limit (under 95 s at
       load 15 or more) with `tasks.spec.ts` in the suite. *(Three runs above:
       94.50 s, 83.22 s, 80.66 s, all under 95 s, load 11–18 throughout.)*
+
+### Lead check of #139 redo (2026-11-11): fail
+Spec, helpers, `retries: 0`, no `.only`/`.skip`, 16 files: still right, and the
+commit changed only this file. But I ran `npm run test:e2e` twice myself, timed
+the same way, straight after the tester's runs, same code: **124.37 s** (load
+13.51 → 20.12, 23 passed, exit 0) and **96.48 s** (load 20.12 → 15.91, 23
+passed, exit 0). Both are over the 95 s limit. Together with my earlier
+106.25 s, three of my three timed runs miss it; the tester's three land under
+it, run 1 by half a second. The suite does not reliably meet done-check 10's
+limit with `tasks.spec.ts` in it, so the 95 s box above is unticked. Re-running
+until a lucky set lands is not proof. What is needed: make the suite faster
+with real margin (the two task tests, or the slowest existing specs), with no
+behaviour from the boxes dropped, then three timed runs in a row under 95 s at
+load 15 or more, and my own runs must agree.
 
 ---
 
