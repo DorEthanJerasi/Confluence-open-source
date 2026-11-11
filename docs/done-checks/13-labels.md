@@ -291,35 +291,125 @@ check and the lead check below stay open.
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] As admin: make two spaces (one restricted) with an editor and a viewer,
+- [x] As admin: make two spaces (one restricted) with an editor and a viewer,
       and a few pages in each.
-- [ ] As the editor: add labels by mouse and by keyboard, with a capital and a
+- [x] As the editor: add labels by mouse and by keyboard, with a capital and a
       space in the name (it becomes the normalised form), try a bad name and a
       21st label (plain message), remove one. Reload: the labels are still
       there. With the page open in another tab, editing there after the labels
       changed saves with no conflict note.
-- [ ] The space view, the whole-wiki view and search with `label:` show the
+- [x] The space view, the whole-wiki view and search with `label:` show the
       right pages. As the viewer: chips show, nothing can be added or removed,
       and a page in the restricted space never shows in any view, suggestion
       or count.
-- [ ] Trash a labelled page: it leaves every view and search; restore it and
+- [x] Trash a labelled page: it leaves every view and search; restore it and
       it is back with its labels.
-- [ ] Light and dark: calm, spaced out, no harsh colours. Motion is quiet, and
+- [x] Light and dark: calm, spaced out, no harsh colours. Motion is quiet, and
       with reduced motion turned on it is instant.
 
 ## Lead check (the last feature in the approved order)
-- [ ] Read the diff myself: the tables and routes match the Decisions and
+- [x] Read the diff myself: the tables and routes match the Decisions and
       Table changes sections, there is one permission path, no label code
       writes `pages` or `page_versions`, and every read filters live pages in
       `visibleSpaceIds`.
-- [ ] Ran `npm run check` myself: exit 0.
-- [ ] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
+- [x] Ran `npm run check` myself: exit 0.
+- [x] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
       and load noted here, and my run is added to the time record above.
-- [ ] Hand check above done and ticked.
-- [ ] Committed on `master` (pushing is done from outside the workspace, as
+- [x] Hand check above done and ticked.
+- [x] Committed on `master` (pushing is done from outside the workspace, as
       the owner said).
-- [ ] ARCHITECTURE.md gets a short "Labels" section: labels sit beside the doc
+- [x] ARCHITECTURE.md gets a short "Labels" section: labels sit beside the doc
       in two tables with stable ids, add and remove are set operations that
       never touch the doc or its version, reads are filtered by
       `visibleSpaceIds` and live pages, and why this keeps co-editing
       possible.
+
+### Lead sign-off (item #152, 2026-11-11): labels signed off
+
+**Diff, read myself** (`db974638b` 13a, `94ba456c9` 13b): migration
+`0009_labels.sql` makes exactly the two tables, keys, foreign keys (cascade
+on `page_id` and `label_id`, set null on the user columns) and
+`page_labels_label_idx` from the Table changes section. `labels/labels.ts`
+and `routes/labels.ts` write only `labels` and `page_labels`; nothing there
+writes `pages` or `page_versions` or calls `savePage` (the only change in
+`pages/pages.ts` is `labelsJson` in `getPageView`). Add and remove go through
+`requirePageRole(..., 'editor')`; the space view through `requireSpaceByKey`.
+Suggestions, both views and search all filter `p.deleted_at is null` and
+`p.space_id in (visibleSpaceIds(user))`; trash sets `deleted_at` on every page
+under a trashed one, so that covers sub-pages, and `visibleSpaceIds` drops
+trashed spaces. Search keeps its one statement with the label filter inside
+it. `labels.css` has no raw colours or timings.
+
+**Ran myself (Node 22):**
+- `npm run check`: **exit 0**, all 7 steps ok, 396 server tests (the 10 in
+  `labels.test.ts` among them) + 31 schema tests, originality and contrast
+  (54 pairs) ok, 89.13 s wall (load 4.99 → 6.55).
+- `/usr/bin/time npm run test:e2e`: **24 passed, exit 0**, `retries: 0`, no
+  `.only` / `.skip` in `e2e/tests`, **82.08 s** wall (Playwright 1.3m), load
+  6.75 → 15.19. The labels test took **3.2 s**.
+
+**Time record with labels in the suite** (24 tests each, all exit 0):
+
+| who, item | wall clock | load start → end | labels test |
+|---|---:|---|---:|
+| lead #150 | 65.86 s | 12.6 → 14.1 | 5.2 s |
+| tester #151 run 1 | 75.46 s | 7.06 → 11.10 | 5.8 s |
+| tester #151 run 2 | 88.84 s | 10.53 → 14.43 | 5.6 s |
+| tester #151 run 3 | 90.56 s | 13.67 → 16.43 | 6.5 s |
+| **lead #152** | **82.08 s** | 6.75 → 15.19 | 3.2 s |
+
+Middle run **82.08 s**, under 95 s; slowest 90.56 s, about 20 s inside the
+checker's ~110 s limit. On the tester's flag: the labels test's middle time
+is 5.6 s, under its 6 s line; the one 6.5 s run was at the highest load and
+my run at lower load took 3.2 s, so it follows the box's load, not the test.
+No change needed.
+
+**Hand check**, scripted Chromium against the built app on a fresh database
+(`scripts/local-start.mjs`, AI stub, port 3462), as admin, editor and viewer,
+light and dark. The script is kept outside the repo in `.leadcheck/hand152/`.
+- Admin made Orchard (open; editor Ed, viewer Vi) and Vault (restricted; Ed
+  only), three pages in Orchard and two in Vault.
+- Editor, by mouse: typed "seas" and clicked the suggestion "seasonal" (with
+  its count). By keyboard: "Team Notes" showed "Adds as “team-notes”" and
+  Enter added it; Escape went back to the Add label button, Enter opened the
+  input again, "Q4 plans" + Enter added `q4-plans`. Backspace on the empty
+  input moved focus to the last chip's remove button (chips are in name
+  order), and Backspace there removed it; Enter on a remove button removed
+  one too. "a/b" showed "A label can only use letters, digits, - and _, up to
+  40 characters" and nothing was added. With 20 labels, a 21st showed
+  "“one-too-many” wasn’t added. A page can have at most 20 labels" and the
+  chip was taken back. Removing by mouse and a reload kept the right chips.
+  The page's version and change time did not move (1 → 1). A second tab
+  opened before all of this then typed and saved: "Saved", no conflict note,
+  version 2, labels kept.
+- Views: the editor saw Pruning guide in Orchard's `team-notes` view and
+  Pruning guide plus Secret recipe (Vault) in the whole-wiki view and in
+  search `label:team-notes` (and with `budget`). Clicking a label on a result
+  added it to the filter (`budget label:seasonal`).
+- Viewer: chips shown, no Add label and no remove buttons, POST is 403. The
+  whole-wiki `team-notes` view shows only Pruning guide; `vault-only` shows
+  "No page you can see has the label “vault-only”"; `/s/vault/labels/...`
+  shows the "does not exist, or you do not have access" screen (API 404).
+  Suggestions are `seasonal:2, team-notes:1`, no `vault-only` (the editor's
+  list has `team-notes:2, vault-only:1`). Search `label:vault-only` and
+  `budget` never show the Vault page.
+- Trash: after the editor trashed Pruning guide it left the space view, the
+  whole-wiki view, both searches and the counts (`team-notes:1`,
+  `seasonal:1`), for the viewer too. After restore its chips were back and it
+  was in every view and search again.
+- Reduced motion: chips, the Add label button and the suggestion list have
+  transition and animation 1e-6 s (normal: 0.14 s / 0.2 s).
+- Light and dark screens (page, input, limit note, both views, search, viewer)
+  are calm, spaced out and soft, no harsh colours.
+- Two script mistakes of mine were found and fixed (which chip is "last";
+  the not-found screen has no `<main>`); neither was an app fault.
+
+**Two small looks for the final walk (#153), not blocking:** on `/search` a
+result's labels sit just below its card's border rather than inside it; and
+the "Adds as …" hint under the Add label input pushes the buttons below down
+about 25 px while typing.
+
+**ARCHITECTURE.md:** §18 Labels and §12 item 11 written.
+
+**Result: every box in this file is ticked. Labels are signed off. Labels were
+the last feature in the approved order (trash, task lists, labels).**

@@ -314,6 +314,12 @@ someone on the team has done it by hand in a browser against the compose stack.
    and ticking one there is a normal page save; trashed pages and lost access
    drop out at once. Full check, split into items 12a (server) and 12b
    (screen): `docs/done-checks/12-tasks.md`. Design: §17.
+11. **Labels** — editors and admins add and remove named labels under a page's
+   title; anyone who can read the page sees them; a per-space and a whole-wiki
+   view list the labelled pages, and search takes `label:name`; a label or a
+   page never shows to someone who cannot open it, and trashed pages drop out
+   at once. Full check, split into items 13a (server) and 13b (screen):
+   `docs/done-checks/13-labels.md`. Design: §18.
 
 ## 13. Comments
 
@@ -515,3 +521,55 @@ someone on the team has done it by hand in a browser against the compose stack.
   save, with the same ids.
 - **Not yet:** notifications or email, @mentions, more than one person per
   task, reminders, repeating tasks, a list of done tasks, a team task board.
+
+## 18. Labels
+
+- **Beside the page, not inside it.** A label is a named tag kept in its own
+  two tables (migration `0009_labels`), never in `pages.doc`. `labels` holds
+  one row per name with a uuid that never changes; `page_labels` links a page
+  to a label, keyed by `(page_id, label_id)`, with the index
+  `page_labels_label_idx` on `label_id`. There is no space column: the space
+  is read from `pages`, so a page move needs no extra code. A `labels` row
+  stays when no page uses it any more, so the same name keeps the same id.
+- **One name rule.** `normaliseLabel` in `packages/shared/src/index.ts`, used
+  by the server and the screen: trim, lower-case, spaces become `-`, only
+  letters (any language), digits, `-` and `_`, 1 to 40 characters. At most 20
+  labels per page; adds to one page are serialised with an advisory lock so
+  two at once cannot pass the limit.
+- **Add and remove are set operations that never touch the page.**
+  `POST /api/pages/:id/labels` and `DELETE /api/pages/:id/labels/:labelId`
+  (editor and up, `apps/server/src/labels/labels.ts`) only write `labels` and
+  `page_labels`. They never write `pages` or `page_versions` and never call
+  `savePage`, so `pages.doc`, `pages.version` and `pages.updated_at` stay as
+  they are. Adding a label the page has, or removing one it lacks, is a 200
+  with no change. Someone with the page open never gets a save conflict
+  because it was labelled, and a history restore keeps today's labels
+  (labels are not part of a version).
+- **Filtered when read, one permission path.** The page's own label routes go
+  through `requirePageRole` (a page you cannot read is 404, a viewer gets 403
+  on add and remove). Every other read (`GET /api/pages/:id`, suggestions
+  `GET /api/labels`, the views `GET /api/labels/:name/pages` and
+  `GET /api/spaces/:key/labels/:name/pages`, and search) keeps only live pages
+  (`pages.deleted_at` is null, which trash sets on every page under a trashed
+  one) in spaces from `visibleSpaceIds`. So a label used only in a space you
+  cannot read is never suggested or counted, and its view looks the same as
+  a name never used. Trash, restore and the timed purge leave `page_labels`
+  alone: a trashed page's labels are hidden with it and come back with it;
+  purge removes them by cascade.
+- **Search.** The label filter is part of the one `searchPages` statement
+  (`apps/server/src/search/search.ts`): `label=` (repeatable) and `label:name`
+  words in the box, every label required; with no other words it lists the
+  labelled pages newest change first. Label names are not added to the
+  full-text column.
+- **Screens.** Chips and the Add label control under the page title
+  (`apps/web/src/labels/PageLabels.tsx`, read-only for viewers); the views at
+  `/s/:key/labels/:name` and `/labels/:name`
+  (`apps/web/src/labels/LabelScreens.tsx`); label chips on `/search`. Styles
+  in `styles/labels.css`, tokens only.
+- **Why co-editing stays possible.** Labels sit outside the document and its
+  version, so a co-editing server that takes over `pages.doc` needs no change
+  for them. Set adds and removes merge in any order with no base version, the
+  same shape a Yjs map of label ids would have if labels ever move into the
+  shared document, and the ids stay the same either way.
+- **Not yet:** label colours, renaming or merging labels, an admin screen for
+  labels, labels on spaces, templates or comments, labels in page history.
