@@ -9,6 +9,8 @@ import type {
   CommentList,
   Doc,
   FavouritePage,
+  LabelSuggestionList,
+  LabelView,
   LinkPreview,
   MyTaskList,
   Page,
@@ -17,6 +19,7 @@ import type {
   PageTreeItem,
   PageVersion,
   PageVersionList,
+  PageLabelsReply,
   RecentPage,
   Role,
   SearchResult,
@@ -214,6 +217,18 @@ export const api = {
     request<TickTaskReply>('PATCH', `/api/pages/${enc(pageId)}/tasks/${enc(taskId)}`, { checked }),
   /** Active people who can read the space, by name (the task picker). */
   spacePeople: (key: string) => get<SpacePeopleList>(`/api/spaces/${enc(key)}/people`),
+
+  /** Adds a label to a page (editor and up); a name the page has is a 200 with no change. */
+  addLabel: (pageId: string, name: string) => request<PageLabelsReply>('POST', `/api/pages/${enc(pageId)}/labels`, { name }),
+  /** Removes a label from a page (editor and up); one the page lacks is a 200 with no change. */
+  removeLabel: (pageId: string, labelId: string) =>
+    request<PageLabelsReply>('DELETE', `/api/pages/${enc(pageId)}/labels/${enc(labelId)}`),
+  /** Label names on pages this person can see, with how many; names starting with `q` first. */
+  labelSuggestions: (q: string) => get<LabelSuggestionList>(`/api/labels${q ? `?q=${enc(q)}` : ''}`),
+  /** Live pages this person can see with the label, in the whole wiki. */
+  labelView: (name: string) => get<LabelView>(`/api/labels/${enc(name)}/pages`),
+  /** Live pages with the label in one space (viewer and up). */
+  spaceLabelView: (key: string, name: string) => get<LabelView>(`/api/spaces/${enc(key)}/labels/${enc(name)}/pages`),
 };
 
 /** Query keys of the two personal lists on Home. */

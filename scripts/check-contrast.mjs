@@ -48,6 +48,10 @@ const PAIRS = [
   // Search (stage 3a): the top-bar field's placeholder and shortcut hint sit
   // on bg-subtle; a <mark> hit in a snippet is body text on warning-soft.
   ['color-text-muted', 'color-bg-subtle', 'AA'],
+  // Labels (done-check 13b): chip text is accent-strong on accent-soft; a
+  // refused name's hint is danger text on the page background.
+  ['color-accent-strong', 'color-accent-soft', 'AA'],
+  ['color-danger', 'color-bg', 'AA'],
 ];
 
 const THRESHOLDS = { AA: 4.5, 'AA-large': 3 };

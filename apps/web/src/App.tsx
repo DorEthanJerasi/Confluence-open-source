@@ -13,6 +13,7 @@ import { SearchScreen } from './screens/SearchScreen';
 import { AskScreen } from './screens/AskScreen';
 import { TrashScreen } from './screens/Trash';
 import { MyTasksScreen } from './screens/MyTasks';
+import { SpaceLabelScreen, WikiLabelScreen } from './labels/LabelScreens';
 
 // The page screen brings the editor (Tiptap, ProseMirror, code highlighting),
 // which is most of the app's code. Loading it only when a page is opened keeps
@@ -62,6 +63,7 @@ export function App() {
         <Route path="/search" element={<SearchScreen />} />
         <Route path="/ask" element={<AskScreen />} />
         <Route path="/tasks" element={<MyTasksScreen />} />
+        <Route path="/labels/:name" element={<WikiLabelScreen />} />
         <Route path="/s/:key" element={<SpaceLayout />}>
           <Route index element={<SpaceHome />} />
           <Route
@@ -75,6 +77,7 @@ export function App() {
           <Route path="settings" element={<SpaceSettings />} />
           <Route path="settings/templates" element={<SpaceTemplatesSettings />} />
           <Route path="trash" element={<TrashScreen />} />
+          <Route path="labels/:name" element={<SpaceLabelScreen />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

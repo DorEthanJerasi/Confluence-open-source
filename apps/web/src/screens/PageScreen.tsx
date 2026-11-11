@@ -12,6 +12,7 @@ import { blockElement, commentsKey, openThreads, scrollToBlock } from '../commen
 import { PageEditor, SaveStatus } from '../editor/PageEditor';
 import { PageSaver } from '../editor/saver';
 import { HistoryPanel, VersionPreview, versionsKey } from '../history/HistoryPanel';
+import { PageLabels } from '../labels/PageLabels';
 import { SaveAsTemplateDialog } from '../templates/SaveAsTemplate';
 import { timeAgo } from '../time';
 import { pageTitle } from '../tree';
@@ -310,6 +311,7 @@ function PageView({ page }: { page: Page }) {
               </>
             )}
           </p>
+          <PageLabels page={page} spaceKey={space.key} canEdit={canEdit} />
         </div>
         <div className="row">
           <FavouriteButton page={page} onFailed={setStarFailed} />
