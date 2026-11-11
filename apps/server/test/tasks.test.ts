@@ -183,6 +183,47 @@ describe('task ids and attrs', () => {
     expect(after.version).toBe(before.version);
     expect(tasksOf(after.doc).map((t) => t.text)).toEqual(['ok']);
   });
+
+  it('a well-formed id that is no person here saves (200), stays in the doc as sent, is indexed as nobody and in no My tasks', async () => {
+    const { cy, bo, sam } = w;
+    const stranger = '0f0e0d0c-0b0a-4908-8706-050403020100';
+    const shouty = '0F0E0D0C-0B0A-4908-8706-0504030201FF';
+    const id = await makePage(cy.client, 'Strangers', taskDoc({ text: 'u-ok' }));
+    const before = await getPage(cy.client, id);
+    const doc = taskDoc(
+      { text: 'u-stranger', assignee: stranger, due: '2026-12-01' },
+      { text: 'u-shouty', assignee: shouty },
+      { text: 'u-bo', assignee: bo.user.id.toUpperCase() },
+    );
+    const res = await cy.client.put(`/api/pages/${id}`, { baseVersion: before.version, doc });
+    expect(res.status).toBe(200);
+
+    const saved = await getPage(cy.client, id);
+    expect(saved.version).toBe(before.version + 1);
+    expect(tasksOf(saved.doc).map((t) => [t.text, t.assignee])).toEqual([
+      ['u-stranger', stranger],
+      ['u-shouty', shouty],
+      ['u-bo', bo.user.id.toUpperCase()],
+    ]);
+    const rows = await taskRows(id);
+    expect(rows.map((r) => r.assignee_id)).toEqual([null, null, bo.user.id]);
+    for (const who of [w.ada, sam, bo, cy, w.vi, w.nm]) {
+      const texts = await myTexts(who);
+      expect(texts).not.toContain('u-stranger');
+      expect(texts).not.toContain('u-shouty');
+    }
+    expect(await myTexts(bo)).toContain('u-bo');
+
+    // Restoring a version that holds such a task works the same way (Sam's save
+    // makes a new snapshot, so the stranger version can be restored).
+    const cleared = await sam.client.put(`/api/pages/${id}`, { baseVersion: saved.version, doc: taskDoc({ text: 'u-ok' }) });
+    expect(cleared.status).toBe(200);
+    const now = await getPage(cy.client, id);
+    const restored = await cy.client.post(`/api/pages/${id}/versions/${saved.version}/restore`, { baseVersion: now.version });
+    expect(restored.status).toBe(200);
+    expect(tasksOf((await getPage(cy.client, id)).doc).map((t) => t.assignee)).toEqual([stranger, shouty, bo.user.id.toUpperCase()]);
+    expect((await taskRows(id)).map((r) => r.assignee_id)).toEqual([null, null, bo.user.id]);
+  });
 });
 
 describe('ticking from My tasks', () => {

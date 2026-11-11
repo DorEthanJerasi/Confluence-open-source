@@ -225,6 +225,12 @@ originality ok. Every 12a box is ticked from that **except one**:
   `apps/server/test/tasks.test.ts`: save with an unknown-person uuid → 200,
   the attr is in the doc, the `page_tasks` row has `assignee_id` null, nobody's
   My tasks lists it. Then this box is ticked.
+- **Coder, item #141:** fix made in `replaceTasks` (one `users` lookup per
+  save, same transaction; ids compared case-blind). Test added: "a well-formed
+  id that is no person here saves (200), stays in the doc as sent, is indexed
+  as nobody and in no My tasks", which also restores a version holding such a
+  task (200, rows null). With the old line put back it fails with 500.
+  `npm run check` exit 0, 380 server + 31 schema tests. Box left for the lead.
 
 12b may start now; the screen does not depend on this fix. The fix must land
 (with its test, `npm run check` exit 0) before the lead check below.

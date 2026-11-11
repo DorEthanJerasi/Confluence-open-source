@@ -5,7 +5,7 @@
 // page row, so a page and its history never disagree. The same two are the
 // only writers of page_tasks (done-check 12): the task index is rebuilt from
 // the saved doc in the same transaction (replaceTasks).
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { generateKeyBetween } from 'fractional-indexing';
 import { EMPTY_DOC, type Crumb, type Doc, type Page, type Role } from '@stillwater/shared';
 import type { Db } from '../db/client.js';
@@ -45,12 +45,21 @@ async function requireLiveParent(tx: Tx, spaceId: string, parentId: string) {
 async function replaceTasks(tx: Tx, pageId: string, spaceId: string, tasks: DocTask[]) {
   await tx.delete(pageTasks).where(eq(pageTasks.pageId, pageId));
   if (tasks.length === 0) return;
+  // The doc is the truth and keeps any well-formed assignee as sent, but the
+  // index only names people who exist here (done-check 12a, lead acceptance):
+  // an id from another wiki or an import is indexed as nobody's, not a 500.
+  const wanted = [...new Set(tasks.flatMap((t) => (t.assignee ? [t.assignee.toLowerCase()] : [])))];
+  const known = new Set(
+    wanted.length === 0
+      ? []
+      : (await tx.select({ id: users.id }).from(users).where(inArray(users.id, wanted))).map((u) => u.id.toLowerCase()),
+  );
   await tx.insert(pageTasks).values(
     tasks.map((t) => ({
       pageId,
       taskId: t.taskId,
       spaceId,
-      assigneeId: t.assignee,
+      assigneeId: t.assignee && known.has(t.assignee.toLowerCase()) ? t.assignee : null,
       due: t.due,
       checked: t.checked,
       text: t.text,
