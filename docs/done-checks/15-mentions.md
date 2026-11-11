@@ -165,20 +165,20 @@ comments on them.
 ## 15a — Server
 
 ### Build
-- [ ] The `mention` node in `packages/editor-schema/src/index.ts` as in
+- [x] The `mention` node in `packages/editor-schema/src/index.ts` as in
       Decisions, in the one schema used by the browser and the server, and
       `docMentions(doc)`. The page's plain text shows a mention as `@label`.
-- [ ] Shared request and response types in `packages/shared/src/index.ts` for
+- [x] Shared request and response types in `packages/shared/src/index.ts` for
       the routes below.
-- [ ] Drizzle tables in `apps/server/src/db/schema.ts` and migration
+- [x] Drizzle tables in `apps/server/src/db/schema.ts` and migration
       `apps/server/drizzle/0010_mentions_notifications.sql` (with its meta
       snapshot), exactly as in the Table changes section.
-- [ ] `apps/server/src/notifications/notifications.ts` holds the follow and
+- [x] `apps/server/src/notifications/notifications.ts` holds the follow and
       notification logic; `apps/server/src/routes/notifications.ts` the
       routes. `createPage`, `savePage` and `createComment` call it inside
       their own transaction. No notification or follow code writes `pages` or
       `page_versions`.
-- [ ] Routes (signed out → 401 on all of them):
+- [x] Routes (signed out → 401 on all of them):
   - `GET /api/pages/:id` gains `following: boolean`.
   - `PUT /api/pages/:id/follow` and `DELETE /api/pages/:id/follow` (viewer and
     up) return `{ following }`. Doing either twice is 200 with no change.
@@ -194,46 +194,80 @@ comments on them.
     of them are yours).
 
 ### Checks that must exist and pass — `apps/server/test/notifications.test.ts` (Vitest, real Postgres)
-- [ ] Schema: a doc with a mention round-trips through JSON and HTML with the
+- [x] Schema: a doc with a mention round-trips through JSON and HTML with the
       same `userId` and `label`; a `userId` that is not a uuid is a 400 on
       save; `docMentions` finds mentions in a paragraph, a list, a table cell
       and a task item; the page's plain text has `@label`.
-- [ ] Suggestions: in a restricted space, `GET /api/spaces/:key/people?q=`
+- [x] Suggestions: in a restricted space, `GET /api/spaces/:key/people?q=`
       lists members and instance admins and never a non-member or a disabled
       person (one test that the existing route already does this for the
       `@` picker).
-- [ ] Mentions: an editor saves a doc mentioning Vi (a viewer of the space).
+- [x] Mentions: an editor saves a doc mentioning Vi (a viewer of the space).
       Vi gets one `mention` notification with the editor as actor. Saving the
       same doc again adds none. Removing the mention and adding it back adds
       one more. Mentioning yourself adds none. Mentioning a non-member of a
       restricted space, or an id that is nobody, saves fine (200) and writes
       nothing. A page made with a mention in its first doc tells that person.
       A history restore that brings a mention back tells them.
-- [ ] Follow: the creator follows a new page; commenting makes the commenter
+- [x] Follow: the creator follows a new page; commenting makes the commenter
       follow; `PUT`/`DELETE` work twice with no change; a viewer can follow;
       a non-member of a restricted space gets 404; `GET /api/pages/:id` shows
       `following`.
-- [ ] Comment and edit: a follower is told about a comment and a reply by
+- [x] Comment and edit: a follower is told about a comment and a reply by
       someone else, not about their own. Three saves by another person while
       the follower has not read make **one** `edit` notification with
       `count` 3 and the newest time; after it is read, the next save makes a
       new one. A task tick by someone else tells followers like any edit.
       A save never changes when a notification is written: `pages.version`
       and `page_versions` are the same with and without followers.
-- [ ] Never from pages you can't see: Vi is told about a page in space R.
+- [x] Never from pages you can't see: Vi is told about a page in space R.
       After Vi is removed from R the list and the count drop it; after Vi is
       added back it returns. Trashing the page (or its parent, or the space)
       hides it from list and count; restoring brings it back; purging removes
       the rows. A deleted comment's notification is hidden. Count and list
       agree in every one of these states.
-- [ ] Only your own: another person's notification id in
+- [x] Only your own: another person's notification id in
       `POST /api/me/notifications/read` is ignored or 404, and nobody can list
       anyone else's. `{ all: true }` marks only yours. Paging with `before`
       gives each notification once, newest first.
-- [ ] Signed out → 401 on every route.
-- [ ] `npm run check` passes (this file is part of it).
+- [x] Signed out → 401 on every route.
+- [x] `npm run check` passes (this file is part of it).
 
 ---
+
+### Lead acceptance of 15a (item #158, 2026-11-11)
+Accepted. 15b may start.
+- Read the #156 diff (`c6a2c4629`) myself against Decisions and Table changes:
+  - The `mention` node is an inline atom in the one schema, with `userId` and
+    `label`. Its HTML is `span[data-mention][data-user-id]`. A non-uuid id is
+    a 400 through `checkEmbed`. `docMentions` lower-cases ids. Plain text
+    shows `@label`.
+  - Migration 0010 matches the table section column for column: the cascade
+    and set-null rules, the kind check, `notifications_user_idx`, the partial
+    unique `notifications_edit_unread_idx`, `page_follows` with its primary
+    key and `page_follows_page_idx`. The snapshot and journal entry are there.
+  - `onPageCreated`, `onPageSaved` and `onCommentPosted` run on the caller's
+    `tx`, inside the same `db.transaction` as the page or comment row.
+    `savePage` reads the old mentions under a row lock (`for update`) before
+    it updates.
+  - `notifications.ts` writes only `notifications` and `page_follows`. It
+    never writes `pages` or `page_versions`.
+  - The write rule (`canBeTold`): the person is active, is not the actor, the
+    space is live, and the person is an instance admin, the space is open or
+    they are a member. This is the same rule as `spacePeople`.
+  - The read rule (`visibleTo`) is one function used by both the list and the
+    unread count: the page is live and in `visibleSpaceIds(user)`, and a
+    comment notification's comment is not deleted.
+  - Follow routes use `requirePageRole(viewer)`, so there is one permission
+    path and anyone who cannot read the page gets a 404.
+  - Routes and shared types match the 15a list.
+- Ran `npm run check` myself (Node 22): **exit 0**, all 7 steps ok, 77.5 s.
+  Server 416 passed, including `notifications.test.ts` with 20 tests;
+  editor-schema 31 passed. Load average went from about 8 to 6.2.
+- Not a defect, noted for 15b: when an edit folds in, its `created_at` moves
+  forward. A list opened earlier and paged with `before` can then miss that
+  one row until it is reopened from the top. The panel should reload from the
+  top when it opens.
 
 ## 15b — Screen
 
