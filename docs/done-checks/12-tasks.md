@@ -143,7 +143,7 @@ No back-fill (see Decisions).
 - [x] Drizzle table in `apps/server/src/db/schema.ts` and migration
       `apps/server/drizzle/0008_tasks.sql` (with its meta snapshot), exactly as
       in the Table changes section.
-- [ ] `createPage` and `savePage` replace the page's `page_tasks` rows from
+- [x] `createPage` and `savePage` replace the page's `page_tasks` rows from
       `docTasks` in the same transaction as the page row. No other code writes
       `page_tasks`. Trash, restore from trash and purge do not touch it (purge
       removes it through the cascade).
@@ -374,7 +374,7 @@ load 15 or more, and my own runs must agree.
       with reduced motion turned on it is instant.
 
 ## Lead check (before labels start)
-- [ ] Read the diff myself: the attrs, table and routes match the Decisions and
+- [x] Read the diff myself: the attrs, table and routes match the Decisions and
       Table changes sections, there is one permission path, `page_tasks` is
       written only inside `createPage` / `savePage`, and a tick goes through
       `savePage` with page, block and task ids unchanged.
@@ -469,3 +469,39 @@ load 15 or more, and my own runs must agree.
   That is seconds of CPU, not the 40 s gap at load 20. The proof is for #143:
   three timed runs at load 15 or more. On today's numbers this fix alone may
   not be enough.
+
+### Lead sign-off redo (item #144, 2026-11-11): two boxes ticked, labels do not start yet
+**Read myself:**
+- **#141 (`3b9fa2787`).** `replaceTasks` in `apps/server/src/pages/pages.ts`
+  does one `users` lookup per save inside the same transaction (ids compared
+  case-blind) and writes `assignee_id` null for any id that is not a person
+  here; the doc keeps the attr as sent. The new test in
+  `apps/server/test/tasks.test.ts` covers save → 200, attr kept, row null, in
+  nobody's My tasks, and a history restore of such a version. `page_tasks` is
+  still written only by `replaceTasks` from `createPage` / `savePage`. This
+  is what the lead acceptance of 12a asked for, so the last 12a box and the
+  first lead box are now ticked.
+- **#142 (`8987d80a0`).** `passwordHashOptions()` gives the normal argon2id
+  settings unless `E2E_FAST_PASSWORD_HASH` is exactly `1`. A search of the
+  whole repo (outside `docs/`) finds the name set only in
+  `e2e/global-setup.ts:155`; it is not in `docker-compose.yml`,
+  `.env.example` or the Dockerfile, and `password.test.ts` checks that.
+  `burnPasswordCheck` uses the same settings, so login timing stays even.
+
+**Ran myself (Node 22.11):**
+- `npm run check`: **exit 0**, all 7 steps ok, 386 server + 31 schema tests,
+  originality and contrast ok, 144.5 s (load 11.3 → 17.1).
+- `npm run test:e2e`, three timed runs in a row, all **23 passed, exit 0**,
+  `retries: 0`, no `.only` / `.skip` in `e2e/tests`:
+
+  | run | time | load start → end | under 95 s |
+  |-----|------|------------------|------------|
+  | 1 | 82.52 s | 17.05 → 19.22 | yes |
+  | 2 | 88.49 s | 18.29 → 23.34 | yes |
+  | 3 | 111.01 s | 23.34 → 23.12 | **no** |
+
+**Still open:** the 95 s box in 12b. Two of my three runs land under it at
+load 17–19, but the third, at load 23, does not. Three in a row is the bar,
+so the box stays unticked and **labels do not start**. The queued e2e time cut
+(coder) and the tester's three-run re-proof after it are what closes this.
+Every other box in this file is ticked.
