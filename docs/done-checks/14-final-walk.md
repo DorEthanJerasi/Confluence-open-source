@@ -148,3 +148,6 @@ scratch.
   limit. The run began with a Chromium install step, because `install.sh`
   had just reinstalled the packages, and load climbed to 20 during it.
   Earlier runs on a quieter machine took 65 to 90 s (items #151, #152).
+- `npm run test:e2e`, second run once Chromium was in place (load 12.7 →
+  17.6): **24 passed, exit 0**, no retries, **84.23 s wall**, which is
+  within both limits.
