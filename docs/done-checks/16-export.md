@@ -328,19 +328,19 @@ sign-in. That is right, but the hand check should click one to confirm it.
 ## 16b — Screen
 
 ### Build
-- [ ] An **Export** button on the page, next to Follow and the favourite
+- [x] An **Export** button on the page, next to Follow and the favourite
       star, for everyone who can read the page (viewers included). It opens
       a small menu: "Markdown" and "PDF", and, only when `childCount` is more
       than 0, a choice "This page only" / "This page and its N sub-pages".
       Picking one downloads the file through a plain link. Keyboard works
       (arrows, Enter, Escape closes with focus back on the button), and the
       menu has proper labels for screen readers.
-- [ ] A 413 shows the server's plain message as a quiet note, not an error
+- [x] A 413 shows the server's plain message as a quiet note, not an error
       page. Other failures show a short quiet note too.
-- [ ] Styles use only the design tokens. Light and dark both look right.
+- [x] Styles use only the design tokens. Light and dark both look right.
       Motion is soft and short and turns off under `prefers-reduced-motion`.
       Text and controls pass the contrast check (c6).
-- [ ] Nothing in the new code or text uses another product's names or assets
+- [x] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
 ### Coder's note, item #174 (2026-11-12) — Build boxes above are for the lead to tick
@@ -387,6 +387,28 @@ sign-in. That is right, but the hand check should click one to confirm it.
   (432 tests, export 16/16, ORIGINAL OK, contrast 58 pairs ok);
   `npm run test:e2e` exit 0, 26 passed, 1.4 min (load 9.60 at start, 16.51
   at end). The e2e export test itself is the tester's.
+
+### Lead check of item #174 (2026-11-12) — the four 16b Build boxes ticked
+- Read the whole diff of `1dd1c19ca`. The menu, keyboard handling (arrows
+  wrap, Home/End, Enter/Space, Escape back to the button, Tab closes), labels
+  ("Export this page", "What to export", "Download as") and the scope rows
+  (only when `childCount` > 0) match the first box. The download is a plain
+  `<a download>` link after the check.
+- `check=1` is accepted. It goes through the same `planExport` (one
+  permission path, the same walk and both limits) and reads no file bytes; the
+  new server test proves 413/204/404/401/400. Nothing else changed in the
+  export.
+- Styles: only tokens (`--color-focus-ring`, `--color-bg-subtle`,
+  `--color-border`, `--space-*`), and the menu reuses `.menu` and its fade,
+  which the one reduced-motion rule turns off. How it looks in both themes is
+  checked again by hand in the hand check below.
+- Ran `npm run check` myself (load 9.92 at the start, 4.91 at the end): exit 0,
+  432 tests, export 16/16, ORIGINAL OK, 58 contrast pairs ok. Log:
+  `docs/done-checks/logs/16-export-lead-check-174.txt`.
+- "1 sub-page" in the singular is accepted. The e2e test should match
+  `/This page and its 1 sub-page/`.
+- Still open: the e2e boxes (tester), the hand check, the docker run, and the
+  push (still waiting on the owner for a GitHub address).
 
 ### Check that must exist and pass — e2e (Playwright)
 **Time cost of this feature's browser tests: at most one short test, in an
