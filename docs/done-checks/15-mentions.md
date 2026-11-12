@@ -361,7 +361,15 @@ proves what only a browser can. The test goes in a new
 18** (export and page locks must add their tests to existing files). All
 set-up (people, spaces, pages, follows, and every notification other than the
 one made in the test) goes through the API in `e2e/login.ts`. The test must
-take **at most 6 s** of test time in Playwright's per-test output.
+be **no slower than the middle test of the same run**, in Playwright's
+per-test output, and the run must exit 0.
+(Rule changed in item #169, 2026-11-12. It was "at most 6 s". A fixed number
+of seconds cannot tell a slow test from a slow machine: in the lead's runs
+#167 and #168 every test slowed 1.5 to 2.5 times under load from outside
+this workspace. Comparing the mentions test with the other tests of the
+same run does tell them apart. "Middle test": sort the run's tests from
+fastest to slowest; with 26 tests the middle is the 13th, the faster of the
+two middle places, so the rule leans strict.)
 - [x] Tester's baseline (item #157, Node 22): three timed `/usr/bin/time npm
       run test:e2e` runs of the current 25-test suite, before `mentions.spec.ts`
       is added, with load noted at the start and end of each.
@@ -502,6 +510,29 @@ take **at most 6 s** of test time in Playwright's per-test output.
       11.33, 11.78 at the end. **Mentions test 7.1 s, over the cap.** Every
       test was 1.5 to 2.5 times slower than in the clean runs, so again it
       does not count as the lead's clean run (see the lead notes at the end).
+
+      **Time rule from item #169 on:** the mentions test is no slower than
+      the middle test of the same run, and the run exits 0 (see the rule
+      above this section's boxes). The two committed lead runs, judged
+      against it from their raw logs. Rank 1 is the fastest of the 26 tests;
+      the middle test is rank 13.
+
+      | run | exit | result | wall time | mentions test | mentions rank (of 26) | middle test (rank 13) | fastest / slowest test | meets the rule |
+      |-----|------|--------|-----------|---------------|-----------------------|-----------------------|------------------------|----------------|
+      | lead #167 | 0 | 26 passed | 175.94 s | 8.8 s | 10th (tied with history:35 at 8.8 s) | 10.0 s (`templates.spec.ts:43`) | 4.4 s / 26.1 s | **yes**, 8.8 ≤ 10.0 |
+      | lead #168 | 0 | 26 passed | 149.65 s | 7.1 s | 3rd (tied with tasks:134 at 7.1 s) | 11.5 s (`templates.spec.ts:18`) | 6.4 s / 29.2 s | **yes**, 7.1 ≤ 11.5 |
+
+      Both runs meet the rule, and with room: mentions is in the faster half
+      of each run. With the other middle place (rank 14: 10.2 s and 11.6 s)
+      the answer is the same. Ranks and times were read from
+      `docs/done-checks/logs/15-mentions-lead-167.txt` and
+      `docs/done-checks/logs/15-mentions-lead-168.txt` (26 "✓" lines each,
+      no "✘", no flaky or skipped, "exit 0" in each). The tester's #164 runs
+      (3.5, 3.6, 4.2 s) cannot be ranked because their logs were never
+      committed and are gone. (My chat note after #168 gave the ranks as
+      "15th" and "20th slowest of 27"; those were miscounted. The numbers in
+      this table are the right ones.) **This box stays ticked, now on the
+      lead's own two runs as well as the tester's.**
 
 ---
 
@@ -667,3 +698,13 @@ take **at most 6 s** of test time in Playwright's per-test output.
     suite was running slow. Whether to keep waiting for a quiet run or to
     change how a slow run is judged is a decision for the team, not for me
     alone. Export still waits on this sign-off.
+- Lead sign-off (item #169, 2026-11-12): **signed off.** The Time rule is
+  now "the mentions test is no slower than the middle test of the same run,
+  and the run exits 0" (see the e2e section). Both committed lead runs meet
+  it: #167 exit 0, 26 passed, mentions 8.8 s against a middle test of 10.0 s
+  (rank 10 of 26); #168 exit 0, 26 passed, mentions 7.1 s against a middle
+  test of 11.5 s (rank 3 of 26). The table is in the Time box. No new run
+  was made for this item; the judgment is on the two raw logs already
+  committed. Every box above is ticked except the push box, which waits only
+  on the owner's GitHub address and does not hold export back (rule at the
+  top, item #165). **Export (done-check 16, item 16a) may start now.**

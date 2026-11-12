@@ -13,6 +13,8 @@ It does not wait for the push box. On the day this was written, mentions is
 **not signed off yet**: the lead's own clean timed e2e run is still missing,
 because the machine was too loaded for the test servers to start. This file
 can be written now; item 16a cannot start before that sign-off.
+**Update, item #169 (2026-11-12): mentions is signed off** (end of
+done-check 15, under its new Time rule). Item 16a may start.
 
 **Push.** The workspace has no GitHub address (`git remote -v` is empty). As
 for every feature since #165, the push box below stays open and says it is
