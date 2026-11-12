@@ -172,7 +172,7 @@ What already exists (do not rebuild it):
 ## 16a — Server
 
 ### Build
-- [ ] `apps/server/src/export/markdown.ts` (doc → Markdown, and the zip),
+- [x] `apps/server/src/export/markdown.ts` (doc → Markdown, and the zip),
       `apps/server/src/export/pdf.ts` (doc → PDF) and
       `apps/server/src/export/collect.ts` (the page walk, the permission
       check, the file reads, the limits). Route in
@@ -180,56 +180,65 @@ What already exists (do not rebuild it):
 - [ ] `pdfmake` and `fflate` in `apps/server/package.json` only, with the
       lock file updated; `docker compose build` still builds (the self-host
       engineer confirms).
-- [ ] Shared types in `packages/shared/src/index.ts` for the export format
+      *Lead, item #171: first half holds (`pdfmake` ^0.3.14 and `fflate`
+      ^0.8.3 in `apps/server/package.json` only, `@types/pdfmake` as a dev
+      dependency, lock file updated; no other package.json touched). **Open
+      only for** the self-host engineer's `docker compose build` run, which
+      nobody has made yet.*
+- [x] Shared types in `packages/shared/src/index.ts` for the export format
       and the new `childCount` on the page.
-- [ ] The route and `childCount` as in Decisions (signed out → 401).
+- [x] The route and `childCount` as in Decisions (signed out → 401).
 
 ### Checks that must exist and pass — `apps/server/test/export.test.ts` (Vitest, real Postgres)
-- [ ] Markdown content: one page holding every node type (each heading level,
+- [x] Markdown content: one page holding every node type (each heading level,
       every mark, nested lists, a task list with a ticked item, an assignee and
       a due date, a quote, a divider, a code block with a language, a table
       with a `|` in a cell and a cell with two paragraphs, all four callout
       tones, an image with a caption, a file, an uploaded video, a video
       address, a link preview, a mention) gives the Markdown written in
       Decisions, line for line, checked against a fixed expected text.
-- [ ] Escaping: page text `**not bold** <b>x</b> # not a heading` comes out as
+- [x] Escaping: page text `**not bold** <b>x</b> # not a heading` comes out as
       text, not as Markdown or HTML.
-- [ ] Single file or zip: a page with no files is one `.md` with
+- [x] Single file or zip: a page with no files is one `.md` with
       `text/markdown`; a page with an image is a `.zip` holding the `.md` and
       `attachments/<id>-<name>` with the same bytes as uploaded, and the `.md`
       links to it with a relative path. Two sibling pages with the same title
       get two different file names.
-- [ ] Sub-pages: a tree A → B → C and A → D, in a set order. `children=1` on
+- [x] Sub-pages: a tree A → B → C and A → D, in a set order. `children=1` on
       A has A, B, C and D in sidebar order and nested folders. `children=0`
       has only A. A link in A to D points to D's `.md`; a link to a page
       outside the export points to the full wiki address.
-- [ ] Trash: trash B. Exporting A with sub-pages has A and D only, and
+- [x] Trash: trash B. Exporting A with sub-pages has A and D only, and
       neither B's nor C's title or text appears anywhere in the zip or the
       PDF. Exporting B or C directly is 404. Restore B: it is back. Trashing
       the space makes every export in it 404.
-- [ ] Permissions: in a restricted space, a viewer member can export (200),
+- [x] Permissions: in a restricted space, a viewer member can export (200),
       an editor who is not a member gets 404, signed out gets 401. An image in
       A whose attachment belongs to a page in a space the exporting user cannot
       read is left out and shows "Image not available", and its bytes are not
       in the zip.
-- [ ] No outside fetch: with a link preview that has an `imageUrl`, the export
+- [x] No outside fetch: with a link preview that has an `imageUrl`, the export
       makes no outgoing request (the test fails if the fetcher is called).
-- [ ] PDF: the answer is `application/pdf`, starts with `%PDF-`, and (built
+- [x] PDF: the answer is `application/pdf`, starts with `%PDF-`, and (built
       uncompressed in the test, or read back with a text extractor) contains
       every page title, the space name and the text of each block in order,
       and none of B's or C's text after B is trashed. A PNG and a JPEG image
       are drawn; a GIF shows its file name line. A tree export has the
       contents list and starts each page on a new PDF page.
-- [ ] Limits: 201 pages under one page gives 413 with the plain message before
+- [x] Limits: 201 pages under one page gives 413 with the plain message before
       any file is built (made with a lower limit through a test setting is
       fine); files over the size limit, the same.
-- [ ] Read-only: `pages.version`, `pages.updated_at` and the count of
+- [x] Read-only: `pages.version`, `pages.updated_at` and the count of
       `page_versions` are the same before and after every export.
-- [ ] Headers: content type per format, `content-disposition: attachment`
+- [x] Headers: content type per format, `content-disposition: attachment`
       with a safe name for a title like `../Plan "Q4"/é`, `cache-control:
       no-store`. `format=docx` is 400.
-- [ ] `npm run check` passes (this file is part of it), and the originality
+- [x] `npm run check` passes (this file is part of it), and the originality
       scan (c5) passes on the new code and texts.
+      *Lead's run, item #171, Node 22: exit 0, 24 files, 431 tests passed,
+      `export.test.ts` 15 of 15, "ORIGINAL OK", 2:52.96 wall time, load
+      4.42 / 2.40 / 3.35 at the start and 8.34 / 4.87 / 4.13 at the end. Raw
+      log: `docs/done-checks/logs/16-export-check-171.txt`.*
 
 ---
 
@@ -257,6 +266,45 @@ What already exists (do not rebuild it):
   not run by me (self-host engineer's box). INSTALL.md has an "Export" section
   with the blank-box note.
 
+### Lead's acceptance of 16a, item #171 (2026-11-12)
+**16a is accepted. 16b may start.** I read the whole diff of `801244bc7`
+against the Decisions, and ran `npm run check` myself (exit 0, log above).
+15 of the 16 boxes in 16a are ticked. The one still open is the
+`docker compose build` half of the dependency box, which is the self-host
+engineer's run. It does not hold back 16b, but it has to be done before the
+lead check.
+
+What I checked in the code:
+- **One permission path.** `collectExport` starts with
+  `requirePageRole(viewer)`, so a trashed page or space, or a space the
+  user can't read, gives 404. The route uses `requireUser`, so a signed-out
+  request gets 401. The sub-page walk stays inside the same space.
+- **The walk stops at trash.** The recursive query only goes into children
+  with `deleted_at is null`, so a trashed branch is left out entirely.
+- **Files.** Every attachment id in the document goes through
+  `readableAttachment`. Anything that fails it is shown as "… not
+  available", and its bytes are never read.
+- **No outside fetch.** pdfmake's URL policy refuses every address, and its
+  local policy allows only the Roboto folder and the built-in Courier font.
+  Link-preview pictures and video addresses stay as links. The test spies
+  on `fetch`, `http` and `https` and on the link-preview fetcher.
+- **Read-only.** There is no insert, update or delete anywhere in
+  `export/` or `routes/export.ts`. The test compares the page versions,
+  `updated_at`, the document and the `page_versions` count before and after
+  every export of every page.
+- **Limits.** The page count is checked straight after the walk, before any
+  document is parsed. The file total is checked from the stored sizes,
+  before any bytes are read. The test spies on `storage.get` to prove this.
+- **The Markdown and PDF match the Decisions.** The coder's choices where
+  the Decisions left room (the coder's note above) are fine and are now part
+  of the spec:
+  - page headings sit one level under the title (H1 becomes `##`);
+  - an assignee and due date are written as ` — @Name, due …`.
+
+One small note for 16b, not a gap: in the PDF, file and video links point
+to `<publicUrl>/api/attachments/:id`, which is a real route and still needs
+sign-in. That is right, but the hand check should click one to confirm it.
+
 ## 16b — Screen
 
 ### Build
@@ -281,9 +329,15 @@ existing file.** `e2e/tests/` already has 18 files, done-check 10's limit, so
 export adds **no new file**: the test goes into an existing file (the tester
 picks `viewer.spec.ts` or `wiki.spec.ts`, whichever has the right set-up
 already). All set-up (people, space, pages, sub-pages, an image) goes through
-the API in `e2e/login.ts`. The test must take **at most 5 s** of test time in
-Playwright's per-test output. Everything the 16a boxes prove stays proved by
-the server tests; the browser test proves only what only a browser can.
+the API in `e2e/login.ts`. The test must be **no slower than the middle test
+of the same run**, in Playwright's per-test output, and the run must exit 0.
+(Rule changed in item #171, 2026-11-12, to match mentions (done-check 15,
+item #169). It was "at most 5 s". A fixed number of seconds cannot tell a
+slow test from a slow machine; comparing the export test with the other tests
+of the same run can. "Middle test": sort the run's tests from fastest to
+slowest; with 27 tests the middle is the 14th.) Everything the 16a boxes
+prove stays proved by the server tests; the browser test proves only what
+only a browser can.
 - [ ] Before 16b's test is added, the tester makes three timed
       `/usr/bin/time npm run test:e2e` runs of the current 26-test suite and
       writes them here with load at the start and end, so the cost of the new
@@ -300,10 +354,14 @@ the server tests; the browser test proves only what only a browser can.
       export test in the suite, load noted at the start and end of each,
       **every run passes with exit 0 and the middle run is under 95 s**. The
       slowest runs are listed against the checker's ~110 s limit, and the
-      export test's own time is written down. If the middle run is 95 s or
-      more, or any run fails, or the export test is over 5 s in any run, the
-      box stays open and the export test is cut back first; no limit is
-      raised and no other test is dropped to make room. If the machine is so
+      export test's own time **and its rank among the 27 tests** are written
+      down for every run, next to the time of the middle test (the 14th
+      fastest). If the middle run is 95 s or more, or any run fails, or the
+      export test is slower than the middle test of the same run in any run,
+      the box stays open and the export test is cut back first; no limit is
+      raised and no other test is dropped to make room. (Item #171: the
+      per-test rule was "over 5 s"; it is now the mentions rule, as in the
+      paragraph above these boxes.) If the machine is so
       loaded that the test servers do not start (as in #165), that run is
       written down and does not count either way; it is run again when the
       load is normal.

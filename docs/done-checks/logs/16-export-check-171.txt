@@ -1,0 +1,272 @@
+ 19:02:28 up 26 days,  2:18,  1 user,  load average: 4.42, 2.40, 3.35
+
+> check
+> node scripts/check.mjs
+
+build: packages/shared is up to date, skipped
+build: packages/editor-schema is up to date, skipped
+
+── typecheck apps/web ok (15.3s) ──
+
+── typecheck apps/server ok (17.9s) ──
+
+── test packages/editor-schema ok (8.4s) ──
+
+ RUN  v3.2.7 /home/mymind/mymind-projects/12-test5/packages/editor-schema
+
+ ✓ test/diffBlocks.test.ts (11 tests) 76ms
+ ✓ test/tasks.test.ts (20 tests) 182ms
+
+ Test Files  2 passed (2)
+      Tests  31 passed (31)
+   Start at  19:02:49
+   Duration  5.88s (transform 1.58s, setup 0ms, collect 7.87s, tests 257ms, environment 5ms, prepare 1.26s)
+
+
+── originality scan ok (0.6s) ──
+check-original: ok — no banned names, packages or brand colours found.
+ORIGINAL OK
+
+── contrast check ok (0.2s) ──
+check-contrast: ok — 58 text/background pairs pass WCAG AA in both themes.
+CONTRAST OK
+
+── typecheck packages/editor-schema ok (13.2s) ──
+
+── test apps/server ok (172.3s) ──
+
+ RUN  v3.2.7 /home/mymind/mymind-projects/12-test5/apps/server
+
+ ✓ test/templates.test.ts (17 tests) 21132ms
+   ✓ built-in templates > each passes normalizeDoc unchanged apart from block ids and has a heading and more  1657ms
+   ✓ built-in templates > an editor lists the four built-ins in order in a new space, with no docs  1908ms
+   ✓ space templates > an editor creates one from a doc and one from a page; both are listed and GET returns their docs  2036ms
+   ✓ space templates > a new page from a built-in and from a space template is a copy with new block ids, version 1, one history row  2189ms
+   ✓ space templates > two pages made from the same template share no block id  1832ms
+   ✓ space templates > PATCH bumps the version, a stale baseVersion is 409, and pages made earlier never change; DELETE is 204  1253ms
+   ✓ space templates > checks names, descriptions, unknown fields and the doc  1565ms
+   ✓ space templates > a page with both doc and templateId, or an unknown templateId, is 400  829ms
+   ✓ space templates > a space template is 404 from another space and 400 as templateId there; fromPageId from another space is 400  987ms
+   ✓ space templates > a built-in cannot be changed or deleted by an editor, a space admin or an instance admin  836ms
+   ✓ space templates > a viewer of the space gets 403 everywhere  1006ms
+   ✓ space templates > a non-member of a restricted space gets 404 on every route; added as editor it works; removed, 404 again  1297ms
+   ✓ space templates > purging the space from the trash removes its templates; deleting a page leaves templates made from it  785ms
+   ✓ space templates > a name with markup comes back as the same text  764ms
+   ✓ space templates > signed out is 401 on every route  601ms
+   ✓ space templates > template routes write no page, version or history row  631ms
+   ✓ templates stay out of search and AI > a word only in a template is not found by search, and AI ask never receives template text  929ms
+ ✓ test/ai-ask.test.ts (27 tests) 8755ms
+   ✓ retrieveSources > finds a page in an open space, numbered from [1] with page, title and space  648ms
+   ✓ retrieveSources > ranks sections by most question words, then page rank, and keeps at most 8  476ms
+   ✓ retrieveSources > uses the same stemming as search, and the OR of the words  484ms
+   ✓ retrieveSources > never returns a restricted page to a non-member, even when it matches better; membership turns it on and off  493ms
+   ✓ retrieveSources > lets an instance viewer ask over open spaces and an instance admin over every space  470ms
+   ✓ retrieveSources > never returns a deleted page or a child of a deleted page  560ms
+   ✓ retrieveSources > returns nothing for a question that matches no page, only stop words, or no words at all  524ms
+   ✓ retrieveSources > takes the best 5 pages at most  859ms
+   ✓ POST /api/ai/ask > answers from an open-space page, citing [1], with that page as sources[0] and its link  439ms
+   ✓ POST /api/ai/ask > never sends or cites a restricted page to a non-member; membership turns it on and off  491ms
+   ✓ POST /api/ai/ask > lets an instance viewer ask over open spaces and an instance admin over every space  498ms
+   ✓ POST /api/ai/ask > never uses a deleted page as a source  457ms
+   ✓ POST /api/ai/ask > removes citations the server did not supply: "See [2] and [9]." keeps only source 2  465ms
+   ✓ POST /api/ai/ask > a question matching nothing gets the fixed answer and the provider is not called  385ms
+   ✓ POST /api/ai/ask > page text that gives orders reaches the provider inside a <source> tag, under the fixed system prompt  395ms
+   ✓ POST /api/ai/ask > 400 for an empty or 501-character question, 401 signed out, 404 ai_off when AI is off  592ms
+   ✓ POST /api/ai/ask > a provider failure gives 502 ai_unavailable  503ms
+ ✓ test/history.test.ts (19 tests) 7857ms
+   ✓ page history snapshots > a save by a second author starts a new snapshot, and so does the first author coming back  301ms
+   ✓ page history snapshots > a save more than 5 minutes after the snapshot opened starts a new one, even mid-session  363ms
+   ✓ page history snapshots > a refused (409) save writes no snapshot, and a move writes none  376ms
+   ✓ page history snapshots > a restore snapshot is never folded into: the next save by the same author makes a new one  342ms
+   ✓ page history snapshots > a removed author leaves the snapshot with no author  430ms
+   ✓ migration 0003 backfill > gives a page with no snapshot one of its current state, and skips pages that have one  452ms
+   ✓ history routes > lists versions newest first with author, time and restore mark, and no doc bodies  380ms
+   ✓ history routes > reads one version with its title and doc; unknown, odd or another page's version is 404  471ms
+   ✓ history routes > restoring version 1 of a page saved 3 times brings it back as a new version, keeps every snapshot, and can be undone  392ms
+   ✓ history routes > an edit by the same author right after a restore makes a new snapshot and leaves the restore one alone  355ms
+   ✓ history routes > a stale baseVersion on restore gets 409 and changes nothing  317ms
+   ✓ history routes > a restored doc passes the same validation as a normal save  440ms
+   ✓ history routes > a viewer can list and read but gets 403 on restore; a non-member of a restricted space gets 404 on all three  392ms
+   ✓ history routes > a deleted page, an unknown page and an unknown version give 404 on restore  333ms
+   ✓ history routes > an image block's attachment still downloads after a restore brings it back  330ms
+   ✓ history routes > pages the list: 60 snapshots give 50, then 10 with before  1364ms
+ ✓ test/export.test.ts (15 tests) 7690ms
+   ✓ export: PDF content > draws PNG and JPEG images, names a GIF, and keeps every block in order  428ms
+   ✓ export: permissions > a viewer member can export, a non-member editor gets 404, signed out gets 401; an image from a space the user cannot read is left out  480ms
+   ✓ export: read-only and headers > pages.version, pages.updated_at and the count of page_versions are the same before and after every export  4398ms
+ ✓ test/auth.test.ts (11 tests) 5533ms
+   ✓ sign up and log in > rate-limits repeated failed logins for one email  485ms
+   ✓ closed sign-up > still lets the first admin in, then only admins create accounts  318ms
+   ✓ login rate limit per address > does not lock out a team logging in from one address: good logins do not count  2283ms
+   ✓ login rate limit per address > still rate-limits many failed logins from one address, across different emails  1278ms
+ ✓ test/comments.test.ts (13 tests) 12313ms
+   ✓ page comments > an editor starts a page comment and a block comment; GET returns both  632ms
+   ✓ page comments > a viewer of the space replies to a thread and starts one of their own  1907ms
+   ✓ page comments > refuses a reply to a reply, a root from another page, and a block not in the page  938ms
+   ✓ page comments > checks bodies: empty, spaces only, too long and unknown fields are 400; text is trimmed, line breaks kept  833ms
+   ✓ page comments > edit: the author can and it sets editedAt; another editor, a viewer and a space admin get 403  858ms
+   ✓ page comments > delete: the author can, a space admin can delete anyone’s, another editor gets 403; soft delete clears the body  1001ms
+   ✓ page comments > resolve and reopen: an editor can, a viewer gets 403, a reply gives 400; resolved threads sort after open ones  992ms
+   ✓ page comments > a non-member of the restricted space gets 404 everywhere until added as a viewer, and again once removed  915ms
+   ✓ page comments > a deleted page: 404 on its comments; deleted for real, its comment rows are gone  789ms
+   ✓ page comments > a block removed by a later save keeps its thread, marked blockMissing  786ms
+   ✓ page comments > keeps a body like <img src=x onerror=alert(1)> as the same plain text  752ms
+   ✓ page comments > comment actions never change the page, its version or its history; a restore leaves comments alone  1272ms
+   ✓ page comments > signed out: 401 on every route  636ms
+ ✓ test/personal.test.ts (13 tests) 9308ms
+   ✓ favourites > an editor favourites two pages in two spaces: listed newest first; the page says favourite  566ms
+   ✓ favourites > PUT twice is one row; DELETE removes it; DELETE again is still 204  523ms
+   ✓ favourites > a viewer can favourite and record views; the page version and updated_at do not change  1001ms
+   ✓ favourites > another person's lists never show in yours, and an admin's lists hold only the admin's own  696ms
+   ✓ recently viewed > A, B, A lists A then B, one row each  968ms
+   ✓ recently viewed > 55 views on 55 pages keep 50 rows and list the newest 20  2114ms
+   ✓ recently viewed > GET /api/pages/:id on its own does not add a view  564ms
+   ✓ who can see what > non-members get 404; a removed member loses the page from both lists, and gets it back when re-added  606ms
+   ✓ who can see what > a soft-deleted page drops out of both lists and its routes give 404; purging the space from the trash removes the rows  564ms
+   ✓ who can see what > deleting a user removes that user's rows  457ms
+   ✓ input and sign-in > a page title that looks like HTML comes back as the same text  348ms
+   ✓ input and sign-in > bodies with unknown fields are refused  439ms
+   ✓ input and sign-in > signed out is 401 on every route  460ms
+ ✓ test/search.test.ts (14 tests) 12112ms
+   ✓ GET /api/search > finds a body word right after one save, and a title-only word  413ms
+   ✓ GET /api/search > ranks a title match above a body-only match and returns breadcrumbs  471ms
+   ✓ GET /api/search > never shows a restricted space to a non-member, and follows membership changes  538ms
+   ✓ GET /api/search > shows an open space to every signed-in user, including an instance viewer  1025ms
+   ✓ GET /api/search > lets an instance admin find pages in every space  1650ms
+   ✓ GET /api/search > does not find a deleted page or a child of a deleted page  1102ms
+   ✓ GET /api/search > a child under a deleted parent stays hidden even if its own row was missed  685ms
+   ✓ GET /api/search > finds a page from a partial last word of its title  662ms
+   ✓ GET /api/search > answers 200 with safe results for any odd input  886ms
+   ✓ GET /api/search > cuts a query to 200 characters  707ms
+   ✓ GET /api/search > defaults to 20 results and never returns more than 50  2535ms
+   ✓ GET /api/search > returns HTML-looking page text only as data, with no tags added  627ms
+   ✓ GET /api/search > matches through the GIN index on pages.search  413ms
+   ✓ GET /api/search > refuses a signed-out caller with 401  396ms
+ ✓ test/labels.test.ts (10 tests) 9227ms
+   ✓ labels on a page > adds and removes as a set, by name, with a limit of 20 and a name rule  697ms
+   ✓ labels on a page > keeps label ids stable across pages and after no page uses a label  304ms
+   ✓ labels on a page > never touches the page text, its version, its time or its history  341ms
+   ✓ labels on a page > lets viewers read labels only, hides restricted pages, and lets an instance admin add  715ms
+   ✓ label views and suggestions > shows only pages the person can see, in the whole wiki and in one space  649ms
+   ✓ label views and suggestions > hides trashed pages and spaces everywhere, brings them back on restore, and purge removes page labels  887ms
+   ✓ label views and suggestions > orders views newest change first, at most 200 with truncated, and suggestions prefix first, at most 50  3926ms
+   ✓ search by label > filters through the one search query, by label= and by label: words  506ms
+ ✓ test/ai-summary.test.ts (10 tests) 8741ms
+   ✓ POST /api/pages/:id/summary > gives an editor and a viewer of the space a summary that starts with the first sentence  1211ms
+   ✓ POST /api/pages/:id/summary > answers 404 like GET /api/pages/:id for a restricted page, a deleted page or no page, with zero provider calls  943ms
+   ✓ POST /api/pages/:id/summary > gives an empty page the fixed sentence without calling the provider  801ms
+   ✓ POST /api/pages/:id/summary > sends page text as data inside <page> … </page> with the fixed system prompt  710ms
+   ✓ POST /api/pages/:id/summary > cuts the page text to 24,000 characters  1118ms
+   ✓ POST /api/pages/:id/summary > answers 404 ai_off when AI is off, for members and signed-out callers alike  1066ms
+   ✓ POST /api/pages/:id/summary > answers 401 when signed out and AI is on  998ms
+   ✓ POST /api/pages/:id/summary > turns a provider failure into 502 ai_unavailable, without the error text or the key  1112ms
+   ✓ POST /api/pages/:id/summary > works end to end on the configured stub (no injected provider)  781ms
+ ✓ test/embeds.test.ts (19 tests) 6168ms
+   ✓ image and file blocks > keeps only the attachment id and plain attrs, dropping any URL  316ms
+   ✓ image and file blocks > rejects a file with a number for an id with 400 and leaves the page alone  370ms
+   ✓ video and link card blocks > rejects a video from another site with 400 and leaves the page alone  366ms
+   ✓ video and link card blocks > rejects a plain YouTube page instead of the nocookie player with 400 and leaves the page alone  490ms
+   ✓ video and link card blocks > rejects a player URL with extra parts with 400 and leaves the page alone  485ms
+   ✓ video and link card blocks > rejects a javascript: player with 400 and leaves the page alone  649ms
+   ✓ video and link card blocks > rejects a video with no source with 400 and leaves the page alone  662ms
+   ✓ video and link card blocks > rejects a video with both an upload and a link with 400 and leaves the page alone  425ms
+ ✓ test/pages.test.ts (20 tests) 8636ms
+   ✓ nested pages > nest three deep with correct breadcrumbs  569ms
+   ✓ nested pages > keeps siblings in creation order and can reorder them  403ms
+   ✓ nested pages > moves a page with its children under another page, but never into itself  496ms
+   ✓ nested pages > refuses a parent from another space  391ms
+   ✓ nested pages > saves title and body with version checks  473ms
+   ✓ nested pages > soft-deletes a page and everything under it  395ms
+   ✓ page body validation > accepts a doc with every block type and gives each top-level block a unique id  450ms
+   ✓ page body validation > replaces repeated block ids so no two top-level blocks share one  385ms
+   ✓ page body validation > rejects an unknown node with 400 and leaves the page alone  456ms
+   ✓ page body validation > rejects a missing doc root with 400 and leaves the page alone  403ms
+   ✓ page body validation > rejects an unknown mark with 400 and leaves the page alone  301ms
+   ✓ page body validation > rejects a data: URL in attrs with 400 and leaves the page alone  366ms
+   ✓ page body validation > rejects a data: URL on a block with 400 and leaves the page alone  472ms
+   ✓ page body validation > rejects a javascript: link with 400 and leaves the page alone  775ms
+   ✓ page body validation > rejects an invalid doc on create too  672ms
+   ✓ page body validation > a stale baseVersion is 409 and does not change the stored doc  646ms
+ ✓ test/notifications.test.ts (20 tests) 11102ms
+   ✓ the mention node > a userId that is not a uuid, or none, is a 400 on save; the plain text kept for search has @label  313ms
+   ✓ mentions > a newly mentioned person is told once; the same doc again tells nobody; remove and add back tells again  642ms
+   ✓ mentions > a history restore that brings a mention back tells them  533ms
+   ✓ following > the creator follows a new page; others do not until they follow or comment  340ms
+   ✓ following > PUT and DELETE work twice with no change; a viewer can follow; a non-member gets 404  510ms
+   ✓ following > commenting does not undo a later unfollow  421ms
+   ✓ comments and edits > a follower is told about a comment and a reply by someone else, never their own  405ms
+   ✓ comments and edits > three saves by someone else fold into one edit with count 3 and the newest time; after reading, the next save starts a new one  592ms
+   ✓ comments and edits > a save never changes when a notification is written: version and history are the same with and without followers  711ms
+   ✓ never from pages you cannot see > losing access, trash and restore of the page, its parent or the space, purge and a deleted comment: list and count agree  1421ms
+   ✓ only your own > someone else's id is ignored or 404; nobody lists anyone else's; all marks only yours  720ms
+   ✓ only your own > paging with before gives each notification once, newest first  1557ms
+ ✓ test/trash.test.ts (13 tests) 7543ms
+   ✓ trash: pages > an editor deletes a page with its sub-pages, history, comments and file; it is one item, hidden everywhere, and restore brings it all back unchanged  1359ms
+   ✓ trash: pages > a sub-page deleted on its own first stays its own item when the parent is deleted and restored  363ms
+   ✓ trash: pages > viewers cannot use the trash, editors cannot purge, non-members get 404  328ms
+   ✓ trash: pages > a space admin purges an item for good, rows and file bytes; empty trash purges every item  591ms
+   ✓ trash: pages > with TRASH_RETENTION_DAYS=0 the trash list has no purge date  528ms
+   ✓ trash: pages > the hourly sweep starts with the app and stops when it closes  325ms
+   ✓ trash: spaces > a space admin moves a space to the trash; it is hidden, its key stays taken, and restore and purge work by id  1878ms
+ ✓ test/tasks.test.ts (17 tests) 6360ms
+   ✓ My tasks > lists the open tasks given to a person, dated first, with page and space  658ms
+   ✓ My tasks > orders by due date, then page title, then place in the page  311ms
+   ✓ task ids and attrs > fills missing ids (nested too), renews a repeated one and keeps them on the next save  309ms
+   ✓ task ids and attrs > a well-formed id that is no person here saves (200), stays in the doc as sent, is indexed as nobody and in no My tasks  368ms
+   ✓ ticking from My tasks > ticks through savePage: one new version by the person, nothing else in the doc changes  385ms
+   ✓ ticking from My tasks > retries once when the page changed between the read and the save; a second conflict is 409  394ms
+   ✓ editing the page keeps My tasks right > removing, reassigning or ticking in the doc shows at the next read; restoring history brings old tasks back  450ms
+   ✓ trash > a trashed page or parent hides its tasks and the tick is 404; restore brings them back; purge removes the rows  433ms
+ ✓ test/linkPreview.test.ts (90 tests) 1727ms
+   ✓ guarded fetch > gives up when the headers do not come in time  326ms
+   ✓ guarded fetch > gives up when the body does not finish in time  312ms
+ ✓ test/spaces.test.ts (6 tests) 2875ms
+   ✓ spaces > editors create spaces and become their admin; viewers cannot  472ms
+   ✓ spaces > open spaces give everyone the default role; viewers stay read-only  603ms
+   ✓ spaces > a restricted space is invisible to non-members, in lists and by URL  493ms
+   ✓ spaces > only space admins change settings and members, and the last admin stays  432ms
+   ✓ spaces > deleting a space moves it and its pages to the trash (done-check 11)  408ms
+ ✓ test/ai.test.ts (29 tests) 2106ms
+   ✓ GET /api/ai/status > is { enabled: true } with the stub  373ms
+   ✓ GET /api/ai/status > is { enabled: false } when off, including anthropic with no key  975ms
+ ✓ test/attachments.test.ts (9 tests) 1219ms
+   ✓ default limit > accepts a file larger than the 5 MB JSON body limit when MAX_UPLOAD_MB allows it  383ms
+ ✓ test/users.test.ts (4 tests) 920ms
+   ✓ user management > only admins list users and set roles  303ms
+ ✓ test/password.test.ts (6 tests) 173ms
+ ✓ test/static.test.ts (4 tests) 142ms
+ ✓ test/video.test.ts (34 tests) 23ms
+ ✓ test/permissions.test.ts (11 tests) 4ms
+
+ Test Files  24 passed (24)
+      Tests  431 passed (431)
+   Start at  19:02:31
+   Duration  168.89s (transform 4.36s, setup 0ms, collect 11.23s, tests 151.67s, environment 1ms, prepare 517ms)
+
+
+check: all 7 steps ok (172.5s)
+	Command being timed: "npm run check"
+	User time (seconds): 146.93
+	System time (seconds): 32.77
+	Percent of CPU this job got: 103%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:52.96
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 387112
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 3
+	Minor (reclaiming a frame) page faults: 1246126
+	Voluntary context switches: 72418
+	Involuntary context switches: 97092
+	Swaps: 0
+	File system inputs: 688
+	File system outputs: 24
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+EXIT=0
+ 19:05:21 up 26 days,  2:20,  1 user,  load average: 8.34, 4.87, 4.13
