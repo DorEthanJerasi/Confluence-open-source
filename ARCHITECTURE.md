@@ -619,3 +619,51 @@ someone on the team has done it by hand in a browser against the compose stack.
   being told never causes a save conflict.
 - **Not yet:** email or push, live push of the count, mentions in comments,
   mentioning a group, following a space or a page tree, per-kind settings.
+
+## 20. Export
+
+- **Read-only, from the saved document, through the one schema.** `GET
+  /api/pages/:id/export?format=md|pdf&children=0|1` reads `pages.doc` through
+  `parseDoc` and turns it into Markdown (`apps/server/src/export/markdown.ts`,
+  one `.md`, or a `.zip` made with `fflate` when there are files or sub-pages)
+  or a PDF (`export/pdf.ts`, `pdfmake` with its bundled Roboto fonts and the
+  built-in Courier, always the calm light look). It is built in memory and
+  sent in one answer: no job, no file left on disk. No export code writes any
+  table and none calls `savePage`, so `pages.version`, `pages.updated_at` and
+  `page_versions` never change (the server test compares them before and
+  after every export).
+- **One permission path.** `planExport` in `export/collect.ts` starts with
+  `requirePageRole(viewer)`, so anyone who can read the page can export it,
+  someone who can't gets 404 and signed out gets 401, the same as opening the
+  page. The sub-page walk stays inside that space and only goes into children
+  with `deleted_at is null`, so a trashed page and everything under it is left
+  out with no trace; a trashed page, branch or space is itself a 404.
+- **Files only through `readableAttachment`.** Every image, file and uploaded
+  video in the document is checked for the exporting person; one that fails
+  becomes a plain "… not available" line and its bytes are never read. In the
+  zip they sit in `attachments/<id>-<clean name>` behind relative links;
+  links to pages in the same export point to their `.md`, other wiki links to
+  the full address (which still needs sign-in).
+- **No outside fetch.** The server never fetches anything while exporting:
+  pdfmake's URL policy refuses every address and its local policy allows only
+  its own fonts, and a link preview's picture or a video address stays a link.
+- **Limits, checked before anything is built.** At most 200 pages and 100 MB
+  of files (`EXPORT_MAX_PAGES`, `EXPORT_MAX_FILE_BYTES` in `packages/shared`).
+  The page count is checked straight after the walk and the file total from
+  the stored sizes, before any document is parsed or file read; above either
+  it is a 413 with a plain message. `check=1` runs the same walk and limits
+  and answers 204 with no file, so the screen can show a 413 as a quiet note
+  before the browser starts a plain `<a download>` with its sign-in cookie.
+- **Screen.** The Export button and menu next to Follow and the star
+  (`apps/web/src/export/ExportMenu.tsx`): "This page only" / "This page and
+  its N sub-pages" when `childCount` (on `GET /api/pages/:id`) is above 0,
+  then Markdown and PDF; full keyboard use and screen-reader labels; tokens
+  only and the shared reduced-motion rule.
+- **Why co-editing can still be added without a rewrite.** Export only reads
+  what `savePage` stored, through the one schema. A co-editing server still
+  saves through `savePage` into `pages.doc`, so export reads the same thing
+  with no change, and because export writes nothing it can never clash with
+  anyone editing.
+- **Not yet:** exporting a whole space, Word or HTML, any import, comments or
+  history in the export, scheduled or emailed exports, fonts for scripts
+  Roboto does not cover (they show as blank boxes, noted in INSTALL.md).

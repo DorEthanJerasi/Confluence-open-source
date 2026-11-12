@@ -456,39 +456,108 @@ only a browser can.
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] As admin: an open space and a restricted space. In the restricted space
+- [x] As admin: an open space and a restricted space. In the restricted space
       a page "Field notes" with two levels of sub-pages, holding headings,
       lists, a task list with an assignee, a table, a code block, a callout,
       a PNG image, a GIF, a file, a video address, a link preview and a
       mention. An editor and a viewer who are members, and an outsider who is
       not.
-- [ ] As the viewer: export "Field notes" alone and with sub-pages, both
+- [x] As the viewer: export "Field notes" alone and with sub-pages, both
       formats. Open the PDF: it is calm and readable, the contents list is
       right, each page starts on a new sheet, the image is in, the links work.
       Open the zip in a Markdown viewer offline: the folders match the tree,
       the image shows, links between pages work.
-- [ ] Trash one sub-page: export with sub-pages again; it and everything
+- [x] Trash one sub-page: export with sub-pages again; it and everything
       under it are gone from both files, with no trace of their titles.
       Restore it: it is back.
-- [ ] As the outsider: the page and its export link are 404.
-- [ ] A second tab with the page open saves with no conflict note after the
+- [x] As the outsider: the page and its export link are 404.
+- [x] A second tab with the page open saves with no conflict note after the
       exports (export never touches the page's version).
-- [ ] Light and dark: the button and menu are calm and soft; the PDF is light
+- [x] Light and dark: the button and menu are calm and soft; the PDF is light
       in both. Motion is quiet, and with reduced motion turned on it is
       instant. Keyboard alone can export.
+- Lead's hand check (item #178, 2026-11-12/13), on the built app started by
+  `scripts/local-start.mjs` on a fresh throwaway database (port 3478). I used
+  a throwaway Playwright walk-through in real Chromium (kept out of git under
+  `.leadcheck/`, not part of the suite), looked at the screenshots and at the
+  PDF pages myself, and opened the downloaded files with `pdftotext`,
+  `pdftoppm` and an offline Markdown render:
+  - Set-up as admin Ada: Orchard (open) and Vault (restricted); Ed editor and
+    Vi viewer members of Vault, Otto an editor who is not. In Vault: Field
+    notes > Greenhouse > Seedlings, and Field notes > Tool shed. Field notes
+    holds an H1 and H2, bold/italic/code, a link to Tool shed, nested bullet
+    and numbered lists, a task list (one ticked, one with Ed and a due date),
+    a table, a `sh` code block, a warning callout, a PNG (480x260) with a
+    caption, a GIF, a text file, a video address, a link preview with a
+    picture address, and a mention of Ed.
+  - Vi (viewer) opens Export: "This page only" (ticked), "This page and its
+    2 sub-pages", Markdown, PDF. Page alone, Markdown → `Field notes.zip`
+    (`field-notes.md` and the three attachments, because the page has
+    files). Page alone, PDF. With sub-pages, Markdown → `field-notes.md`,
+    `field-notes/greenhouse.md`, `field-notes/greenhouse/seedlings.md`,
+    `field-notes/tool-shed.md` and `attachments/…`: the folders match the
+    tree. With sub-pages, PDF.
+  - The tree PDF: A4, 6 sheets, numbered "n / 6". Sheet 1 is the contents
+    (Field notes; Greenhouse and Seedlings indented; Tool shed). Each page
+    starts on its own sheet with its title and "Vault · Exported 12 November
+    2026 by Vi Fenn". It is calm and readable: soft near-black text, the
+    table with thin soft lines and a tinted header, code on a soft tint, the
+    warning callout as a soft tinted box. The PNG is drawn in, within the
+    text column; the GIF is the line "Image: sprout.gif", the file "File:
+    seed-list.txt · 19 bytes", the task "Fix the gate — @Ed Moss, due
+    2026-12-01". Links: the web links in the PDF are the two attachment
+    addresses, the video address and the link-preview address; the link to
+    Tool shed and the contents rows jump inside the PDF. In the page-alone
+    PDF the Tool shed link is the wiki address `/s/vault/p/<id>`. The file
+    link gives 200 to Vi and 404 signed out, so it still needs sign-in.
+  - The Markdown zip, unzipped and rendered offline in Chromium with every
+    network request blocked (none was made): the PNG shows at 480x260, the
+    GIF loads, "the tool shed" opens `field-notes/tool-shed.md` ("Tool
+    shed"), and the text file opens. All 4 relative links in the zip point
+    to files that are in it.
+  - Trash: Ada trashed Greenhouse. Vi's menu then said "This page and its 1
+    sub-page". The zip held only `field-notes.md`, `field-notes/tool-shed.md`
+    and the attachments; neither "Greenhouse" nor "Seedlings" (nor their
+    marker words) is in any file name or text. The PDF (4 sheets; contents
+    Field notes and Tool shed only) has no "Greenhouse" or "Seedlings" in its
+    text. Exporting Greenhouse or Seedlings directly: 404. Ada restored
+    Greenhouse: the next export had all four `.md` files again.
+  - Otto (outsider): the page shows "Nothing here. This space does not
+    exist, or you do not have access to it", with no Export button. `GET
+    /api/pages/:id` and the export with `format=md`, `format=pdf&children=1`
+    and `check=1` are all 404.
+  - Second tab: Ed had the page open before the exports. The page's version
+    was 2 before and after all the exports, with the same `updated_at`. Ed
+    then typed in that tab: "Saved", no conflict note, version 3.
+  - Light and dark (screenshots of the open menu in both): the button sits
+    with the star, Follow, History and Comments in the same quiet outline
+    style; the menu is a soft rounded card with a soft shadow and a quiet
+    check on the chosen scope; nothing harsh in either theme. A PDF exported
+    while Vi was in dark mode is the same light PDF. The menu fades in over
+    0.14 s; with reduced motion on, the fade is 0.000001 s (instant).
+  - Keyboard only, in dark mode: 15 Tabs from the top of the page reached
+    Export; Arrow down opened the menu on "This page only"; Arrow down went
+    to "This page and its 2 sub-pages", Enter chose it, End went to "PDF",
+    Enter downloaded `Field notes.pdf` (6 sheets, starts `%PDF-`). Escape
+    closes the menu with the focus back on Export.
+  - My first walk-through stopped at the outsider step because my own script
+    waited for a `main` region, which the "Nothing here" screen does not
+    have. I ran the steps from the outsider onward again on the same data,
+    with two fresh exports while Ed's tab was open, and they all passed. The
+    app was not at fault.
 
 ## Lead check
-- [ ] Read the diff myself: one permission path; the page walk stops at
+- [x] Read the diff myself: one permission path; the page walk stops at
       trashed pages; every file goes through `readableAttachment`; no outside
       fetch; no export code writes any table; the Markdown and PDF match the
       Decisions; the limits are checked before building.
 - [ ] Ran `npm run check` myself: exit 0.
 - [ ] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
       and load noted here, and my run is added to the time record above.
-- [ ] Hand check above done and ticked.
+- [x] Hand check above done and ticked.
 - [ ] `docker compose build` and the smoke script still pass with the two new
       dependencies (self-host engineer's run, read back by the lead).
-- [ ] ARCHITECTURE.md gets a short "Export" section (section 20): export is
+- [x] ARCHITECTURE.md gets a short "Export" section (section 20): export is
       read-only from the saved document through the one schema, files only
       through `readableAttachment`, trashed branches left out, no outside
       fetch, the limits, and why co-editing can still be added.
