@@ -13,3 +13,10 @@ export function timeAgo(iso: string): string {
 export function exactTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
+
+/** A short date: "12 Nov", with the year only when it is not this year. */
+export function shortDate(iso: string): string {
+  const d = new Date(iso);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) });
+}

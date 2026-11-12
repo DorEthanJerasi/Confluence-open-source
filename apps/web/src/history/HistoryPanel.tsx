@@ -150,6 +150,7 @@ export function VersionPreview({
   page,
   version,
   canRestore,
+  lockedHint = false,
   saver,
   onClose,
   onRestored,
@@ -158,6 +159,8 @@ export function VersionPreview({
   page: Page;
   version: number;
   canRestore: boolean;
+  /** An editor on a locked page: no Restore, a short line says why (done-check 17). */
+  lockedHint?: boolean;
   saver: PageSaver;
   onClose: () => void;
   onRestored: () => Promise<void>;
@@ -169,10 +172,13 @@ export function VersionPreview({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [conflict, setConflict] = useState(false);
+  // The server's plain message when the page was locked in the meantime (423).
+  const [lockedMsg, setLockedMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setError(null);
     setConflict(false);
+    setLockedMsg(null);
   }, [version]);
 
   async function restore() {
@@ -189,7 +195,11 @@ export function VersionPreview({
     } catch (err) {
       setAsking(false);
       if (err instanceof ApiFailure && err.status === 409) setConflict(true);
-      else setError(err);
+      else if (err instanceof ApiFailure && err.status === 423) {
+        setLockedMsg(err.message);
+        // Load the page again: it now shows "Locked by" and no Restore.
+        void onReload().catch(() => {});
+      } else setError(err);
     } finally {
       setBusy(false);
     }
@@ -226,8 +236,14 @@ export function VersionPreview({
               <RotateCcw size={15} aria-hidden="true" /> Restore this version
             </button>
           )}
+          {lockedHint && !canRestore && <span className="muted small version-locked-hint">Unlock the page to restore a version</span>}
         </div>
       </div>
+      {lockedMsg && (
+        <p className="note version-locked-note fade-in" role="status">
+          {lockedMsg}
+        </p>
+      )}
 
       {conflict && (
         <div className="conflict-note fade-in" role="alert">

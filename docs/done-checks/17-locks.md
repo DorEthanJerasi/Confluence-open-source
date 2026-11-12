@@ -254,6 +254,50 @@ Boxes are left for the lead to tick. What is where:
 - [ ] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
+### Builder's notes (item #181, 2026-11-13)
+Boxes are left for the lead to tick. What is where:
+- `apps/web/src/locks/LockControls.tsx`: `LockButton` (Lock / Unlock, after
+  Export, editors and up only), `LockNote` (the quiet "Locked by X · date"
+  line under the title, in an always-present live region, fades in and out),
+  `LockedOutNote` (the unsaved text after a 423, with Copy my text) and
+  `docText` (the body as plain lines for that note). `api.setLock` in
+  `api.ts`; `shortDate` in `time.ts`; styles at the end of
+  `styles/app.css`, tokens only.
+- `screens/PageScreen.tsx`: `editable = canEdit && !locked` drives the title,
+  the body and the task boxes. Locking saves typed text first. The editor is
+  remounted when it switches between editable and read-only: switching in
+  place made React crash on the bubble menus (blank page, found in the hand
+  check). Delete is `aria-disabled` with a screen-reader hint, not
+  `disabled`, so keyboard users can reach it and hear why. The Lock button is
+  never `disabled` either, so focus stays on it after Enter.
+- `editor/saver.ts`: a 423 puts the saver in a new `locked` state (stops the
+  queue, keeps the change). The page then stops the editor, puts the unsaved
+  title and body in the note, and loads the page again, now read-only.
+- `history/HistoryPanel.tsx`: no Restore on a locked page, a muted "Unlock
+  the page to restore a version" in its place; a 423 on restore shows the
+  server's message as a quiet note and reloads the page.
+- `screens/Space.tsx`: a 423 on trash (a locked sub-page) is a quiet note with
+  the server's message (under the page header, or in the sidebar off a page),
+  not a red error. The tree's Delete item is not greyed out on a locked page,
+  because the tree does not carry locks (Decisions: no locks in the sidebar);
+  it gets the same quiet 423 note.
+- The date follows the browser's language ("Nov 13" in US English, "13 Nov"
+  in British English).
+- **Checked:** a builder's hand check in Chromium (3 steps: lock by keyboard
+  with focus kept, read-only title, body and task box, Delete not usable,
+  History without Restore, dark theme, trash of the parent refused quietly,
+  viewer sees the line and no button, a lock arriving while typing keeps the
+  text with Copy, history has no version for lock or unlock, unlock with
+  reduced motion). Log `docs/done-checks/logs/17-locks-handcheck-181.txt`,
+  exit 0; the script is kept as `17-locks-handcheck-181.spec.ts.txt` and is
+  **not** in the suite. Existing e2e for editor, conflict, history, trash,
+  viewer and tasks: 11 passed, exit 0
+  (`17-locks-e2e-subset-181.txt`). `npm run check`: all 7 steps ok, exit 0
+  (`17-locks-check-181.txt`). Originality scan and contrast check pass.
+- **Not driven in a browser:** a lock that arrives while a version preview is
+  open, followed by Restore (the 423 restore note). It is in the code only.
+  The one real e2e test for locks is the tester's.
+
 ### Check that must exist and pass — e2e (Playwright)
 **Time cost: at most one short test, in an existing file.** `e2e/tests/`
 has 18 files, done-check 10's limit, so locks adds **no new file**; the

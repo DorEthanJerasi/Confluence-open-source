@@ -2015,3 +2015,95 @@ textarea.input {
 .notice-more {
   align-self: center;
 }
+
+/* ---- Page locks (done-check 17b) ----
+ * .btn-lock: Lock / Unlock beside Export, a .btn-quiet like Follow. On a
+ *   locked page its icon takes the accent, as Following does; no warning tone.
+ * .lock-note: the one quiet line under the title for everyone: a small lock
+ *   and "Locked by Ada Lind · 12 Nov" in muted text. It fades in on lock and
+ *   out on unlock (.is-leaving); tokens.css makes both instant under reduced
+ *   motion. .lock-slot is the always-present live region around it.
+ * .locked-out: the note that keeps unsaved text after a refused save, with
+ *   Copy. Same soft accent tone as every .note, the text in a scrollable box.
+ * An icon button with aria-disabled (Delete on a locked page) stays focusable
+ *   so its reason can be read, and looks like a disabled button. */
+.btn-lock svg {
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+.btn-lock.is-on svg {
+  color: var(--color-accent);
+}
+.btn-lock[aria-busy='true'] {
+  cursor: progress;
+}
+.lock-slot:empty {
+  display: none;
+}
+.lock-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.lock-note-icon {
+  flex-shrink: 0;
+}
+.lock-note.is-leaving {
+  animation: lock-note-out var(--motion-base) var(--ease-exit) forwards;
+}
+@keyframes lock-note-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-1)));
+  }
+}
+.icon-btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+.icon-btn[aria-disabled='true']:hover {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.locked-out {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+}
+.locked-out-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.locked-out-text {
+  max-height: calc(var(--space-9) * 2);
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.locked-out-text:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+.version-locked-hint {
+  align-self: center;
+}
+.version-locked-note {
+  margin-top: var(--space-3);
+}
+.sidebar-note {
+  margin: var(--space-3) var(--space-3) 0;
+}

@@ -18,6 +18,12 @@ export interface SpaceCtx {
   newPage: (parentId: string | null) => void;
   /** Ask, then soft-delete a page and its sub-pages. */
   deletePage: (id: string) => void;
+  /**
+   * The server's plain message when a trash was refused because a page in
+   * that branch is locked (423, done-check 17), shown as a quiet note.
+   */
+  trashNote: string | null;
+  clearTrashNote: () => void;
 }
 
 export const useSpace = () => useOutletContext<SpaceCtx>();
@@ -247,6 +253,8 @@ export function SpaceLayout() {
   const tree = buildTree(items);
   const deleting = confirmDelete ? items.find((i) => i.id === confirmDelete) : undefined;
   const deletingKids = confirmDelete ? subtreeIds(items, confirmDelete).size - 1 : 0;
+  const removeError = actions.remove.error;
+  const trashNote = removeError instanceof ApiFailure && removeError.status === 423 ? removeError.message : null;
 
   const ctx: SpaceCtx = {
     space,
@@ -257,6 +265,8 @@ export function SpaceLayout() {
       setPicking({ parentId });
     },
     deletePage: (id) => setConfirmDelete(id),
+    trashNote,
+    clearTrashNote: () => actions.remove.reset(),
   };
 
   const toggle = (id: string) =>
@@ -311,7 +321,13 @@ export function SpaceLayout() {
             <Trash2 size={15} aria-hidden="true" /> Trash
           </NavLink>
         )}
-        <ErrorNote error={actions.move.error ?? actions.remove.error} />
+        <ErrorNote error={actions.move.error ?? (trashNote ? null : removeError)} />
+        {/* On a page the note shows under its header instead (PageScreen). */}
+        {trashNote && !pageId && (
+          <p className="note sidebar-note fade-in" role="status">
+            {trashNote}
+          </p>
+        )}
         <div className="sidebar-foot">
           <NavLink to={`/s/${space.key}/settings`} className="sidebar-foot-link">
             <Settings size={15} aria-hidden="true" /> Space settings

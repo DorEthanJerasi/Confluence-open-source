@@ -14,6 +14,7 @@ import { ExportMenu } from '../export/ExportMenu';
 import { PageSaver } from '../editor/saver';
 import { HistoryPanel, VersionPreview, versionsKey } from '../history/HistoryPanel';
 import { PageLabels } from '../labels/PageLabels';
+import { docText, LockButton, LockedOutNote, LockNote, type LockedOut } from '../locks/LockControls';
 import { SaveAsTemplateDialog } from '../templates/SaveAsTemplate';
 import { timeAgo } from '../time';
 import { pageTitle } from '../tree';
@@ -43,8 +44,9 @@ function TitleEditor({ page, editable, saver }: { page: Page; editable: boolean;
     try {
       await saver.save({ title });
     } catch (err) {
-      // A conflict is shown once, above the body, with a Reload button.
-      if (!(err instanceof ApiFailure && err.status === 409)) setError(err);
+      // A conflict is shown once, above the body, with a Reload button; a lock
+      // (423) turns the page read-only and keeps the text in a note instead.
+      if (!(err instanceof ApiFailure && (err.status === 409 || err.status === 423))) setError(err);
     } finally {
       setSaving(false);
     }
@@ -181,7 +183,10 @@ export function PageScreen() {
 
 function PageView({ page }: { page: Page }) {
   const qc = useQueryClient();
-  const { space, items, canEdit, newPage, deletePage } = useSpace();
+  const { space, items, canEdit, newPage, deletePage, trashNote, clearTrashNote } = useSpace();
+  // A locked page is read-only for everyone, the locker included (done-check 17).
+  const locked = page.lock !== null;
+  const editable = canEdit && !locked;
   const [generation, setGeneration] = useState(0);
   // One side panel at a time: History or Comments.
   const [panel, setPanel] = useState<'history' | 'comments' | null>(null);
@@ -292,6 +297,37 @@ function PageView({ page }: { page: Page }) {
   }, [canEdit, editor, generation]);
   const doneComposing = useCallback(() => setComposeBlock(null), []);
 
+  // Lock / Unlock (editors and up). Typed text is saved first, so locking
+  // never throws away the locker's own last words.
+  const [lockBusy, setLockBusy] = useState(false);
+  async function toggleLock() {
+    if (lockBusy) return;
+    setLockBusy(true);
+    setHeadNote(null);
+    try {
+      if (!locked) {
+        await flushEdits();
+        const { lock } = await api.setLock(page.id, true);
+        qc.setQueryData<{ page: Page }>(['page', page.id], (old) => (old ? { page: { ...old.page, lock } } : old));
+      } else {
+        await api.setLock(page.id, false);
+        // A fresh saver and the newest page, so editing starts from what is stored.
+        await reload();
+      }
+    } catch {
+      setHeadNote(locked ? 'Couldn’t unlock this page. Try again in a moment.' : 'Couldn’t lock this page. Try again in a moment.');
+    } finally {
+      setLockBusy(false);
+    }
+  }
+
+  // Someone else locked the page while this person was writing: their save
+  // got a 423. Stop the editor at once, keep what was not saved in a note
+  // with Copy, then load the page again (now read-only, with "Locked by").
+  const [lockedOut, setLockedOut] = useState<LockedOut | null>(null);
+  const editorRef = useRef<Editor | null>(null);
+  editorRef.current = editor;
+
   // One saver per page load; Reload after a conflict starts a fresh one.
   const saver = useMemo(
     () =>
@@ -323,6 +359,29 @@ function PageView({ page }: { page: Page }) {
     await qc.fetchQuery({ queryKey: ['page', page.id], queryFn: () => api.page(page.id), staleTime: 0 });
     setGeneration((g) => g + 1);
   }
+
+  useEffect(() => {
+    let handled = false;
+    return saver.subscribe(() => {
+      if (saver.state !== 'locked' || handled) return;
+      handled = true;
+      const ed = editorRef.current;
+      const live = ed && !ed.isDestroyed && ed.isEditable ? ed : null;
+      // The editor holds the newest text, even what was typed after the refused save.
+      const doc = live ? (live.getJSON() as Page['doc']) : saver.unsaved?.doc;
+      live?.setEditable(false);
+      const unsaved = saver.unsaved;
+      const out: LockedOut = {
+        ...(unsaved?.title !== undefined ? { title: unsaved.title } : {}),
+        ...(unsaved?.doc !== undefined && doc ? { text: docText(doc) } : {}),
+      };
+      if (out.title !== undefined || out.text) setLockedOut(out);
+      reload().catch(() => {
+        // The page stays as it is; the next try shows the lock or an error.
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saver]);
 
   async function afterRestore() {
     await reload();
@@ -365,7 +424,7 @@ function PageView({ page }: { page: Page }) {
 
       <div className="page-head page-head-top">
         <div className="grow">
-          <TitleEditor key={generation} page={page} editable={canEdit} saver={saver} />
+          <TitleEditor key={generation} page={page} editable={editable} saver={saver} />
           <p className="meta muted">
             {page.updatedBy ? `Edited by ${page.updatedBy.name} · ` : ''}
             {timeAgo(page.updatedAt)}
@@ -376,12 +435,14 @@ function PageView({ page }: { page: Page }) {
               </>
             )}
           </p>
+          <LockNote lock={page.lock} />
           <PageLabels page={page} spaceKey={space.key} canEdit={canEdit} />
         </div>
         <div className="row">
           <FavouriteButton page={page} onFailed={starFailed} />
           <FollowButton page={page} onFailed={followFailed} />
           <ExportMenu page={page} onNote={setExportNote} />
+          {canEdit && <LockButton locked={locked} busy={lockBusy} onToggle={toggleLock} />}
           <button
             className={`btn btn-quiet${historyOpen ? ' is-on' : ''}`}
             onClick={() => (historyOpen && !panelClosing ? closePanel() : openPanel('history'))}
@@ -421,9 +482,22 @@ function PageView({ page }: { page: Page }) {
               <button className="btn btn-quiet" onClick={() => newPage(page.id)}>
                 <Plus size={16} aria-hidden="true" /> Sub-page
               </button>
-              <button className="icon-btn" onClick={() => deletePage(page.id)} aria-label="Delete page" title="Delete page">
-                <Trash2 size={17} />
+              {/* Locked: still focusable, so the reason can be found by keyboard and read out. */}
+              <button
+                className="icon-btn"
+                onClick={() => !locked && deletePage(page.id)}
+                aria-label="Delete page"
+                aria-disabled={locked || undefined}
+                aria-describedby={locked ? 'lock-trash-hint' : undefined}
+                title={locked ? 'Unlock the page to move it to the trash' : 'Delete page'}
+              >
+                <Trash2 size={17} aria-hidden="true" />
               </button>
+              {locked && (
+                <span id="lock-trash-hint" className="sr-only">
+                  Unlock the page to move it to the trash
+                </span>
+              )}
             </>
           )}
         </div>
@@ -442,6 +516,15 @@ function PageView({ page }: { page: Page }) {
           </button>
         </div>
       )}
+      {trashNote && (
+        <div className="note export-note fade-in" role="status">
+          <span>{trashNote}</span>
+          <button className="icon-btn icon-btn-sm" onClick={clearTrashNote} aria-label="Dismiss" title="Dismiss">
+            <X size={14} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+      {lockedOut && <LockedOutNote out={lockedOut} onDismiss={() => setLockedOut(null)} />}
       {templateSaved && (
         <p className="note template-saved fade-in" role="status">
           Saved as template “{templateSaved}”. It is in the picker for new pages in this space.
@@ -497,20 +580,23 @@ function PageView({ page }: { page: Page }) {
           <VersionPreview
             page={page}
             version={viewing}
-            canRestore={canEdit}
+            canRestore={editable}
+            lockedHint={canEdit && locked}
             saver={saver}
             onClose={() => setViewing(null)}
             onRestored={afterRestore}
             onReload={reload}
           />
-        ) : !canEdit && isEmptyDoc(page) ? (
+        ) : !editable && isEmptyDoc(page) ? (
           <p className="muted">This page has no content yet.</p>
         ) : (
           <PageEditor
-            key={`${page.id}:${generation}`}
+            // Locking or unlocking mounts a fresh editor: switching one in place
+            // would make React remove the bubble menus Tippy has moved away.
+            key={`${page.id}:${generation}:${editable ? 'edit' : 'read'}`}
             page={page}
             spaceKey={space.key}
-            editable={canEdit}
+            editable={editable}
             saver={saver}
             onReload={reload}
             onEditor={setEditor}

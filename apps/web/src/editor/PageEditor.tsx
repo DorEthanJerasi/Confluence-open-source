@@ -26,7 +26,13 @@ export function useSaveState(saver: PageSaver): SaveState {
 export function SaveStatus({ saver }: { saver: PageSaver }) {
   const state = useSaveState(saver);
   const label =
-    state === 'pending' || state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : state === 'error' ? 'Not saved' : '';
+    state === 'pending' || state === 'saving'
+      ? 'Saving…'
+      : state === 'saved'
+        ? 'Saved'
+        : state === 'error' || state === 'locked'
+          ? 'Not saved'
+          : '';
   return (
     <span className={`save-status save-${state}`} role="status" aria-live="polite">
       {label}

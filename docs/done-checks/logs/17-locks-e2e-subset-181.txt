@@ -1,0 +1,30 @@
+Item #181 e2e subset (editor, editor-conflict, history, trash, viewer, tasks), 2026-11-13T01:08:47+02:00, load at start: 10.76 12.82 12.85
+
+> test:e2e
+> node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && node e2e/ensure-browser.mjs && cd e2e && PLAYWRIGHT_BROWSERS_PATH=0 playwright test editor editor-conflict history trash viewer tasks
+
+build: packages/shared is up to date, skipped
+build: packages/editor-schema is up to date, skipped
+build: apps/web is up to date, skipped
+build: apps/server is up to date, skipped
+e2e: Chromium already installed, skipped download
+e2e: set-up took 0.8s (copy cluster 0.2s, postgres start 0.1s, create databases 0.4s, servers started 0.1s)
+
+Running 11 tests using 4 workers
+
+  ✓   1 [chromium] › tests/editor.spec.ts:33:3 › editor › type, save, reload; the slash menu has no animation with reduced motion (8.8s)
+  ✓   4 [chromium] › tests/editor-conflict.spec.ts:16:3 › editor save conflict › two tabs: second save gets 409 note and keeps text (9.6s)
+  ✓   2 [chromium] › tests/history.spec.ts:35:3 › page history › two editors each save a version, history lists both names, and the earlier one opens read-only with the change marked (10.5s)
+  ✓   3 [chromium] › tests/tasks.spec.ts:62:3 › task lists › an editor gives a task a person and a due date; that person ticks it in My tasks and the page shows it ticked (dark mode too) (14.4s)
+  ✓   8 [chromium] › tests/tasks.spec.ts:134:3 › task lists › a viewer sees their overdue task in My tasks with the box disabled, and its chips on the page read-only (4.1s)
+  ✓   6 [chromium] › tests/trash.spec.ts:29:3 › trash › an editor deletes a page with a sub-page from the tree and restores it from Trash to the same address (dark mode too) (10.3s)
+  ✓   7 [chromium] › tests/history.spec.ts:71:3 › page history › restoring the old version puts its text back, survives a reload, and typing after it saves with no conflict note (9.5s)
+  ✓   9 [chromium] › tests/viewer.spec.ts:64:3 › a viewer › a viewer sees the page, its image, caption, file, video, players and link cards, with nothing editable and no upload control (5.7s)
+  ✓  10 [chromium] › tests/trash.spec.ts:94:3 › trash › a space admin empties the trash after a confirm; a viewer has no Trash link and cannot open it (5.9s)
+  ✓   5 [chromium] › tests/editor.spec.ts:58:3 › editor › slash filter, every block, code highlight, table toolbar, markdown shortcuts (20.9s)
+  ✓  11 [chromium] › tests/viewer.spec.ts:159:3 › a viewer › a viewer exports a page with its sub-page as a PDF and as a Markdown zip (5.2s)
+
+  11 passed (45.2s)
+SYNCHRONOUS TERMINATION NOTICE: When explicitly exiting the process via process.exit or via a parent process, asynchronous tasks in your exitHooks will not run. Either remove these tasks, use gracefulExit() instead of process.exit(), or ensure your parent process sends a SIGINT to the process running this code.
+exit=0
+load at end: 13.46 13.19 12.97

@@ -1,11 +1,13 @@
 // The one client-side write path for a page (ARCHITECTURE.md §3, rule 5).
 // Title and body changes go through the same queue, so they share one
 // version number and never race each other. A stale version (409) stops
-// the queue and keeps the unsaved change until the user reloads.
+// the queue and keeps the unsaved change until the user reloads. A locked
+// page (423, done-check 17) stops it the same way: the page then turns
+// read-only and shows the unsaved text so it can be copied.
 import type { Doc } from '@stillwater/shared';
 import { api, ApiFailure } from '../api';
 
-export type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'conflict' | 'error';
+export type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'conflict' | 'locked' | 'error';
 type Change = { title?: string; doc?: Doc };
 
 export class PageSaver {
@@ -34,7 +36,7 @@ export class PageSaver {
 
   /** Mark that a change is coming (e.g. during the autosave debounce). */
   markPending() {
-    if (this.state !== 'conflict') this.set('pending');
+    if (this.state !== 'conflict' && this.state !== 'locked') this.set('pending');
   }
 
   /** The change not yet stored, if any (kept after a conflict so nothing is lost). */
@@ -51,6 +53,7 @@ export class PageSaver {
   save(change: Change): Promise<void> {
     this.pending = { ...this.pending, ...change };
     if (this.state === 'conflict') return Promise.reject(new ApiFailure(409, 'stale_version', 'This page was changed elsewhere.'));
+    if (this.state === 'locked') return Promise.reject(new ApiFailure(423, 'page_locked', 'This page is locked.'));
     this.running ??= this.drain().finally(() => (this.running = null));
     return this.running;
   }
@@ -67,8 +70,8 @@ export class PageSaver {
       } catch (err) {
         // Keep the change, merged under anything typed since, so it is not lost.
         this.pending = { ...change, ...(this.pending ?? {}) };
-        const conflict = err instanceof ApiFailure && err.status === 409;
-        this.set(conflict ? 'conflict' : 'error', err);
+        const status = err instanceof ApiFailure ? err.status : 0;
+        this.set(status === 409 ? 'conflict' : status === 423 ? 'locked' : 'error', err);
         throw err;
       }
     }

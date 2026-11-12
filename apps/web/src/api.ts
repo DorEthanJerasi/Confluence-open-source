@@ -24,6 +24,7 @@ import type {
   PageVersion,
   PageVersionList,
   PageLabelsReply,
+  PageLockReply,
   RecentPage,
   Role,
   SearchResult,
@@ -215,6 +216,8 @@ export const api = {
     request<null>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/favourite`),
   /** Follow (on) or unfollow a page (viewer and up). Idempotent both ways; 404 if they cannot read it. */
   setFollow: (pageId: string, on: boolean) => request<FollowReply>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/follow`),
+  /** Lock or unlock a page (editor and up). Answers the lock state now; doing it twice is harmless. */
+  setLock: (pageId: string, on: boolean) => request<PageLockReply>('POST', `/api/pages/${enc(pageId)}/${on ? 'lock' : 'unlock'}`),
   exportUrl,
   /** The same checks as the export (404, 413), no file: resolves when the download may start. */
   checkExport: (pageId: string, format: ExportFormat, children: boolean) =>
