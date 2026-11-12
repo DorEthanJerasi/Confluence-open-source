@@ -497,6 +497,12 @@ take **at most 6 s** of test time in Playwright's per-test output.
       not count as the lead's clean run (see the lead notes at the end). This
       box keeps its tick from the tester's #164 runs.
 
+      Lead's run (item #168, Node 22), added to this record: exit 0, 26
+      passed, 149.65 s, load 5.05, 7.02, 10.78 at the start and 18.85,
+      11.33, 11.78 at the end. **Mentions test 7.1 s, over the cap.** Every
+      test was 1.5 to 2.5 times slower than in the clean runs, so again it
+      does not count as the lead's clean run (see the lead notes at the end).
+
 ---
 
 ## Hand check (lead, in a browser, both themes)
@@ -638,3 +644,26 @@ take **at most 6 s** of test time in Playwright's per-test output.
     the run. That is a change to the item's rule, so I am putting it to the
     team rather than doing it on my own. Export still waits on this
     sign-off.
+- Lead run (item #168, 2026-11-12): **still not signed off.** The start rule
+  was met, but the mentions test went over its 6 s cap, so the run does not
+  count. Under this item's rule there is one try, and I did not run again.
+  - How: Node v22.11.0. I started waiting at 17:26:33 (load 10.05, 14.91,
+    18.88). At 18:22:39 the 1-minute and 5-minute loads were both under 10
+    (**5.05, 7.02**, 10.78), and I ran `/usr/bin/time npm run test:e2e` once.
+    End 18:25:08, load **18.85, 11.33**, 11.78. Raw log, unedited:
+    `docs/done-checks/logs/15-mentions-lead-168.txt`.
+  - Result: **exit 0, 26 passed**, no retries, no skips. Wall time **149.65 s**
+    (2:29.65). **The mentions test took 7.1 s, over the 6 s cap.**
+  - Why I think it was slow: the 1-minute load went from 5 to 19 during the
+    2.5-minute run. This run used about 0.75 of a CPU (113 CPU-seconds in
+    150 s), so it did not cause that rise; something outside this workspace
+    did. Every test slowed by about the same amount, compared with the
+    tester's baseline (#157) and #164 runs: viewer 4.2 → 11.1 s, labels
+    4.5 → 7.4 s, video-links 12.9 → 29.2 s, wiki basics 9.6 → 22.4 s (both
+    tests), and mentions 3.5–4.2 → 7.1 s. Mentions is not the outlier.
+  - What this shows: low load at the start does not keep the run clean,
+    because the outside load can rise during it. Two lead runs in a row have
+    passed with every test, and both went over the cap only while the whole
+    suite was running slow. Whether to keep waiting for a quiet run or to
+    change how a slow run is judged is a decision for the team, not for me
+    alone. Export still waits on this sign-off.
