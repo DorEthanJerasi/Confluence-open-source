@@ -25,6 +25,7 @@ import { trashRoutes } from './routes/trash.js';
 import { taskRoutes } from './routes/tasks.js';
 import { labelRoutes } from './routes/labels.js';
 import { notificationRoutes, pageFollowRoutes } from './routes/notifications.js';
+import { exportRoutes, type ExportRouteOptions } from './routes/export.js';
 import { startTrashSweep } from './trash/trash.js';
 import { createProvider, guardProvider, type AiProvider } from './ai/provider.js';
 import type { SafeFetchOptions } from './embeds/safeFetch.js';
@@ -52,6 +53,8 @@ export interface BuildOptions {
    * call purgeExpired with a chosen time.
    */
   trashSweep?: boolean;
+  /** Export settings; tests lower the limits and turn off PDF compression. */
+  exportOptions?: ExportRouteOptions;
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -107,6 +110,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   await app.register(pagePersonalRoutes, { prefix: '/api/pages' });
   await app.register(meRoutes, { prefix: '/api/me' });
   await app.register(pageFollowRoutes, { prefix: '/api/pages' });
+  await app.register(exportRoutes, { prefix: '/api/pages', ...opts.exportOptions });
   await app.register(notificationRoutes, { prefix: '/api/me/notifications' });
   await app.register(attachmentRoutes, { prefix: '/api' });
   await app.register(linkPreviewRoutes, { prefix: '/api', fetchOptions: opts.linkPreviewFetch });

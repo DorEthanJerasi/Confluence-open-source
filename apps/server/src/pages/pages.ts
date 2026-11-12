@@ -158,6 +158,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
       favourite: sql<boolean>`exists (select 1 from ${pageFavourites} where ${pageFavourites.userId} = ${user.id} and ${pageFavourites.pageId} = ${pages.id})`,
       labels: labelsJson(pages.id),
       following: followingSql(user.id, pages.id),
+      childCount: sql<number>`(select count(*)::int from pages c where c.parent_id = ${pages.id} and c.deleted_at is null)`,
     })
     .from(pages)
     .innerJoin(spaces, eq(spaces.id, pages.spaceId))
@@ -181,6 +182,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
     favourite: row.favourite,
     labels: row.labels,
     following: row.following,
+    childCount: Number(row.childCount),
   };
 }
 

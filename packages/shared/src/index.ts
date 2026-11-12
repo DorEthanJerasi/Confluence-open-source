@@ -164,7 +164,27 @@ export interface Page {
   labels: Label[];
   /** Whether the person asking follows this page (done-check 15). */
   following: boolean;
+  /** How many live (not trashed) pages sit directly under this one (done-check 16). */
+  childCount: number;
 }
+
+// ---------- Export (docs/done-checks/16-export.md) ----------
+
+export const EXPORT_FORMATS = ['md', 'pdf'] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+
+/** GET /api/pages/:id/export?format=md|pdf&children=0|1 (children defaults to 0). */
+export const exportQuery = z
+  .object({
+    format: z.enum(EXPORT_FORMATS, { message: 'format must be md or pdf' }),
+    children: z.enum(['0', '1'], { message: 'children must be 0 or 1' }).default('0'),
+  })
+  .transform((q) => ({ format: q.format, children: q.children === '1' }));
+export type ExportQuery = z.infer<typeof exportQuery>;
+
+/** The most pages and file bytes one export may hold. Above that the server answers 413. */
+export const EXPORT_MAX_PAGES = 200;
+export const EXPORT_MAX_FILE_BYTES = 100 * 1024 * 1024;
 
 // ---------- Page history ----------
 

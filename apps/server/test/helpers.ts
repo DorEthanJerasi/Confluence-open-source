@@ -16,7 +16,7 @@ export interface TestCtx {
 
 export async function setupApp(
   env: Record<string, string> = {},
-  extra: Pick<BuildOptions, 'linkPreviewFetch' | 'aiProvider' | 'trashSweep'> = {},
+  extra: Pick<BuildOptions, 'linkPreviewFetch' | 'aiProvider' | 'trashSweep' | 'exportOptions'> = {},
 ): Promise<TestCtx> {
   const databaseUrl = inject('databaseUrl');
   await runMigrations(databaseUrl);

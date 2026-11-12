@@ -53,6 +53,15 @@ files included, `TRASH_RETENTION_DAYS` days after it was deleted (default 30;
 once at start and then every hour. A value that is not a whole number of days,
 0 or more, stops the server with a message saying so.
 
+## Export
+
+Anyone who can read a page can download it, alone or with its sub-pages, as
+Markdown (a `.md` file, or a `.zip` with its files) or as a PDF. Nothing needs
+setting up: the PDF is made on the server with fonts shipped inside the app,
+and nothing is fetched from the internet. One export holds at most 200 pages
+and 100 MB of files. The PDF font covers Latin, Greek and Cyrillic; other
+scripts (for example Chinese or Japanese) show as blank boxes for now.
+
 ## AI features
 
 Set `ANTHROPIC_API_KEY` (in `.env`, or in the environment for install.sh).

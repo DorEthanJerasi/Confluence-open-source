@@ -233,6 +233,30 @@ What already exists (do not rebuild it):
 
 ---
 
+### Coder's note, item #170 (2026-11-12) — boxes above are for the lead to tick
+- Built: `apps/server/src/export/collect.ts` (walk, permission, files,
+  limits), `markdown.ts` (Markdown and zip), `pdf.ts` (PDF),
+  `apps/server/src/routes/export.ts`; `childCount` on `GET /api/pages/:id`;
+  `exportQuery`, `ExportFormat`, the two limits and `Page.childCount` in
+  `packages/shared`. `pdfmake` 0.3.14 and `fflate` 0.8.3 (both MIT) in
+  `apps/server` only, plus `@types/pdfmake` as a dev dependency.
+- pdfmake is told to fetch no URL at all and to read only its own Roboto
+  files. Code uses the PDF standard Courier font (built into every reader,
+  nothing to load); code with characters Courier lacks falls back to Roboto.
+  If an image cannot be drawn, the PDF is made again with images as named
+  lines, so one broken upload never fails the export.
+- Markdown choices the Decisions left open: a task's assignee and due date are
+  written ` — @Name, due YYYY-MM-DD`; a file is `[name](attachments/…) (size)`;
+  an uploaded video is `[Video: name](attachments/…)`, an address
+  `[Video](url)`; an unreadable video is "Video not available". Captions and
+  link-card descriptions are their own paragraph under the block.
+- Test settings: `buildApp({ exportOptions: { limits, pdfCompress } })`. The
+  tests read PDF text back through the fonts' ToUnicode maps (no new library).
+- `apps/server/test/export.test.ts`: 15 tests, all passing. `npm run check`
+  exit 0 on Node 22 (24 files, 431 tests, 117.6 s). `docker compose build`
+  not run by me (self-host engineer's box). INSTALL.md has an "Export" section
+  with the blank-box note.
+
 ## 16b — Screen
 
 ### Build
