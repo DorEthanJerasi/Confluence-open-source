@@ -6,8 +6,18 @@ a): **mentions, notifications and following**, then export to Markdown/PDF,
 then single-page locks. The keyboard fix the owner asked for first is done
 (#154, `7241b4060`). Mentions are done only when every box below is ticked,
 the work is committed and pushed (see the last lead box), and
-`npm run check` and `npm run test:e2e` pass with exit 0. Export does not start
-before that.
+`npm run check` and `npm run test:e2e` pass with exit 0.
+
+**When export may start (rule changed in item #165, 2026-11-12):** export
+starts once the lead has signed mentions off (see the end of this file). It
+does **not** wait for the push box. That box waits only on the owner giving
+a GitHub address and sign-in; the team cannot close it, and making every
+later feature wait on it stalled the build loop. Until the owner answers, the
+team keeps committing on `master` locally, and every feature's push box stays
+open and says it is waiting on the owner's GitHub address. This is the same
+rule the keyboard-fix item already used ("pushed if a GitHub address is
+set"). When the owner gives the address, everything committed so far is
+pushed at once and the open push boxes are ticked then.
 
 The work is split into **two items** so each one fits in a single run (big
 items have timed out before):
@@ -571,4 +581,30 @@ take **at most 6 s** of test time in Playwright's per-test output.
   2. **Pushed to GitHub**: the workspace has no GitHub remote (`git remote
      -v` is empty), so nothing can be pushed. The owner needs to give the
      GitHub address and credentials.
-  Export does not start until both are closed.
+  Export does not start until both are closed. (Superseded in item #165:
+  the push box no longer holds export back; see the rule at the top.)
+- Lead re-check (item #165, 2026-11-12): **still not signed off. One thing
+  is left: my own clean timed run.** Push is no longer a blocker for
+  sign-off. It stays open, waiting on the owner's GitHub address.
+  - What I checked: I read the #164 change to `e2e/tests/mentions.spec.ts`
+    (commit `c7a027a4a`) line by line. It does the same clicks and the same
+    `expect`s for the same people and page; set-up now overlaps, and three
+    end checks run together. It also adds one thing the Time box's note does
+    not mention: `test.use({ reducedMotion: 'reduce' })`. That is fine,
+    because the One test box asks for no motion and motion is checked in five
+    other spec files, but it is now written down here. The tester's table
+    adds up (middle run 68.28 s; mentions 3.5, 3.6 and 4.2 s).
+  - What I could not check: the tester's raw logs (`/tmp/e2e_run*.log`) are
+    gone. My own runs could not test anything. The machine was loaded by
+    processes outside this workspace (load 16.8 at the start, 32.3 at
+    the end), and the test servers did not answer within their 60 s start
+    limit (`e2e/workers.ts:33`). Full suite (`/usr/bin/time npm run
+    test:e2e`): exit 1, 441.5 s, 10 passed, 12 failed in 1–9 ms each with
+    "server never became healthy", the rest did not run. The mentions test did
+    not start. `mentions.spec.ts` alone: exit 1, 109 s, same error. Nothing
+    in them points at the mentions code. It is a machine-load failure, and
+    it still is not a pass.
+  - To sign off: one clean `/usr/bin/time npm run test:e2e` by the lead at
+    normal load (exit 0, 26 passed, mentions test ≤ 6 s), added to the table
+    above. Then this note becomes "signed off", with only the push box open,
+    and export can start under the new rule at the top.
