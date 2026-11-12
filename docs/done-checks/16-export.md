@@ -429,7 +429,7 @@ only a browser can.
       `/usr/bin/time npm run test:e2e` runs of the current 26-test suite and
       writes them here with load at the start and end, so the cost of the new
       test can be seen.
-- [ ] One test: a **viewer** opens a page that has one sub-page, opens Export,
+- [x] One test: a **viewer** opens a page that has one sub-page, opens Export,
       sees both choices, picks "PDF" with "This page and its 1 sub-pages",
       and gets a download whose name ends in `.pdf` and whose first bytes are
       `%PDF-`; then picks "Markdown" and gets a `.zip` that holds two `.md`
@@ -497,3 +497,25 @@ only a browser can.
       waiting on the owner; it does not hold back single-page locks (rule of
       item #165).
 - [ ] Lead sign-off written here. Single-page locks start only after it.
+
+### Tester, item #176 (2026-11-12): export browser test and timed runs
+- The test is in `e2e/tests/viewer.spec.ts` (second test of `a viewer`), not a
+  new file; `e2e/tests/` is back to 18 files. It passes alone (4.4 s) and in
+  full runs 1 and 3. The "One test" box is ticked.
+- Three timed `/usr/bin/time npm run test:e2e` runs, each started at load < 10:
+
+| Run | Result | Time | Load start -> end | Export test: time, rank | Middle (14th) test |
+|-----|--------|------|-------------------|-------------------------|--------------------|
+| 1 | 27 passed, exit 0 | 86.92 s | 9.93 -> 19.78 | 6.7 s, 9th of 27 | 7.6 s |
+| 2 | **2 failed**, 24 passed, exit 1 | 162.47 s | 9.95 -> 22.90 | 4.5 s, 5th of 25 | 8.4 s |
+| 3 | 27 passed, exit 0 | 109.48 s | 9.99 -> 19.11 | 7.3 s, 9th of 27 | 9.3 s |
+
+- Run 2's failures were not the export test: `embeds.spec.ts` image and file
+  test (42.6 s) and `editor-conflict.spec.ts` two-tabs test (32.6 s); load rose
+  to 22.9 during the run. Run 3 (109.48 s) is right at the checker's ~110 s
+  limit. The middle run by time is 109.48 s, over 95 s.
+- So the **full-suite box and the timing box stay open**: one run failed and
+  the middle run is not under 95 s. The export test was faster than the middle
+  test in every run, so it is not the cause; the suite as a whole is too slow
+  once the machine gets busy (my own run pushes load from 10 to ~20). Cutting
+  other tests or a decision on the limit is for the lead; I raised no limit.
