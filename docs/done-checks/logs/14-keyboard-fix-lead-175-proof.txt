@@ -1,0 +1,155 @@
+# Item #175: DocEndKey taken out of apps/web/src/editor/PageEditor.tsx, only embeds.spec.ts run. Expected: the new test fails.
+
+> test:e2e
+> node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && node e2e/ensure-browser.mjs && cd e2e && PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/embeds.spec.ts
+
+build: packages/shared is up to date, skipped
+build: packages/editor-schema is up to date, skipped
+build: apps/web
+
+> @stillwater/web@0.1.0 build
+> vite build
+
+vite v6.4.5 building for production...
+transforming...
+../../node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 2083 modules transformed.
+rendering chunks...
+dist/index.html                        0.88 kB
+dist/assets/index-CRis7iKf.css        63.09 kB
+dist/assets/TemplateDoc-BXBlFxxX.js    1.47 kB
+dist/assets/PageScreen-ChW8T0lW.js    44.30 kB
+dist/assets/index-DFQvBopl.js        393.59 kB
+dist/assets/PageEditor-CsBZQeZi.js   679.27 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4m 30s
+build: apps/server
+
+> @stillwater/server@0.1.0 build
+> tsc -p tsconfig.json
+
+e2e: Chromium already installed, skipped download
+e2e: set-up took 7.1s (copy cluster 0.4s, postgres start 6.0s, create databases 0.5s, servers started 0.1s)
+
+Running 2 tests using 1 worker
+
+{"level":40,"time":1794515047039,"pid":1673,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794515047052,"pid":1675,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794515047068,"pid":1679,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794515047317,"pid":1674,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+  ✓  1 [chromium] › tests/embeds.spec.ts:67:3 › image and file blocks › upload from slash menu, paste and drop; caption; file block (14.9s)
+  ✘  2 [chromium] › tests/embeds.spec.ts:128:3 › image and file blocks › Ctrl+End then Enter after a last-place card writes below it (16.6s)
+
+
+  1) [chromium] › tests/embeds.spec.ts:128:3 › image and file blocks › Ctrl+End then Enter after a last-place card writes below it 
+
+    Error: image stays in second place
+
+    expect(locator).toHaveClass(expected) failed
+
+    Locator: locator('.page-editor .ProseMirror').locator(':scope > *').nth(1)
+    Expected pattern: /\bnode-image\b/
+    Received string:  ""
+    Timeout: 10000ms
+
+    Call log:
+      - image stays in second place locator('.page-editor .ProseMirror').locator(':scope > *').nth(1) with timeout 10000ms
+      - waiting for locator('.page-editor .ProseMirror').locator(':scope > *').nth(1)
+        23 × locator resolved to <p data-block-id="3dd9d087-ff09-4fb7-8cad-c59e60f871fe">After the image</p>
+           - unexpected value ""
+
+
+      157 |       await expect(blocks, `${card.type}: one new block`).toHaveCount(3);
+      158 |       // In the editor each card is drawn by its own view, a wrapper with class node-<type>.
+    > 159 |       await expect(blocks.nth(1), `${card.type} stays in second place`).toHaveClass(new RegExp(`\\bnode-${card.type}\\b`));
+          |                                                                         ^
+      160 |       await expect(blocks.nth(2), `${card.type}: the new line is below the card`).toHaveText(`After the ${card.type}`);
+      161 |       await waitForFreshSave(page);
+      162 |       const now = await page.request.get(`/api/pages/${made.id}`);
+        at /home/mymind/mymind-projects/12-test5/e2e/tests/embeds.spec.ts:159:73
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/embeds-image-and-file-bloc-3d1f0--place-card-writes-below-it-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/embeds-image-and-file-bloc-3d1f0--place-card-writes-below-it-chromium/error-context.md
+
+  1 failed
+    [chromium] › tests/embeds.spec.ts:128:3 › image and file blocks › Ctrl+End then Enter after a last-place card writes below it 
+  1 passed (1.2m)
+SYNCHRONOUS TERMINATION NOTICE: When explicitly exiting the process via process.exit or via a parent process, asynchronous tasks in your exitHooks will not run. Either remove these tasks, use gracefulExit() instead of process.exit(), or ensure your parent process sends a SIGINT to the process running this code.
+
+# Fix put back (git checkout), embeds.spec.ts run again. Expected: both pass.
+
+> test:e2e
+> node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && node e2e/ensure-browser.mjs && cd e2e && PLAYWRIGHT_BROWSERS_PATH=0 playwright test tests/embeds.spec.ts
+
+build: packages/shared is up to date, skipped
+build: packages/editor-schema is up to date, skipped
+build: apps/web
+
+> @stillwater/web@0.1.0 build
+> vite build
+
+vite v6.4.5 building for production...
+transforming...
+../../node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 2084 modules transformed.
+rendering chunks...
+dist/index.html                        0.88 kB
+dist/assets/index-CRis7iKf.css        63.09 kB
+dist/assets/TemplateDoc-Ff69cux7.js    1.47 kB
+dist/assets/PageScreen-DV2Xn8ui.js    44.30 kB
+dist/assets/index-DJOU-Pob.js        393.59 kB
+dist/assets/PageEditor-CIHXCGKw.js   679.66 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 57.31s
+build: apps/server
+
+> @stillwater/server@0.1.0 build
+> tsc -p tsconfig.json
+
+e2e: Chromium already installed, skipped download
+e2e: set-up took 0.7s (copy cluster 0.2s, postgres start 0.1s, create databases 0.3s, servers started 0.0s)
+
+Running 2 tests using 1 worker
+
+{"level":40,"time":1794515512650,"pid":2011,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794515512726,"pid":2012,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794515512816,"pid":2019,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794515514576,"pid":2010,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+  ✓  1 [chromium] › tests/embeds.spec.ts:67:3 › image and file blocks › upload from slash menu, paste and drop; caption; file block (11.5s)
+  ✓  2 [chromium] › tests/embeds.spec.ts:128:3 › image and file blocks › Ctrl+End then Enter after a last-place card writes below it (6.8s)
+
+  2 passed (35.0s)
+SYNCHRONOUS TERMINATION NOTICE: When explicitly exiting the process via process.exit or via a parent process, asynchronous tasks in your exitHooks will not run. Either remove these tasks, use gracefulExit() instead of process.exit(), or ensure your parent process sends a SIGINT to the process running this code.

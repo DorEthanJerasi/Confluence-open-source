@@ -132,6 +132,14 @@ scratch.
   starts a new line under it. Proven by the e2e test "Ctrl+End then Enter
   after a last-place card writes below it" in `e2e/tests/embeds.spec.ts`
   (image, video and link card), which failed before the fix.
+  **Lead check (item #175), accepted:** read the 7241b4060 diff (a
+  selection-only key handler, no change to the stored document, only in
+  the editable editor). `npm run check` exit 0 (432 tests) and
+  `npm run test:e2e` exit 0 (26 passed). With `DocEndKey` taken out of
+  `PageEditor.tsx` the new test fails ("image stays in second place": the
+  new line went above the image); with it put back it passes. Logs:
+  `docs/done-checks/logs/14-keyboard-fix-lead-175-*.txt`. Not pushed: the
+  workspace still has no GitHub address.
 - In full-page screenshots the left sidebar's background ends at the window
   height. On a real screen the sidebar stays put while the page scrolls, so
   nobody sees this.
