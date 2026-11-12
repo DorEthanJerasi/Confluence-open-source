@@ -489,6 +489,14 @@ take **at most 6 s** of test time in Playwright's per-test output.
       logs at `/tmp/e2e_run1.log`, `/tmp/e2e_run2.log`, `/tmp/e2e_run3.log` on
       this machine (not committed; outside the workspace's git repo).
 
+      Lead's run (item #167, Node 22), added to this record: exit 0, 26
+      passed, 175.94 s, load 9.68 at the start and 19.45 at the end
+      (1-minute). The 5- and 15-minute loads were 17 to 21 the whole time.
+      **Mentions test 8.8 s, over the cap.** The whole suite ran about 2.5
+      times slower than usual, so I read this as machine load. It still does
+      not count as the lead's clean run (see the lead notes at the end). This
+      box keeps its tick from the tester's #164 runs.
+
 ---
 
 ## Hand check (lead, in a browser, both themes)
@@ -608,3 +616,25 @@ take **at most 6 s** of test time in Playwright's per-test output.
     normal load (exit 0, 26 passed, mentions test ≤ 6 s), added to the table
     above. Then this note becomes "signed off", with only the push box open,
     and export can start under the new rule at the top.
+- Lead run (item #167, 2026-11-12): **still not signed off.** The suite
+  passed, but the mentions test went over its 6 s cap, so the run does not
+  count.
+  - How: Node v22.11.0. I waited from 17:00:08 (load 29.67, 23.75, 19.79)
+    until the 1-minute load fell under 10, then ran `/usr/bin/time npm run
+    test:e2e` once. Start 17:20:54, load **9.68**, 17.31, 20.76. End
+    17:23:51, load **19.45**, 18.20, 20.48. Raw log, unedited:
+    `docs/done-checks/logs/15-mentions-lead-167.txt`.
+  - Result: **exit 0, 26 passed**, no retries, no skips. Wall time **175.94 s**
+    (2:55.94). **The mentions test took 8.8 s, over the 6 s cap.**
+  - Why I think it was slow: the whole suite ran about 2.5 times slower than
+    the clean runs above (65–84 s), not just mentions. For example, the
+    editor test took 26.1 s and video-links 23.0 s. The 1-minute load dipped
+    under 10 for a moment, but the 5- and 15-minute loads were still 17 to 21,
+    and the 1-minute load was back at 19 by the end. The busy machine is
+    outside this workspace. Nothing in the log points at the mentions code.
+    Still, 8.8 s is over the cap, and I am not re-running until I get a pass.
+  - What would make the next try count: start only when the 5-minute load is
+    also under 10, not just the 1-minute load, so a short dip does not start
+    the run. That is a change to the item's rule, so I am putting it to the
+    team rather than doing it on my own. Export still waits on this
+    sign-off.
