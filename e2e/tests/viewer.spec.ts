@@ -6,6 +6,8 @@
 // made through the API here, since embeds.spec.ts and video-links.spec.ts
 // make the same blocks on screen. No test touches the internet: the
 // YouTube/Vimeo player requests are blocked.
+import { readFile } from 'node:fs/promises';
+import { unzipSync } from 'fflate';
 import { test, expect, type Page } from '../fixtures';
 import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { afterNextPaint } from '../paint';
@@ -46,6 +48,14 @@ async function paste(page: Page, item: { file?: { name: string; type: string; ba
     if (item.text) dt.setData('text/plain', item.text);
     return el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
   }, item);
+}
+
+async function pick(page: Page, format: 'PDF' | 'Markdown') {
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: format, exact: true }).click();
+  const download = await downloading;
+  const path = await download.path();
+  return { name: download.suggestedFilename(), bytes: await readFile(path) };
 }
 
 test.describe.serial('a viewer', () => {
@@ -144,5 +154,34 @@ test.describe.serial('a viewer', () => {
       multipart: { file: { name: 'x.png', mimeType: 'image/png', buffer: PNG } },
     });
     expect(sneak.status()).toBe(403);
+  });
+
+  test('a viewer exports a page with its sub-page as a PDF and as a Markdown zip', async ({ page }) => {
+    await page.context().clearCookies();
+    await logIn(page, admin, '/');
+    await createSpace(page, { name: 'Garden', key: 'garden', defaultRole: 'viewer' });
+    const root = await createPage(page, 'garden', { title: 'Field notes', text: 'Watering rota.' });
+    await createPage(page, 'garden', { title: 'Greenhouse', text: 'Vents open at nine.', parentId: root.id });
+    await page.context().clearCookies();
+    await logIn(page, viewer, root.path);
+    await page.getByRole('button', { name: 'Export' }).click();
+    const menu = page.getByRole('menu', { name: 'Export this page' });
+    await expect(menu.getByRole('menuitemradio', { name: 'This page only' })).toBeVisible();
+    await menu.getByRole('menuitemradio', { name: 'This page and its 1 sub-page' }).click();
+    await expect(menu.getByRole('menuitemradio', { name: 'This page and its 1 sub-page' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+
+    const pdf = await pick(page, 'PDF');
+    expect(pdf.name).toMatch(/\.pdf$/);
+    expect(pdf.bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+    await page.getByRole('button', { name: 'Export' }).click();
+    await page.getByRole('menuitemradio', { name: 'This page and its 1 sub-page' }).click();
+    const md = await pick(page, 'Markdown');
+    expect(md.name).toMatch(/\.zip$/);
+    const files = Object.keys(unzipSync(new Uint8Array(md.bytes))).filter((n) => n.endsWith('.md'));
+    expect(files).toHaveLength(2);
   });
 });
