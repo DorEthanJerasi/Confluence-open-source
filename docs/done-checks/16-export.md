@@ -185,6 +185,26 @@ What already exists (do not rebuild it):
       dependency, lock file updated; no other package.json touched). **Open
       only for** the self-host engineer's `docker compose build` run, which
       nobody has made yet.*
+      *Self-host engineer, item #172 (2026-11-12): **`docker compose build`
+      and `scripts/smoke.sh` could NOT be run, so this box stays open.**
+      `docker compose build` says "Cannot connect to the Docker daemon at
+      unix:///var/run/docker.sock" (the socket is cut off inside this
+      workspace's sandbox, as in every earlier round; `docker compose config
+      -q` exits 0). What I ran instead, so the owner or the lead's machine
+      has less to find: (1) the Dockerfile's prod-deps step copied exactly
+      (only server, shared and editor-schema package.json, `npm install
+      --omit=dev` from the committed lock file) installs `pdfmake` and
+      `fflate`, `require('pdfmake')`, `pdfmake/fonts/Roboto.js` and
+      `fflate` all load; (2) full `npm run build` exit 0; (3) the real built
+      server on a throwaway Postgres (`scripts/local-start.mjs`, migrations
+      run on start): `/health` ok; admin signs up, makes a space and a page,
+      adds a viewer; signed in as the **viewer**, `GET
+      /api/pages/:id/export?format=md` gave 200 text/markdown with
+      `# Export me / ## Hello / Plain **bold**`, `format=pdf` gave 200
+      application/pdf, 15270 bytes, first bytes `%PDF-1.3`; signed out, both
+      gave 401. Throwaway data removed. This is not the real image: the
+      Alpine image and `smoke.sh` still need one run where a Docker daemon
+      is reachable.*
 - [x] Shared types in `packages/shared/src/index.ts` for the export format
       and the new `childCount` on the page.
 - [x] The route and `childCount` as in Decisions (signed out → 401).
