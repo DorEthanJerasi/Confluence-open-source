@@ -8,6 +8,8 @@
 // mention, edit and follow rows of done-check 15 in that same transaction
 // (notifications/notifications.ts); those never write pages or page_versions,
 // so a save's version and history are the same with or without followers.
+// A locked page (done-check 17) is refused inside savePage's own update
+// statement, so restore and task ticks, which save through it, are too.
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { generateKeyBetween } from 'fractional-indexing';
 import { EMPTY_DOC, type Crumb, type Doc, type Page, type Role } from '@stillwater/shared';
@@ -20,6 +22,7 @@ import { docMentions, type DocTask } from '@stillwater/editor-schema';
 import { normalizeDoc } from './docText.js';
 import { labelsJson } from '../labels/labelSql.js';
 import { followingSql, onPageCreated, onPageSaved } from '../notifications/notifications.js';
+import { pageLocked, toLock } from './locks.js';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -159,6 +162,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
       labels: labelsJson(pages.id),
       following: followingSql(user.id, pages.id),
       childCount: sql<number>`(select count(*)::int from pages c where c.parent_id = ${pages.id} and c.deleted_at is null)`,
+      lockedByName: sql<string | null>`(select l.name from users l where l.id = ${pages.lockedBy})`,
     })
     .from(pages)
     .innerJoin(spaces, eq(spaces.id, pages.spaceId))
@@ -183,6 +187,7 @@ export async function getPageView(db: Db, user: SessionUser, pageId: string): Pr
     labels: row.labels,
     following: row.following,
     childCount: Number(row.childCount),
+    lock: toLock(p.lockedAt, p.lockedBy, row.lockedByName),
   };
 }
 
@@ -221,11 +226,19 @@ async function recordSnapshot(
   });
 }
 
+export interface SaveHooks {
+  /** Tests only: runs inside the transaction, just before the update statement. */
+  beforeUpdate?: () => Promise<void>;
+}
+
 /**
  * The single write path for a page's title and body. Optimistic concurrency:
  * the caller sends the version it started from; a stale one is refused with 409.
- * The history snapshot is written in the same transaction (see recordSnapshot);
- * a refused save writes nothing. `restoredFrom` is set only by restore.
+ * A locked page is refused with 423 by the update statement itself (`locked_at
+ * is null` beside the version check), never by a read before it, so a save
+ * that races a lock cannot slip through. The history snapshot is written in
+ * the same transaction (see recordSnapshot); a refused save writes nothing.
+ * `restoredFrom` is set only by restore.
  */
 export async function savePage(
   db: Db,
@@ -233,7 +246,7 @@ export async function savePage(
   change: { title?: string; doc?: Doc },
   baseVersion: number,
   userId: string,
-  opts: { restoredFrom?: number } = {},
+  opts: { restoredFrom?: number; hooks?: SaveHooks } = {},
 ): Promise<{ version: number }> {
   const body = change.doc !== undefined ? normalizeDoc(change.doc) : undefined;
   return db.transaction(async (tx) => {
@@ -248,6 +261,7 @@ export async function savePage(
         .for('update');
       if (old) before = docMentions(old.doc);
     }
+    await opts.hooks?.beforeUpdate?.();
     const [row] = await tx
       .update(pages)
       .set({
@@ -257,7 +271,7 @@ export async function savePage(
         updatedBy: userId,
         updatedAt: new Date(),
       })
-      .where(and(eq(pages.id, pageId), eq(pages.version, baseVersion), isNull(pages.deletedAt)))
+      .where(and(eq(pages.id, pageId), eq(pages.version, baseVersion), isNull(pages.deletedAt), isNull(pages.lockedAt)))
       .returning({ version: pages.version, title: pages.title, doc: pages.doc, updatedAt: pages.updatedAt, spaceId: pages.spaceId });
     if (row) {
       if (body) await replaceTasks(tx, pageId, row.spaceId, body.tasks);
@@ -273,11 +287,14 @@ export async function savePage(
       await onPageSaved(tx, { pageId, spaceId: row.spaceId, actorId: userId, before, after: body?.mentions ?? new Set() });
       return { version: row.version };
     }
+    // No row matched: gone (404), locked (423) or stale (409), in that order.
     const [current] = await tx
-      .select({ version: pages.version })
+      .select({ version: pages.version, lockedAt: pages.lockedAt, lockedByName: users.name })
       .from(pages)
+      .leftJoin(users, eq(users.id, pages.lockedBy))
       .where(and(eq(pages.id, pageId), isNull(pages.deletedAt)));
     if (!current) throw notFound('Page not found');
+    if (current.lockedAt) throw pageLocked(current.lockedByName);
     throw conflict('stale_version', `This page was changed by someone else (now version ${current.version}). Reload to get the latest.`);
   });
 }
@@ -336,7 +353,7 @@ export async function movePage(
  * already in the trash on their own are left as their own items. Touches no
  * document, version or history column.
  */
-export async function deletePage(db: Db, pageId: string, userId: string): Promise<number> {
+export async function deletePage(db: Db | Tx, pageId: string, userId: string): Promise<number> {
   const res = await db.execute(sql`
     with recursive sub as (
       select id from pages where id = ${pageId} and deleted_at is null

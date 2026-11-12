@@ -20,6 +20,7 @@ import { effectiveRole, requireSpaceByKey, requireSpaceRole, requireTrashedSpace
 import type { SessionUser } from '../auth/session.js';
 import { badRequest, notFound } from '../http.js';
 import { byPosition, deletePage, lockSpaceTree, requirePageRole, type Tx } from '../pages/pages.js';
+import { pageLocked, subPageLocked } from '../pages/locks.js';
 import type { FileStorage } from '../files/storage.js';
 import { env } from '../env.js';
 
@@ -58,10 +59,32 @@ const person = (id: string | null, name: string | null): Person | null => (id &&
 
 // ---- Pages ----
 
-/** Move a live page and its live sub-pages to the trash (editor and up). */
+/**
+ * Move a live page and its live sub-pages to the trash (editor and up).
+ * Refused with 423 when the page, or any live page under it, is locked
+ * (done-check 17); then nothing is trashed. The branch's rows are read FOR
+ * UPDATE in the same transaction as the trash, so a lock taken in between
+ * either is seen here or waits and then finds the page gone.
+ */
 export async function trashPage(db: Db, user: SessionUser, pageId: string): Promise<number> {
-  await requirePageRole(db, user, pageId, 'editor');
-  return deletePage(db, pageId, user.id);
+  const { space } = await requirePageRole(db, user, pageId, 'editor');
+  return db.transaction(async (tx) => {
+    await lockSpaceTree(tx, space.id);
+    const branch = await tx.execute<{ id: string; title: string; locked_at: Date | null; locked_by_name: string | null }>(sql`
+      with recursive sub as (
+        select id, 0 as depth from pages where id = ${pageId} and deleted_at is null
+        union all
+        select p.id, sub.depth + 1 from pages p join sub on p.parent_id = sub.id where p.deleted_at is null and sub.depth < 1000
+      )
+      select pg.id, pg.title, pg.locked_at, u.name as locked_by_name
+      from pages pg join sub on sub.id = pg.id left join users u on u.id = pg.locked_by
+      order by sub.depth, pg.position collate "C", pg.id
+      for update of pg`);
+    if (branch.rows.length === 0) throw notFound('Page not found');
+    const locked = branch.rows.find((r) => r.locked_at !== null);
+    if (locked) throw locked.id === pageId ? pageLocked(locked.locked_by_name) : subPageLocked(locked.title, locked.locked_by_name);
+    return deletePage(tx, pageId, user.id);
+  });
 }
 
 /**

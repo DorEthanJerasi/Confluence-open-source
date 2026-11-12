@@ -212,6 +212,29 @@ What already exists (do not rebuild it):
 - [ ] `npm run check` passes (this file is part of it), and the originality
       scan (c5) passes on the new code and texts.
 
+### Builder's notes (item #180, 2026-11-13)
+Boxes are left for the lead to tick. What is where:
+- Migration `apps/server/drizzle/0011_page_locks.sql` (made with
+  `drizzle-kit generate`, snapshot and journal updated);
+  `apps/server/src/pages/locks.ts` (`lockPage`, `unlockPage`, the 423
+  messages); the check in `savePage`'s update in `pages/pages.ts` (plus a
+  tests-only `hooks.beforeUpdate`); `trashPage` in `trash/trash.ts` reads the
+  branch `for update` and trashes in the same transaction; routes in
+  `routes/pages.ts`; `PageLock`, `PageLockReply` and `Page.lock` in
+  `packages/shared`.
+- **One change from the Decisions, for the lead to confirm.** "Both null or
+  both set" cannot hold together with `locked_by … on delete set null` and
+  "the page stays locked when the locker's row is gone": deleting that user
+  would break the check. The check is therefore `locked_by is null or
+  locked_at is not null` (no locker without a lock). Lock and unlock still
+  always set or clear both together.
+- `apps/server/test/locks.test.ts`: 11 tests, all pass on real Postgres.
+  With `locked_at is null` taken out of `savePage`'s update, the read-only
+  and race tests fail (checked by hand, then put back).
+- `npm run check`: all 7 steps ok, 443 server tests in 25 files, exit 0,
+  load about 19 at the start. Log:
+  `docs/done-checks/logs/17-locks-check-180.txt`.
+
 ---
 
 ## 17b — Screen

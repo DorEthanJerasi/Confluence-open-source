@@ -121,11 +121,20 @@ export const pages = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     deletedBy: uuid('deleted_by').references(() => users.id, { onDelete: 'set null' }),
     trashRootId: uuid('trash_root_id'),
+    // Page locks (docs/done-checks/17-locks.md). Lock and unlock set or clear
+    // both together. locked_by is never set without locked_at, but may become
+    // null on its own when that person's row is deleted: the page stays locked
+    // ("Locked"). While locked_at is set, savePage refuses every change to
+    // title and body (423). Written only by pages/locks.ts; trash, restore and
+    // the purges leave them as they are.
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    lockedBy: uuid('locked_by').references(() => users.id, { onDelete: 'set null' }),
   },
   (t) => [
     index('pages_space_parent_idx').on(t.spaceId, t.parentId, t.position),
     index('pages_search_idx').using('gin', t.search),
     index('pages_trash_idx').on(t.spaceId, t.trashRootId).where(sql`${t.deletedAt} is not null`),
+    check('pages_lock_check', sql`${t.lockedBy} is null or ${t.lockedAt} is not null`),
   ],
 );
 

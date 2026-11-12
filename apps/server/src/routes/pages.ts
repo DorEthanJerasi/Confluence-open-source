@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { movePageBody, restoreVersionBody, savePageBody, versionListQuery } from '@stillwater/shared';
+import { movePageBody, restoreVersionBody, savePageBody, versionListQuery, type PageLockReply } from '@stillwater/shared';
 import { requireUser } from '../auth/guard.js';
 import { HttpError, notFound, parse, uuidParam } from '../http.js';
 import { getVersion, listVersions, restoreVersion } from '../pages/history.js';
 import { getPageView, movePage, requirePageRole, savePage } from '../pages/pages.js';
+import { lockPage, unlockPage } from '../pages/locks.js';
 import { isTrashedForEditor, trashPage } from '../trash/trash.js';
 
 type IdParams = { Params: { id: string } };
@@ -58,6 +59,12 @@ export async function pageRoutes(app: FastifyInstance) {
     const deleted = await trashPage(db, requireUser(req), pageId(req.params.id));
     return { ok: true, deleted };
   });
+
+  // ---- Page locks (done-check 17): editor and up; no-op when already in that state. ----
+
+  app.post<IdParams>('/:id/lock', async (req): Promise<PageLockReply> => lockPage(db, requireUser(req), pageId(req.params.id)));
+
+  app.post<IdParams>('/:id/unlock', async (req): Promise<PageLockReply> => unlockPage(db, requireUser(req), pageId(req.params.id)));
 
   // ---- Page history (done-check 03, 3b). Every route goes through requirePageRole. ----
 

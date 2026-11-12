@@ -166,6 +166,24 @@ export interface Page {
   following: boolean;
   /** How many live (not trashed) pages sit directly under this one (done-check 16). */
   childCount: number;
+  /** Set while the page is locked: its title and body cannot be changed (done-check 17). */
+  lock: PageLock | null;
+}
+
+// ---------- Page locks (docs/done-checks/17-locks.md) ----------
+
+/**
+ * A page lock. `by` is null when the person who locked it no longer exists;
+ * the page stays locked. A lock never expires; any editor and up may unlock.
+ */
+export interface PageLock {
+  at: string;
+  by: { id: string; name: string } | null;
+}
+
+/** Reply of POST /api/pages/:id/lock and /unlock: the page's lock state now. */
+export interface PageLockReply {
+  lock: PageLock | null;
 }
 
 // ---------- Export (docs/done-checks/16-export.md) ----------
