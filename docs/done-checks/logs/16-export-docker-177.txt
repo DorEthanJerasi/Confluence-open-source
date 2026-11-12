@@ -1,0 +1,11 @@
+# item 177 2026-11-12T21:24:43Z load: 9.23 12.61 14.52
+## docker compose build
+ Image 12-test5-app Building 
+failed to update builder last activity time: open /home/mymind/.docker/buildx/activity/.tmp-default2642550786: read-only file system
+
+build rc=1
+## scripts/smoke.sh
+smoke: building and starting the stack
+unable to get image 'postgres:16-alpine': Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+smoke: tearing down
+smoke rc=1
