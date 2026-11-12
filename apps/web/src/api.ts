@@ -8,6 +8,7 @@ import type {
   Comment,
   CommentList,
   Doc,
+  ExportFormat,
   FavouritePage,
   FollowReply,
   LabelSuggestionList,
@@ -104,6 +105,11 @@ export interface TrashedSpace {
   deletedAt: string;
   deletedBy: TrashPerson | null;
   purgeAt: string | null;
+}
+
+/** The export download address (done-check 16b): a plain link, the sign-in cookie is enough. */
+function exportUrl(pageId: string, format: ExportFormat, children: boolean) {
+  return `/api/pages/${enc(pageId)}/export?format=${format}&children=${children ? 1 : 0}`;
 }
 
 export const api = {
@@ -209,6 +215,10 @@ export const api = {
     request<null>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/favourite`),
   /** Follow (on) or unfollow a page (viewer and up). Idempotent both ways; 404 if they cannot read it. */
   setFollow: (pageId: string, on: boolean) => request<FollowReply>(on ? 'PUT' : 'DELETE', `/api/pages/${enc(pageId)}/follow`),
+  exportUrl,
+  /** The same checks as the export (404, 413), no file: resolves when the download may start. */
+  checkExport: (pageId: string, format: ExportFormat, children: boolean) =>
+    get<null>(`${exportUrl(pageId, format, children)}&check=1`),
   /** Own notifications on pages they can read now, newest first, 30 a time; `before` = the last id shown. */
   notifications: (before?: string) =>
     get<NotificationList>(`/api/me/notifications${before ? `?before=${enc(before)}` : ''}`),

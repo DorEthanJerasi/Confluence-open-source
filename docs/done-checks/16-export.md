@@ -343,6 +343,51 @@ sign-in. That is right, but the hand check should click one to confirm it.
 - [ ] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
+### Coder's note, item #174 (2026-11-12) — Build boxes above are for the lead to tick
+- Built: `apps/web/src/export/ExportMenu.tsx` (button and menu), placed in
+  the page header right after Follow and the star
+  (`apps/web/src/screens/PageScreen.tsx`); `api.exportUrl` and
+  `api.checkExport` in `apps/web/src/api.ts`; styles at the end of the
+  Follow block in `apps/web/src/styles/app.css` (tokens only; the menu reuses
+  `.menu` and its existing soft fade, which the one reduced-motion rule in
+  `tokens.css` turns off).
+- **One small server addition, needed for the 413 box.** A plain link that
+  meets a 413 shows the browser's own failed download or the raw error, not
+  a quiet note. So picking a format first asks
+  `GET /api/pages/:id/export?…&check=1`: the same permission walk and both
+  limits as the real export, but no file byte read and nothing built; it
+  answers 204 (or the same 404 / 413 / 401). Only then the file comes
+  through a plain `<a download>` link, with the sign-in cookie; no script
+  holds the file. `checkExport` in `export/collect.ts` shares the walk with
+  `collectExport` (split into `planExport`), `check` added to `exportQuery`
+  in `packages/shared`. New server test in `export.test.ts` (now 16): 413
+  with the plain message, 204 with no body and no `content-disposition`,
+  404 for a non-member, 401 signed out, `check=2` is 400, and no file read.
+- Menu: "This page only" / "This page and its N sub-page(s)" as two
+  `menuitemradio` rows (shown only when `childCount` > 0, "This page only"
+  chosen by default), a separator, then "Markdown" and "PDF" as `menuitem`s.
+  Menu labelled "Export this page", groups "What to export" and "Download
+  as". Wording choice: **"1 sub-page"** singular, "2 sub-pages" plural (the
+  box text says "1 sub-pages"; the test can match `/This page and its 1
+  sub-page/`). Keyboard: Arrow down on the button opens it; opening puts
+  focus on the first item; arrows wrap, Home/End; Enter/Space picks;
+  Escape closes with focus back on the button; Tab or a click outside
+  closes. While the check runs the button reads "Preparing…".
+- Notes: a 413 shows the server's message as a quiet `.note` under the
+  header with a Dismiss button (stays until dismissed or the next export);
+  a 404 says the page can't be exported any more; anything else "Couldn't
+  prepare the export. Try again in a moment."
+- How I checked: a scratch Playwright spec (deleted, not committed) as a
+  **viewer**: menu shows both scopes; PDF with the sub-page → `.pdf`
+  starting `%PDF-`; Markdown by keyboard only → `.zip` with `field-notes.md`
+  and `field-notes/low-tide.md`; Escape returns focus; a faked 413 shows the
+  plain message, Dismiss removes it; a faked 500 shows the short note; a
+  page with no sub-pages has no scope rows and gives `Lone page.md`.
+  Screenshots in light and dark looked calm and soft. `npm run check` exit 0
+  (432 tests, export 16/16, ORIGINAL OK, contrast 58 pairs ok);
+  `npm run test:e2e` exit 0, 26 passed, 1.4 min (load 9.60 at start, 16.51
+  at end). The e2e export test itself is the tester's.
+
 ### Check that must exist and pass — e2e (Playwright)
 **Time cost of this feature's browser tests: at most one short test, in an
 existing file.** `e2e/tests/` already has 18 files, done-check 10's limit, so

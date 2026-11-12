@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
+import { Eye, FileText, History, LayoutTemplate, MessageSquare, Plus, Sparkles, Star, Trash2, X } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
 import type { Page } from '@stillwater/shared';
 import { SummaryCard, useAiEnabled } from '../ai/SummaryCard';
@@ -10,6 +10,7 @@ import { BlockMargin } from '../comments/BlockMargin';
 import { CommentsPanel } from '../comments/CommentsPanel';
 import { blockElement, commentsKey, openThreads, scrollToBlock } from '../comments/blocks';
 import { PageEditor, SaveStatus } from '../editor/PageEditor';
+import { ExportMenu } from '../export/ExportMenu';
 import { PageSaver } from '../editor/saver';
 import { HistoryPanel, VersionPreview, versionsKey } from '../history/HistoryPanel';
 import { PageLabels } from '../labels/PageLabels';
@@ -216,6 +217,9 @@ function PageView({ page }: { page: Page }) {
     (failed: boolean) => setHeadNote(failed ? 'Couldn’t change following for this page. Try again in a moment.' : null),
     [],
   );
+  // Why an export could not start (a 413's plain message, or a short note). It
+  // stays until dismissed or the next export, so a long message can be read.
+  const [exportNote, setExportNote] = useState<string | null>(null);
   // The confirmation fades on its own after a few seconds.
   useEffect(() => {
     if (!templateSaved) return;
@@ -377,6 +381,7 @@ function PageView({ page }: { page: Page }) {
         <div className="row">
           <FavouriteButton page={page} onFailed={starFailed} />
           <FollowButton page={page} onFailed={followFailed} />
+          <ExportMenu page={page} onNote={setExportNote} />
           <button
             className={`btn btn-quiet${historyOpen ? ' is-on' : ''}`}
             onClick={() => (historyOpen && !panelClosing ? closePanel() : openPanel('history'))}
@@ -428,6 +433,14 @@ function PageView({ page }: { page: Page }) {
         <p className="note star-note fade-in" role="status">
           {headNote}
         </p>
+      )}
+      {exportNote && (
+        <div className="note export-note fade-in" role="status">
+          <span>{exportNote}</span>
+          <button className="icon-btn icon-btn-sm" onClick={() => setExportNote(null)} aria-label="Dismiss" title="Dismiss">
+            <X size={14} aria-hidden="true" />
+          </button>
+        </div>
       )}
       {templateSaved && (
         <p className="note template-saved fade-in" role="status">

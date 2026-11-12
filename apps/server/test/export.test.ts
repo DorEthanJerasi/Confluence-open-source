@@ -631,6 +631,34 @@ describe('export: limits', () => {
       get.mockRestore();
     }
   });
+
+  it('check=1 (the screen asks this first) gives the same 413, 404 and 401 as the export, else 204 with no file, and reads no file', async () => {
+    const top = await makePage(w.ed.client, 'Checked tree');
+    const png = await upload(w.ed.client, top, PNG, 'dot.png', 'image/png');
+    await save(w.ed.client, top, doc(img(png.id)));
+    for (const n of [1, 2, 3]) await makePage(w.ed.client, `Checked leaf ${n}`, top);
+    const get = vi.spyOn(small.app.storage, 'get');
+    try {
+      const big = await exportRaw(w.vi.client, top, 'format=pdf&children=1&check=1', small.app);
+      expect(big.statusCode).toBe(413);
+      expect(big.json().message).toBe('This export is too large: 4 pages, the limit is 3. Export a smaller part of the tree.');
+      for (const format of ['md', 'pdf']) {
+        const ok = await exportRaw(w.vi.client, top, `format=${format}&children=0&check=1`, small.app);
+        expect(ok.statusCode).toBe(204);
+        expect(ok.rawPayload.length).toBe(0);
+        expect(ok.headers['content-disposition']).toBeUndefined();
+        expect(ok.headers['cache-control']).toBe('no-store');
+      }
+      expect(get).not.toHaveBeenCalled();
+      expect((await exportRaw(w.nm.client, top, 'format=md&check=1', small.app)).statusCode).toBe(404);
+      expect((await exportRaw(null, top, 'format=md&check=1', small.app)).statusCode).toBe(401);
+      expect((await exportRaw(w.vi.client, top, 'format=md&check=2', small.app)).statusCode).toBe(400);
+    } finally {
+      get.mockRestore();
+      // To the trash, so the read-only test below (which exports every live page) has no more to do.
+      expect((await w.ed.client.del(`/api/pages/${top}`)).status).toBe(200);
+    }
+  });
 });
 
 describe('export: read-only and headers', () => {

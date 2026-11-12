@@ -121,6 +121,49 @@ export async function collectExport(
   pageId: string,
   opts: CollectOptions,
 ): Promise<ExportBundle> {
+  const { space, root, ordered, readable } = await planExport(db, user, pageId, opts);
+  const files = new Map<string, ExportFile>();
+  for (const f of readable) {
+    let data: Buffer | null = null;
+    if (opts.wantsBytes(f)) {
+      const stream = await storage.get(f.storageKey);
+      if (!stream) continue; // bytes gone: not available
+      data = await readAll(stream);
+    }
+    files.set(f.id.toLowerCase(), { id: f.id, filename: f.filename, mime: f.mime, size: f.size, data });
+  }
+
+  const ids = [...new Set(ordered.flatMap((p) => personIds(p.doc)))];
+  const people = new Map<string, string>();
+  if (ids.length > 0) {
+    for (const u of await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, ids))) {
+      people.set(u.id.toLowerCase(), u.name);
+    }
+  }
+
+  return {
+    root,
+    pages: ordered,
+    space: { key: space.key, name: space.name },
+    files,
+    people,
+    exportedBy: user.name,
+    exportedAt: new Date(),
+    publicUrl: opts.publicUrl.replace(/\/+$/, ''),
+  };
+}
+
+/**
+ * The same checks as collectExport (404, 413) without reading any file byte
+ * or building anything: the screen asks this first (`check=1`), so a too-large
+ * export is a quiet note on the page and the download itself stays a plain link.
+ */
+export async function checkExport(db: Db, user: SessionUser, pageId: string, opts: CollectOptions): Promise<void> {
+  await planExport(db, user, pageId, opts);
+}
+
+/** The page walk, the tree, the readable files and both limits. */
+async function planExport(db: Db, user: SessionUser, pageId: string, opts: CollectOptions) {
   const { space } = await requirePageRole(db, user, pageId, 'viewer');
 
   // The page walk: down parent_id, never into a trashed page (trash marks a
@@ -184,35 +227,7 @@ export async function collectExport(
   if (total > opts.limits.maxFileBytes) {
     throw tooLargeExport(`${formatBytes(total)} of files`, formatBytes(opts.limits.maxFileBytes));
   }
-  const files = new Map<string, ExportFile>();
-  for (const f of readable) {
-    let data: Buffer | null = null;
-    if (opts.wantsBytes(f)) {
-      const stream = await storage.get(f.storageKey);
-      if (!stream) continue; // bytes gone: not available
-      data = await readAll(stream);
-    }
-    files.set(f.id.toLowerCase(), { id: f.id, filename: f.filename, mime: f.mime, size: f.size, data });
-  }
-
-  const ids = [...new Set(ordered.flatMap((p) => personIds(p.doc)))];
-  const people = new Map<string, string>();
-  if (ids.length > 0) {
-    for (const u of await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, ids))) {
-      people.set(u.id.toLowerCase(), u.name);
-    }
-  }
-
-  return {
-    root,
-    pages: ordered,
-    space: { key: space.key, name: space.name },
-    files,
-    people,
-    exportedBy: user.name,
-    exportedAt: new Date(),
-    publicUrl: opts.publicUrl.replace(/\/+$/, ''),
-  };
+  return { space, root, ordered, readable };
 }
 
 /** The wiki address of a page, which still needs sign-in. */
