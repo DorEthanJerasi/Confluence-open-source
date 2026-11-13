@@ -667,3 +667,27 @@ only a browser can.
 - **Single-page locks (done-check 17) may go on.** Its server and screen
   were built early (#180, #181); my locks check and sign-off are #183.
 
+
+### Tester, item #190 (2026-11-13): can the suite run in under 95 s? Not by changing workers
+- What I tried: **3 workers instead of 4** (`E2E_WORKERS=3`, no test touched, none
+  skipped or loosened). Server and database start-up is already shared (one
+  Postgres, set-up 2.8 s), so there was nothing left to share. Logs:
+  `docs/done-checks/logs/19-190-*.txt`. Node 22.11, 28 tests, all exit 0.
+
+| Setup | Start load | Time | End load |
+|-------|-----------|------|----------|
+| 4 workers (today's config) | 8.38 | 81.2 s | 17.8 |
+| 4 workers | 7.06 | 97.07 s | 15.4 |
+| 3 workers, run 1 | 8.68 | 86.98 s | 11.4 |
+| 3 workers, run 2 | 8.54 | 115.46 s | 18.0 |
+| 3 workers, run 3 (started at 11.68, not under 10, so does not count) | 11.68 | 119.17 s | 20.5 |
+
+- Result: 3 workers is not faster (middle of its two valid runs is worse), and
+  it matches the 2026-11-10 finding in `e2e/workers.ts`. I left the config at 4.
+- The time follows the machine's load, not the setup. Same config, start load
+  7-8, gave 81 s and 97 s. The suite's test time adds up to about 230 s, so
+  four workers cannot do better than about 60 s plus start-up even when the
+  box is quiet, and any outside load pushes it past 95 s.
+- So **the under-95 s box stays open**. Nothing here makes it reliable; what
+  would is fewer or shorter tests (the lead's call: `editor.spec.ts` alone is
+  about 41 s in one worker) or a limit that allows for load. I changed neither.
