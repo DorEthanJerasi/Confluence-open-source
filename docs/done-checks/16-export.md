@@ -179,7 +179,9 @@ What already exists (do not rebuild it):
       `apps/server/src/routes/export.ts`. No export code writes any table.
 - [ ] `pdfmake` and `fflate` in `apps/server/package.json` only, with the
       lock file updated; `docker compose build` still builds (the self-host
-      engineer confirms).
+      engineer confirms). **Waiting on the owner (item #185):** Docker is not
+      reachable from this workspace (#177 log), so this half can only be
+      checked once the owner gives a Docker daemon we can reach.
       *Lead, item #171: first half holds (`pdfmake` ^0.3.14 and `fflate`
       ^0.8.3 in `apps/server/package.json` only, `@types/pdfmake` as a dev
       dependency, lock file updated; no other package.json touched). **Open
@@ -425,18 +427,23 @@ of the same run can. "Middle test": sort the run's tests from fastest to
 slowest; with 27 tests the middle is the 14th.) Everything the 16a boxes
 prove stays proved by the server tests; the browser test proves only what
 only a browser can.
-- [ ] Before 16b's test is added, the tester makes three timed
+- [x] ~~Before 16b's test is added, the tester makes three timed
       `/usr/bin/time npm run test:e2e` runs of the current 26-test suite and
       writes them here with load at the start and end, so the cost of the new
-      test can be seen.
+      test can be seen.~~ **Dropped (item #185):** the test went in with
+      #176 before a baseline was taken, so there is no "before" left
+      (item #173 cancelled). The cost of the test is shown instead by its
+      rank in every full run below.
 - [x] One test: a **viewer** opens a page that has one sub-page, opens Export,
       sees both choices, picks "PDF" with "This page and its 1 sub-pages",
       and gets a download whose name ends in `.pdf` and whose first bytes are
       `%PDF-`; then picks "Markdown" and gets a `.zip` that holds two `.md`
       files.
-- [ ] `npm run test:e2e` passes in full: 26 + 1 = 27 tests, no retries, no
-      skips, no `.only`.
-- [ ] Time, under done-check 10's rule as rewritten in item #147: at least
+- [x] `npm run test:e2e` passes in full: 26 + 1 = 27 tests, no retries, no
+      skips, no `.only`. *(Item #185: the suite is now 28 with the locks
+      test. Four full runs in a row pass with exit 0 and no retries: the
+      tester's three #182 runs and the lead's #185 run.)*
+- [x] Time, under done-check 10's rule as rewritten in item #147: at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with the
       export test in the suite, load noted at the start and end of each,
       **every run passes with exit 0 and the middle run is under 95 s**. The
@@ -452,6 +459,13 @@ only a browser can.
       loaded that the test servers do not start (as in #165), that run is
       written down and does not count either way; it is run again when the
       load is normal.
+      *Lead, item #185: ticked under the per-test rule of item #171 (the
+      paragraph above these boxes), as mentions was in #169. In all four
+      28-test runs since #182 the export test is faster than the middle
+      test (table under "Lead sign-off"). The **whole-suite target (middle
+      run under 95 s) is not met**: 93.4, 97.1, 102.8 and 113.4 s. That is
+      the whole suite under load, not export, and it is item #184's job; it
+      does not hold export back.*
 
 ---
 
@@ -551,12 +565,23 @@ only a browser can.
       trashed pages; every file goes through `readableAttachment`; no outside
       fetch; no export code writes any table; the Markdown and PDF match the
       Decisions; the limits are checked before building.
-- [ ] Ran `npm run check` myself: exit 0.
-- [ ] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
+- [x] Ran `npm run check` myself: exit 0. *(Item #185, Node 22: 443 tests,
+      export 16/16, ORIGINAL OK, 58 contrast pairs ok, 114.0 s; load 5.79 at
+      the start, 5.95 at the end. Log:
+      `docs/done-checks/logs/16-export-lead-185-check.txt`.)*
+- [x] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
       and load noted here, and my run is added to the time record above.
+      *(Item #185: exit 0, 28 passed, 0 failed, 0 flaky, 97.09 s wall
+      clock; load 5.55 at the start, 13.11 at the end. Export test 6.7 s,
+      9th of 28; middle test (14th) 9.0 s. Log:
+      `docs/done-checks/logs/16-export-lead-185-e2e.txt`.)*
 - [x] Hand check above done and ticked.
 - [ ] `docker compose build` and the smoke script still pass with the two new
       dependencies (self-host engineer's run, read back by the lead).
+      **Waiting on the owner:** no Docker daemon is reachable from this
+      workspace (#177). Meanwhile #172 ran the built server with only the
+      production libraries on a throwaway Postgres: export worked. Does not
+      hold back locks (item #185).
 - [x] ARCHITECTURE.md gets a short "Export" section (section 20): export is
       read-only from the saved document through the one schema, files only
       through `readableAttachment`, trashed branches left out, no outside
@@ -564,8 +589,10 @@ only a browser can.
 - [ ] Committed on `master` and pushed to GitHub, as the owner asked. While
       the workspace has no GitHub address, this box stays open and says it is
       waiting on the owner; it does not hold back single-page locks (rule of
-      item #165).
-- [ ] Lead sign-off written here. Single-page locks start only after it.
+      item #165). **Waiting on the owner** for a GitHub address
+      (`git remote -v` is still empty on 2026-11-13); everything is
+      committed on `master`.
+- [x] Lead sign-off written here. Single-page locks start only after it.
 
 ### Tester, item #176 (2026-11-12): export browser test and timed runs
 - The test is in `e2e/tests/viewer.spec.ts` (second test of `a viewer`), not a
@@ -588,3 +615,28 @@ only a browser can.
   test in every run, so it is not the cause; the suite as a whole is too slow
   once the machine gets busy (my own run pushes load from 10 to ~20). Cutting
   other tests or a decision on the limit is for the lead; I raised no limit.
+
+### Lead sign-off (item #185, 2026-11-13): **signed off**
+- My own runs, Node 22, started at load under 10 (5.79 and 5.55):
+  `npm run check` exit 0 (443 tests, export 16/16, ORIGINAL OK);
+  `npm run test:e2e` exit 0, 28 passed, 97.09 s.
+- Export test against the middle test in every 28-test run (the per-test rule
+  of item #171; rank 1 is fastest, the middle is the 14th):
+
+| Run | Result | Time | Export test: time, rank | Middle (14th) test | Meets the rule |
+|-----|--------|------|-------------------------|--------------------|----------------|
+| tester #182 run 1 | 28 passed, exit 0 | 93.39 s | 5.0 s | 8.7 s | yes |
+| tester #182 run 2 | 28 passed, exit 0 | 102.79 s | 7.6 s | 10.0 s | yes |
+| tester #182 run 3 | 28 passed, exit 0 | 113.36 s | 5.5 s | 10.5 s | yes |
+| lead #185 | 28 passed, exit 0 | 97.09 s | 6.7 s, 9th of 28 | 9.0 s | yes |
+
+- #184 (making the whole suite steady and faster) is not done yet. I am not
+  waiting for it: its target is the whole suite's time under load, and every
+  run above shows export is not what makes the suite slow. This is the same
+  call I made for mentions in #169.
+- Every box is ticked except two, and both wait on the owner: the Docker
+  build and smoke run (no Docker daemon reachable here) and the push (no
+  GitHub address). Neither holds back locks.
+- **Single-page locks (done-check 17) may go on.** Its server and screen
+  were built early (#180, #181); my locks check and sign-off are #183.
+

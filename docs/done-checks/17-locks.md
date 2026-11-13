@@ -15,6 +15,10 @@ of item #176 failed, the middle run was 109 s), the self-host engineer's
 `docker compose build` (no Docker daemon in this workspace), and the lead's
 own `npm run check` and e2e runs. This file can be written now. Item 17a
 cannot start before that sign-off.
+**Update, item #185 (2026-11-13): export is signed off** (end of
+done-check 16). Only its Docker and push boxes are open, both waiting on the
+owner. Locks was built early (#180, #181, #182); the lead's check and
+sign-off are item #183.
 
 **Push.** The workspace still has no GitHub address (`git remote -v` is
 empty on 2026-11-13). As for every feature since #165, the push box below
