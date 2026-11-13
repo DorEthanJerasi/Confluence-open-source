@@ -14,6 +14,9 @@ test.describe.serial('editor save conflict', () => {
   test.beforeAll(resetDatabase);
 
   test('two tabs: second save gets 409 note and keeps text', async ({ browser }) => {
+    // Takes ~11 s when quiet but runs two tabs, so a busy machine can pass the
+    // 30 s default (item #188: 32.6 s at load 22.9). Same limit as embeds.spec.ts.
+    test.setTimeout(90_000);
     const ctx = await browser.newContext();
     const a = await ctx.newPage();
     // The page is made through the API with the text editor.spec.ts types
@@ -27,11 +30,11 @@ test.describe.serial('editor save conflict', () => {
     await body(a).click();
     await a.keyboard.press('Control+End');
     await a.keyboard.insertText(' from A');
-    await expect(a.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(a.locator('.save-status')).toHaveText('Saved', { timeout: 20_000 });
     await body(b).click();
     await b.keyboard.press('Control+End');
     await b.keyboard.insertText(' from B');
-    await expect(b.getByRole('alert')).toContainText('changed somewhere else', { timeout: 10_000 });
+    await expect(b.getByRole('alert')).toContainText('changed somewhere else', { timeout: 20_000 });
     await expect(b.getByRole('button', { name: 'Reload' })).toBeVisible();
     await expect(body(b)).toContainText('from B');
     await b.getByRole('button', { name: 'Reload' }).click();
