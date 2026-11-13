@@ -12,7 +12,7 @@
 // queries and the "## " shortcut are still typed key by key, since keys are
 // what they react to.
 import { test, expect, type Page } from '../fixtures';
-import { createPage, createSpace, logIn, signUp } from '../login';
+import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
@@ -40,7 +40,7 @@ test.describe.serial('editor', () => {
 
     await body(page).click();
     await page.keyboard.type('Hello calm world');
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
     await page.reload();
     await expect(body(page)).toContainText('Hello calm world');
 
@@ -131,7 +131,7 @@ test.describe.serial('editor', () => {
     await page.keyboard.insertText('md heading');
     await expect(body(page).locator('h2', { hasText: 'md heading' })).toHaveCount(1);
 
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
     await page.screenshot({ path: 'test-results/editor-light.png', fullPage: true });
     await page.reload();
     await expect(body(page).locator('pre code span[class^="hljs"]').first()).toBeVisible();
@@ -140,5 +140,39 @@ test.describe.serial('editor', () => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
     await page.screenshot({ path: 'test-results/editor-dark.png', fullPage: true });
+  });
+
+  // Locks (docs/done-checks/17-locks.md, 17b). The server tests prove every
+  // refusal; this proves what only a browser shows. Ada locks a page, Eve (a
+  // second editor) sees the quiet note and cannot type, Ada unlocks, Eve types
+  // and it saves (the "Saved" status; reload-and-text is test 1). Both people and the page come through the API.
+  test('an editor locks a page; a second editor sees it read-only with the note; unlocking restores editing', async ({ page }) => {
+    await logIn(page, admin, null);
+    const eve = { name: 'Eve Editor', email: 'eve@stillwater.test', password: 'battery horse correct' };
+    await addPerson(page, eve, 'editor');
+    await createSpace(page, { name: 'Lock Room', key: 'lock-room', defaultRole: 'editor' });
+    const { path } = await createPage(page, 'lock-room', { title: 'Budget', text: 'Q4 numbers' });
+    await page.goto(path);
+    await page.getByRole('button', { name: 'Lock', exact: true }).click();
+    await expect(page.getByText('Locked by Ada Admin')).toBeVisible();
+
+    await page.context().clearCookies();
+    await logIn(page, eve, path);
+    await expect(page.getByText('Locked by Ada Admin')).toBeVisible();
+    await expect(body(page)).toContainText('Q4 numbers');
+    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
+
+    await page.context().clearCookies();
+    await logIn(page, admin, path);
+    await page.getByRole('button', { name: 'Unlock', exact: true }).click();
+    await expect(page.getByText('Locked by Ada Admin')).toHaveCount(0);
+
+    await page.context().clearCookies();
+    await logIn(page, eve, path);
+    await expect(body(page)).toHaveAttribute('contenteditable', 'true');
+    await body(page).click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.insertText(' and Q1 plan');
+    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
   });
 });

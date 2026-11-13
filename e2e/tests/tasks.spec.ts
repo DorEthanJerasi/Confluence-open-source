@@ -93,7 +93,7 @@ test.describe.serial('task lists', () => {
     await due.getByLabel('Due date').fill(day(1));
     await due.getByRole('button', { name: 'Set date' }).click();
     await expect(row.locator('.task-due')).toContainText('Tomorrow');
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
     // The other task has no chips.
     await expect(taskRow(page, 'Sweep the porch').locator('.task-chip:visible')).toHaveCount(0);
 

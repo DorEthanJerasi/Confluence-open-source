@@ -147,7 +147,7 @@ test.describe.serial('video and link cards', () => {
     await expect(rich).toContainText('Harbour Almanac');
     await page.unroute('**/api/link-preview?**');
 
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
     await page.reload();
     await expect(body(page).locator('.embed-video video')).toHaveCount(1);
     await expect(body(page).locator('.embed-video iframe')).toHaveCount(2);

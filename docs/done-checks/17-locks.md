@@ -367,3 +367,34 @@ server tests; the browser test proves only what only a browser can.
       the workspace has no GitHub address, this box stays open and says it is
       waiting on the owner.
 - [ ] Lead sign-off written here.
+
+### Tester, item #182 (2026-11-13): locks browser test and timed runs
+- The test is the third test of `e2e/tests/editor.spec.ts` ("an editor locks a
+  page; a second editor sees it read-only with the note; unlocking restores
+  editing"): no new file (still 18). Ada locks with the button; Eve, a second
+  editor, sees "Locked by Ada Admin" and a body with `contenteditable=false`;
+  Ada unlocks with the button; Eve types and the page shows "Saved". People,
+  space and page are set up through `e2e/login.ts`. It passes alone (4.3 s).
+  The "One test" box is ticked, except the viewer half, which stays proved by
+  the lead's hand check (the title asked for the editor half only).
+- One side fix: the Lock note is a second `role="status"` region, so
+  `getByRole('status')` matched two elements and `embeds.spec.ts` failed once
+  (strict-mode error). Every "Saved"/"Saving…" check in the e2e files now uses
+  `.save-status`. This was a fault left by item #181, not by load.
+- Three timed `/usr/bin/time npm run test:e2e` runs, each started at load < 10,
+  logs in `docs/done-checks/logs/17-locks-e2e-182-run{1,2,3}.txt`:
+
+| Run | Result | Time | Load start -> end | Locks test: time, rank | Middle (14th) test |
+|-----|--------|------|-------------------|------------------------|--------------------|
+| 1 | 28 passed, exit 0 | 93.39 s | 9.27 -> 15.95 | 10.4 s, 9th of 28 | 8.7 s |
+| 2 | 28 passed, exit 0 | 102.79 s | 9.30 -> 13.34 | 12.4 s, 8th of 28 | 10.0 s |
+| 3 | 28 passed, exit 0 | 113.36 s | 9.69 -> 15.49 | 11.4 s, 11th of 28 | 10.5 s |
+
+- Every run passes with exit 0. **The timing box stays open**: the middle run
+  (102.79 s) is over 95 s, and the locks test is slower than the middle test in
+  every run (alone it takes 4.3 s; in the full suite it takes 10-12 s, as does
+  every test once load passes 10). An earlier set of runs before the
+  `.save-status` fix had two unrelated failures (embeds, and a history test
+  that timed out at load 21); those logs were replaced. I cut the test's final
+  reload; I raised no limit and dropped no other test. Whether to cut it
+  further, or to treat the suite's speed as #184's job, is for the lead.

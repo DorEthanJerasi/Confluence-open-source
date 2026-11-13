@@ -44,7 +44,7 @@ test.describe.serial('search', () => {
     await page.goto(pageUrl);
     await body(page).click();
     await page.keyboard.insertText(`The ${WORD} sleeps here`);
-    await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
 
     // Row 17. The focus is still in the editor: Ctrl+K must reach the search field.
     await search(page, WORD);

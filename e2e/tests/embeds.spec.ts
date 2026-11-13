@@ -25,8 +25,8 @@ const body = (page: Page) => page.locator('.page-editor .ProseMirror');
  * is made proves the new save has begun before we wait for it to finish.
  */
 async function waitForFreshSave(page: Page) {
-  await expect(page.getByRole('status')).toHaveText('Saving…', { timeout: 10_000 });
-  await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+  await expect(page.locator('.save-status')).toHaveText('Saving…', { timeout: 10_000 });
+  await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
 }
 
 async function slashPick(page: Page, query: string, pick: string, file: { name: string; mimeType: string; buffer: Buffer }) {

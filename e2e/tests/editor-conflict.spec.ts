@@ -27,7 +27,7 @@ test.describe.serial('editor save conflict', () => {
     await body(a).click();
     await a.keyboard.press('Control+End');
     await a.keyboard.insertText(' from A');
-    await expect(a.getByRole('status')).toHaveText('Saved', { timeout: 10_000 });
+    await expect(a.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
     await body(b).click();
     await b.keyboard.press('Control+End');
     await b.keyboard.insertText(' from B');
