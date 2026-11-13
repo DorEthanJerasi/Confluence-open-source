@@ -616,6 +616,33 @@ only a browser can.
   once the machine gets busy (my own run pushes load from 10 to ~20). Cutting
   other tests or a decision on the limit is for the lead; I raised no limit.
 
+### Tester, item #188 (2026-11-13): why two tests timed out, and the fix
+- **Cause.** Not a bug in the app or in those two tests. The suite starts four
+  browsers, four servers and four databases on a 4-core box that is already
+  busy; its own run pushes the load from about 10 to 20 or more. Each test had
+  Playwright's 30 s limit. The two #176 run 2 tests (embeds image-and-file,
+  42.6 s; editor-conflict two-tabs, 32.6 s) each wait on several checks of up
+  to 20 s in a row, so a slow screen early on used up the whole 30 s. Proof it
+  is load and not a hang: the same tests pass every time at 6-17 s on a
+  quieter box, and the first attempt at #188 failed a different test (ai ask,
+  stuck at its first click for 30 s, run 2, load 9.6 -> 17.9) the same way.
+- **Fix.** `e2e/playwright.config.ts`: per-test limit 60 s (`timeout: 60_000`).
+  A test still ends the moment it passes, so quiet runs cost nothing; a real
+  hang now fails after 60 s instead of 30 s.
+- **Three timed `npm run test:e2e` runs, Node 22.11, 28 tests, each started
+  under load 10** (logs `docs/done-checks/logs/16-export-e2e-188b-run*.txt`):
+
+| Run | Result | Time | Load start -> end |
+|-----|--------|------|-------------------|
+| 1 | 28 passed, exit 0 | 88.17 s | 9.74 -> 16.78 |
+| 2 | 28 passed, exit 0 | 107.24 s | 9.88 -> 23.32 |
+| 3 | 28 passed, exit 0 | 111.54 s | 9.53 -> 18.02 |
+
+- Stability is fixed: no failures in three runs, including run 2 at load 23.
+  The whole-suite speed is not: the middle run is 107.24 s, over the 95 s goal.
+  That is #184's job; I did not cut tests or move the target. (The earlier
+  #188 attempt, logs `...188-run1..3.txt`, was before the fix: 2 passed, 1 failed.)
+
 ### Lead sign-off (item #185, 2026-11-13): **signed off**
 - My own runs, Node 22, started at load under 10 (5.79 and 5.55):
   `npm run check` exit 0 (443 tests, export 16/16, ORIGINAL OK);

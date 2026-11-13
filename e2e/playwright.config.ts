@@ -14,8 +14,16 @@ export default defineConfig({
   // from work outside this project, and a page can take more than 5s to paint
   // (2026-11-07: permissions.spec.ts:150, now permissions-member.spec.ts, failed waiting for the page title to
   // become editable). A check still passes the moment the screen is right, so
-  // this costs nothing on a quiet machine. The 30s limit per test stays.
+  // this costs nothing on a quiet machine. 
   expect: { timeout: 10_000 },
+  // 60s per test (Playwright's default is 30s). Item #188: the suite's own
+  // browsers and servers push the load from ~10 to 20+ on this 4-core box, and
+  // then a test that is only slow, not wrong, ran out of time: #176 run 2
+  // (embeds image-and-file 42.6 s, editor-conflict two-tabs 32.6 s, each
+  // waiting on several 20 s checks in a row) and #188 run 2 (ai ask, stuck at
+  // its first click after 30 s). A test still ends the moment it passes, so
+  // quiet runs cost nothing; a real hang now fails after 60 s, not 30 s.
+  timeout: 60_000,
   reporter: 'list',
   globalSetup: './global-setup.ts',
   use: {
