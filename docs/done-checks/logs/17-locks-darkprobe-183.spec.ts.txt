@@ -1,0 +1,27 @@
+import { test, expect } from '../fixtures';
+import { createPage, createSpace, signUp } from '../login';
+import { resetDatabase } from '../reset-db';
+const ada = { name: 'Ada Lind', email: 'ada@x.test', password: 'correct horse battery' };
+test.beforeAll(resetDatabase);
+test('dark probe', async ({ page }) => {
+  await signUp(page, ada);
+  await createSpace(page, { name: 'Probe', key: 'probe' });
+  const a = await createPage(page, 'probe', { title: 'Open page', text: 'hello' });
+  const b = await createPage(page, 'probe', { title: 'Locked page', text: 'hello' });
+  expect((await page.request.post(`/api/pages/${b.id}/lock`)).ok()).toBe(true);
+  await page.addInitScript(() => localStorage.setItem('stillwater-theme', 'dark'));
+  for (const [name, p] of [['open', a], ['locked', b]] as const) {
+    await page.goto(p.path);
+    await expect(page.locator('.page-editor .ProseMirror')).toBeVisible();
+    await page.waitForTimeout(2500);
+    const info = await page.evaluate(() => {
+      const out: string[] = [document.documentElement.getAttribute('data-theme') ?? ''];
+      let el: Element | null = document.querySelector('.page-editor');
+      while (el) { const s = getComputedStyle(el); out.push(`${el.tagName}.${el.className} bg=${s.backgroundColor} op=${s.opacity} filter=${s.filter}`); el = el.parentElement; }
+      const ov = [...document.querySelectorAll('body *')].filter((e) => { const s = getComputedStyle(e); return (s.position === 'fixed' || s.position === 'absolute') && e.getBoundingClientRect().width > 500; }).map((e) => `${e.tagName}.${e.className} bg=${getComputedStyle(e).backgroundColor}`);
+      return [...out, 'OVERLAYS', ...ov].join('\n');
+    });
+    console.log(`--- ${name}\n${info}`);
+    await page.screenshot({ path: `/tmp/lead-lock-shots/probe-${name}.png` });
+  }
+});

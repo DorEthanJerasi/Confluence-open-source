@@ -1,0 +1,74 @@
+Item #183 lead timed e2e run 2, 2026-11-13T04:54:17+02:00, load at start: 23.06 18.78 17.01
+
+> test:e2e
+> node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && node e2e/ensure-browser.mjs && cd e2e && PLAYWRIGHT_BROWSERS_PATH=0 playwright test
+
+build: packages/shared is up to date, skipped
+build: packages/editor-schema is up to date, skipped
+build: apps/web is up to date, skipped
+build: apps/server is up to date, skipped
+e2e: Chromium already installed, skipped download
+e2e: set-up took 0.7s (copy cluster 0.2s, postgres start 0.1s, create databases 0.3s, servers started 0.0s)
+
+Running 28 tests using 4 workers
+
+{"level":40,"time":1794538467026,"pid":2978,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794538467917,"pid":2979,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794538468023,"pid":2991,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794538468278,"pid":2981,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+  ✓   1 [chromium] › tests/ai-off.spec.ts:13:3 › ai switched off › with AI off, Summarise and the Ask entry are both hidden, and /ask shows the not-set-up note (3.8s)
+  ✓   4 [chromium] › tests/ai.spec.ts:24:3 › ai › writing a page and pressing Summarise shows the first sentence in the card (4.6s)
+  ✓   2 [chromium] › tests/editor-conflict.spec.ts:16:3 › editor save conflict › two tabs: second save gets 409 note and keeps text (7.9s)
+  ✓   3 [chromium] › tests/comments.spec.ts:13:3 › page comments: adding › an editor comments on the second paragraph and on the page; the marker and count survive a reload, in dark mode too (8.1s)
+  ✓   6 [chromium] › tests/ai.spec.ts:50:3 › ai › asking about a word on a page shows the answer, and both the [1] link and the Sources entry open that page (4.9s)
+  ✓   5 [chromium] › tests/editor.spec.ts:33:3 › editor › type, save, reload; the slash menu has no animation with reduced motion (6.3s)
+  ✓   8 [chromium] › tests/favourites.spec.ts:38:3 › favourites and recently viewed › an editor stars a page, sees both Home lists in order, then unstars it (dark mode too) (7.7s)
+  ✓  10 [chromium] › tests/history.spec.ts:35:3 › page history › two editors each save a version, history lists both names, and the earlier one opens read-only with the change marked (7.0s)
+  ✓   7 [chromium] › tests/embeds.spec.ts:67:3 › image and file blocks › upload from slash menu, paste and drop; caption; file block (10.4s)
+  ✓  11 [chromium] › tests/labels.spec.ts:17:3 › labels › an editor adds a label and finds the page through its chip, the space and wiki views, and search (4.5s)
+  ✓  12 [chromium] › tests/history.spec.ts:71:3 › page history › restoring the old version puts its text back, survives a reload, and typing after it saves with no conflict note (7.5s)
+  ✓   9 [chromium] › tests/editor.spec.ts:58:3 › editor › slash filter, every block, code highlight, table toolbar, markdown shortcuts (15.7s)
+  ✓  14 [chromium] › tests/mentions.spec.ts:28:3 › mentions and the bell › an editor mentions a viewer; the viewer sees the bell, opens it, lands on the page and follows it (5.2s)
+  ✓  13 [chromium] › tests/embeds.spec.ts:128:3 › image and file blocks › Ctrl+End then Enter after a last-place card writes below it (11.3s)
+  ✓  15 [chromium] › tests/permissions.spec.ts:16:3 › per-space permissions › Ada adds Eve to a members-only space in its settings; Otto, outside it, sees neither it nor its pages (6.1s)
+  ✓  16 [chromium] › tests/editor.spec.ts:149:3 › editor › an editor locks a page; a second editor sees it read-only with the note; unlocking restores editing (8.3s)
+  ✓  17 [chromium] › tests/search.spec.ts:33:3 › search › a typed word is found with Ctrl+K, highlighted and opens its page; HTML-looking text stays text; reload and Back keep the results, light and dark (8.6s)
+  ✓  19 [chromium] › tests/templates.spec.ts:18:3 › templates › a new page from a built-in template has its headings, and Blank page still makes an empty one (6.1s)
+  ✓  20 [chromium] › tests/trash.spec.ts:29:3 › trash › an editor deletes a page with a sub-page from the tree and restores it from Trash to the same address (dark mode too) (7.8s)
+  ✓  22 [chromium] › tests/templates.spec.ts:43:3 › templates › saving a page as a template, and reusing it for a new page (dark mode too) (5.9s)
+  ✓  18 [chromium] › tests/tasks.spec.ts:62:3 › task lists › an editor gives a task a person and a due date; that person ticks it in My tasks and the page shows it ticked (dark mode too) (12.7s)
+  ✓  25 [chromium] › tests/tasks.spec.ts:134:3 › task lists › a viewer sees their overdue task in My tasks with the box disabled, and its chips on the page read-only (3.5s)
+  ✓  23 [chromium] › tests/trash.spec.ts:94:3 › trash › a space admin empties the trash after a confirm; a viewer has no Trash link and cannot open it (5.1s)
+  ✓  24 [chromium] › tests/viewer.spec.ts:64:3 › a viewer › a viewer sees the page, its image, caption, file, video, players and link cards, with nothing editable and no upload control (4.9s)
+  ✓  21 [chromium] › tests/video-links.spec.ts:64:3 › video and link cards › upload a video, paste YouTube, add Vimeo, refuse other hosts, link cards (14.3s)
+  ✓  26 [chromium] › tests/wiki.spec.ts:38:3 › wiki basics › the first sign-up becomes admin, makes a space, a page and a sub-page, and both reopen (5.8s)
+  ✓  28 [chromium] › tests/wiki.spec.ts:91:3 › wiki basics › an admin adds a viewer in the "Add a person" dialog; logging out ends the session and logging in brings it back (2.9s)
+  ✓  27 [chromium] › tests/viewer.spec.ts:159:3 › a viewer › a viewer exports a page with its sub-page as a PDF and as a Markdown zip (11.9s)
+
+  28 passed (1.3m)
+SYNCHRONOUS TERMINATION NOTICE: When explicitly exiting the process via process.exit or via a parent process, asynchronous tasks in your exitHooks will not run. Either remove these tasks, use gracefulExit() instead of process.exit(), or ensure your parent process sends a SIGINT to the process running this code.
+	Command being timed: "npm run test:e2e"
+	User time (seconds): 89.71
+	System time (seconds): 20.96
+	Percent of CPU this job got: 138%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:19.91
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 215680
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 660653
+	Voluntary context switches: 145045
+	Involuntary context switches: 85494
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 2584
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+exit 0
+load at end: 23.64 20.10 17.62

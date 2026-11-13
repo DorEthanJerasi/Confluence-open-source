@@ -1,0 +1,256 @@
+// Lead's hand check for page locks (item #183, docs/done-checks/17-locks.md,
+// "Hand check"), driven in Chromium with screenshots the lead looks at.
+// NOT part of the suite: run once from e2e/tests, then kept as
+// docs/done-checks/logs/17-locks-handcheck-183.spec.ts.txt.
+import type { Page } from '@playwright/test';
+import { test, expect } from '../fixtures';
+import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
+import { resetDatabase } from '../reset-db';
+
+const shots = process.env.LOCK_SHOTS ?? '/tmp/lead-lock-shots';
+const ada = { name: 'Ada Lind', email: 'ada@x.test', password: 'correct horse battery' };
+const eve = { name: 'Eve Edit', email: 'eve@x.test', password: 'member horse battery' };
+const ed2 = { name: 'Ezra Second', email: 'ezra@x.test', password: 'second horse battery' };
+const vic = { name: 'Vic View', email: 'vic@x.test', password: 'viewer horse battery' };
+const otto = { name: 'Otto Out', email: 'otto@x.test', password: 'outside horse battery' };
+const S = { name: 'Harbour Plans', key: 'harbour' };
+
+const body = (p: Page) => p.locator('.page-editor .ProseMirror');
+const dark = (p: Page, on: boolean) => p.evaluate((d) => document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light'), on);
+const versions = async (p: Page, id: string) =>
+  ((await (await p.request.get(`/api/pages/${id}/versions`)).json()) as { versions: { version: number }[] }).versions.map((v) => v.version);
+
+test.describe.serial('lead locks hand check', () => {
+  test.beforeAll(resetDatabase);
+  let plans: { id: string; path: string };
+  let budget: { id: string; path: string };
+  let base = '';
+
+  test('set up as admin: restricted space, editors, viewer, outsider; Budget under Plans with a task and versions', async ({ page, browser }) => {
+    test.setTimeout(90_000);
+    await signUp(page, ada);
+    await page.goto('/');
+    base = new URL(page.url()).origin;
+    const ids = {
+      eve: await addPerson(page, eve, 'editor'),
+      ezra: await addPerson(page, ed2, 'editor'),
+      vic: await addPerson(page, vic, 'viewer'),
+    };
+    await addPerson(page, otto, 'editor'); // editor on the instance, but not a member
+    await createSpace(page, { ...S, visibility: 'restricted' });
+    for (const [id, role] of [
+      [ids.eve, 'editor'],
+      [ids.ezra, 'editor'],
+      [ids.vic, 'viewer'],
+    ] as const) {
+      const r = await page.request.put(`/api/spaces/${S.key}/members/${id}`, { data: { role } });
+      expect(r.ok(), `member ${role} ${r.status()}`).toBe(true);
+    }
+    plans = await createPage(page, S.key, { title: 'Plans', text: 'Plans text' });
+    budget = await createPage(page, S.key, {
+      title: 'Budget',
+      parentId: plans.id,
+      doc: {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Budget first line' }] },
+          {
+            type: 'taskList',
+            content: [{ type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Pay rent' }] }] }],
+          },
+        ],
+      },
+    });
+    // A few versions in its history: history folds one person's quick saves
+    // into one version, so the two editors each type a line in the editor.
+    for (const [who, words] of [
+      [eve, ' second'],
+      [ed2, ' third'],
+    ] as const) {
+      const ctx = await browser.newContext({ baseURL: base });
+      const p = await ctx.newPage();
+      await logIn(p, who, budget.path);
+      await body(p).getByText(/Budget first line/).click();
+      await p.keyboard.press('End');
+      await p.keyboard.type(words);
+      await expect(p.locator('.save-status')).toHaveText('Saved', { timeout: 20_000 });
+      await ctx.close();
+    }
+    expect((await versions(page, budget.id)).length).toBeGreaterThanOrEqual(3);
+  });
+
+  test('two windows: the editor is typing, the admin locks with the button; the editor turns read-only and keeps the text', async ({ page, browser }) => {
+    test.setTimeout(90_000);
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await logIn(page, eve, budget.path);
+    await expect(body(page)).toHaveAttribute('contenteditable', 'true');
+    const before = await versions(page, budget.id);
+
+    const actx = await browser.newContext({ baseURL: base });
+    const ap = await actx.newPage();
+    await logIn(ap, ada, budget.path);
+
+    await body(page).getByText(/Budget first line/).click();
+    await page.keyboard.press('End');
+    // Lock from the admin's window right as the editor writes.
+    await ap.getByRole('button', { name: 'Lock', exact: true }).click();
+    await expect(ap.locator('.lock-note')).toContainText('Locked by Ada Lind');
+    await page.keyboard.type(' words typed after the lock');
+
+    await expect(page.locator('.lock-note')).toContainText('Locked by Ada Lind', { timeout: 20_000 });
+    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
+    const out = page.getByRole('region', { name: 'Your unsaved text' });
+    await expect(out).toContainText('words typed after the lock');
+    await expect(out.getByRole('button', { name: 'Copy my text' })).toBeVisible();
+    await page.screenshot({ path: `${shots}/01-editor-locked-out-light.png`, fullPage: true });
+    await dark(page, true);
+    await page.screenshot({ path: `${shots}/02-editor-locked-out-dark.png`, fullPage: true });
+    await dark(page, false);
+    // Nothing from the refused save reached the page.
+    expect(await versions(page, budget.id)).toEqual(before);
+    expect(errors).toEqual([]);
+    await actx.close();
+  });
+
+  test('on the locked page: title, body and tasks fixed; History without Restore; trash disabled; trashing Plans refused; talk around it works', async ({ page }) => {
+    test.setTimeout(90_000);
+    await logIn(page, eve, budget.path);
+    await expect(page.locator('.lock-note')).toContainText('Locked by Ada Lind');
+    await expect(page.getByLabel('Page title')).toHaveCount(0);
+    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
+    await expect(page.locator('.page-editor input[type=checkbox]').first()).toBeDisabled();
+    const del = page.getByRole('button', { name: 'Delete page' });
+    await expect(del).toHaveAttribute('aria-disabled', 'true');
+    // aria-disabled: Playwright will not click it, so reach it by keyboard.
+    await del.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'History' }).click();
+    await page.locator('.version-row').last().click();
+    await expect(page.getByText('Unlock the page to restore a version')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Restore this version/ })).toHaveCount(0);
+    await page.screenshot({ path: `${shots}/03-history-locked-light.png`, fullPage: true });
+    await page.getByRole('button', { name: 'Back to page' }).click();
+    await page.getByRole('button', { name: 'Close history' }).click();
+
+    // Comments, labels, follow, favourite and export still work.
+    await page.getByRole('button', { name: 'Comments' }).click();
+    await page.getByPlaceholder('Comment on this page…').fill('Locked, but we can still talk');
+    await page.getByRole('button', { name: 'Comment', exact: true }).click();
+    await expect(page.getByRole('complementary', { name: 'Comments' })).toContainText('Locked, but we can still talk');
+    await page.getByRole('button', { name: 'Close comments' }).click();
+    await page.getByRole('button', { name: 'Add label' }).click();
+    await page.getByRole('combobox', { name: 'Add label' }).fill('quarterly');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Remove label quarterly' })).toBeVisible();
+    await page.getByRole('button', { name: 'Follow', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Following', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Add to favourites' }).click();
+    await expect(page.getByRole('button', { name: 'Remove from favourites' })).toBeVisible();
+    await page.getByRole('button', { name: 'Export' }).click();
+    const dl = page.waitForEvent('download');
+    await page.getByRole('menuitem', { name: /Markdown/ }).click();
+    expect((await dl).suggestedFilename()).toMatch(/\.md$|\.zip$/);
+    await page.screenshot({ path: `${shots}/04-locked-editor-light.png`, fullPage: true });
+    await dark(page, true);
+    await page.screenshot({ path: `${shots}/05-locked-editor-dark.png`, fullPage: true });
+    await dark(page, false);
+
+    // Trashing the parent is refused quietly, naming Budget.
+    await page.goto(plans.path);
+    await page.getByRole('button', { name: 'Delete page' }).click();
+    await page.getByRole('button', { name: 'Move to trash' }).click();
+    await expect(page.locator('.note').filter({ hasText: '“Budget” under this page is locked by Ada Lind' })).toBeVisible();
+    await expect(page.locator('.note-danger')).toHaveCount(0);
+    await dark(page, true);
+    await page.screenshot({ path: `${shots}/06-trash-refused-dark.png`, fullPage: true });
+    await dark(page, false);
+    expect((await page.request.get(`/api/pages/${budget.id}`)).status()).toBe(200);
+    expect((await page.request.get(`/api/pages/${plans.id}`)).status()).toBe(200);
+  });
+
+  test('viewer sees the note and no Lock button; outsider gets Nothing here', async ({ page, browser }) => {
+    test.setTimeout(60_000);
+    await logIn(page, vic, budget.path);
+    await expect(page.locator('.lock-note')).toContainText('Locked by Ada Lind');
+    await expect(page.getByRole('button', { name: /^(Lock|Unlock)$/ })).toHaveCount(0);
+    await dark(page, true);
+    await page.screenshot({ path: `${shots}/07-viewer-dark.png`, fullPage: true });
+    await dark(page, false);
+    await page.screenshot({ path: `${shots}/08-viewer-light.png`, fullPage: true });
+
+    const octx = await browser.newContext({ baseURL: base });
+    const op = await octx.newPage();
+    await logIn(op, otto, budget.path);
+    await expect(op.getByText('Nothing here')).toBeVisible();
+    expect((await op.request.get(`/api/pages/${budget.id}`)).status()).toBe(404);
+    expect((await op.request.post(`/api/pages/${budget.id}/unlock`)).status()).toBe(404);
+    expect((await page.request.post(`/api/pages/${budget.id}/unlock`)).status()).toBe(403);
+    await op.screenshot({ path: `${shots}/09-outsider.png`, fullPage: true });
+    await octx.close();
+  });
+
+  test('a second editor (not the locker) unlocks by keyboard; editing, restore and trash work; no version for lock or unlock', async ({ page }) => {
+    test.setTimeout(90_000);
+    await logIn(page, ed2, budget.path);
+    const before = await versions(page, budget.id);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: 'Unlock', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.lock-note')).toHaveCount(0);
+    await expect(body(page)).toHaveAttribute('contenteditable', 'true');
+    // Lock and unlock again by keyboard, under reduced motion: the line appears with no animation.
+    await page.getByRole('button', { name: 'Lock', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.lock-note')).toContainText('Locked by Ezra Second');
+    const anim = await page.locator('.lock-note').evaluate((el) => getComputedStyle(el).animationDuration);
+    console.log('reduced-motion lock-note animation-duration', anim);
+    await expect(page.getByRole('button', { name: 'Unlock', exact: true })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.lock-note')).toHaveCount(0);
+    expect(await versions(page, budget.id)).toEqual(before);
+
+    // Editing works.
+    await body(page).getByText(/Budget first line/).click();
+    await page.keyboard.press('End');
+    await page.keyboard.type(' after unlock');
+    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 20_000 });
+    // Restore works: the oldest version comes back.
+    await page.getByRole('button', { name: 'History' }).click();
+    await page.locator('.version-row').last().click();
+    await page.getByRole('button', { name: /Restore this version/ }).click();
+    const confirm = page.getByRole('button', { name: /^Restore$/ });
+    if (await confirm.count()) await confirm.click();
+    await expect(body(page)).not.toContainText('after unlock', { timeout: 20_000 });
+    await page.screenshot({ path: `${shots}/10-restored-light.png`, fullPage: true });
+    // Trash works: Plans and Budget both go; then restore Plans from the Trash view.
+    await page.goto(plans.path);
+    await page.getByRole('button', { name: 'Delete page' }).click();
+    await page.getByRole('button', { name: 'Move to trash' }).click();
+    await expect.poll(async () => (await page.request.get(`/api/pages/${budget.id}`)).status()).toBe(404);
+    await page.goto(`/s/${S.key}/trash`);
+    await page.getByRole('button', { name: 'Restore “Plans”' }).click();
+    await expect.poll(async () => (await page.request.get(`/api/pages/${budget.id}`)).status()).toBe(200);
+    await page.goto(budget.path);
+    await expect(body(page)).toHaveAttribute('contenteditable', 'true');
+    await expect(page.locator('.lock-note')).toHaveCount(0);
+  });
+
+  test('a locked page trashed with its space comes back still locked', async ({ page }) => {
+    test.setTimeout(60_000);
+    await logIn(page, ada, budget.path);
+    await page.getByRole('button', { name: 'Lock', exact: true }).click();
+    await expect(page.locator('.lock-note')).toContainText('Locked by Ada Lind');
+    const space = (await (await page.request.get(`/api/spaces/${S.key}`)).json()) as { space: { id: string } };
+    expect((await page.request.delete(`/api/spaces/${S.key}`)).ok()).toBe(true);
+    expect((await page.request.post(`/api/trash/spaces/${space.space.id}/restore`)).ok()).toBe(true);
+    await page.goto(budget.path);
+    await expect(page.locator('.lock-note')).toContainText('Locked by Ada Lind');
+    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
+    await dark(page, true);
+    await page.screenshot({ path: `${shots}/11-back-from-trash-locked-dark.png`, fullPage: true });
+  });
+});

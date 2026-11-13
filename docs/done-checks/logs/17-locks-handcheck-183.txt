@@ -1,0 +1,30 @@
+Item #183 lead hand check, 2026-11-13T04:51:04+02:00, load at start: 15.75 15.64 15.87
+
+> test:e2e
+> node scripts/build-if-needed.mjs packages/shared packages/editor-schema apps/web apps/server && node e2e/ensure-browser.mjs && cd e2e && PLAYWRIGHT_BROWSERS_PATH=0 playwright test zz-lead-lock-handcheck
+
+build: packages/shared is up to date, skipped
+build: packages/editor-schema is up to date, skipped
+build: apps/web is up to date, skipped
+build: apps/server is up to date, skipped
+e2e: Chromium already installed, skipped download
+e2e: set-up took 1.0s (copy cluster 0.3s, postgres start 0.2s, create databases 0.5s, servers started 0.0s)
+
+Running 6 tests using 1 worker
+
+{"level":40,"time":1794538274197,"pid":1575,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794538274246,"pid":1587,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794538274478,"pid":1581,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+{"level":40,"time":1794538275001,"pid":1574,"hostname":"mymind","msg":"E2E_FAST_PASSWORD_HASH=1: weak password hashing for the e2e tests. Never set this on a real install."}
+  ✓  1 [chromium] › tests/zz-lead-lock-handcheck.spec.ts:29:3 › lead locks hand check › set up as admin: restricted space, editors, viewer, outsider; Budget under Plans with a task and versions (6.5s)
+  ✓  2 [chromium] › tests/zz-lead-lock-handcheck.spec.ts:82:3 › lead locks hand check › two windows: the editor is typing, the admin locks with the button; the editor turns read-only and keeps the text (4.2s)
+  ✓  3 [chromium] › tests/zz-lead-lock-handcheck.spec.ts:116:3 › lead locks hand check › on the locked page: title, body and tasks fixed; History without Restore; trash disabled; trashing Plans refused; talk around it works (7.6s)
+  ✓  4 [chromium] › tests/zz-lead-lock-handcheck.spec.ts:175:3 › lead locks hand check › viewer sees the note and no Lock button; outsider gets Nothing here (2.1s)
+reduced-motion lock-note animation-duration 1e-06s
+  ✓  5 [chromium] › tests/zz-lead-lock-handcheck.spec.ts:196:3 › lead locks hand check › a second editor (not the locker) unlocks by keyboard; editing, restore and trash work; no version for lock or unlock (5.0s)
+  ✓  6 [chromium] › tests/zz-lead-lock-handcheck.spec.ts:242:3 › lead locks hand check › a locked page trashed with its space comes back still locked (2.0s)
+
+  6 passed (40.0s)
+SYNCHRONOUS TERMINATION NOTICE: When explicitly exiting the process via process.exit or via a parent process, asynchronous tasks in your exitHooks will not run. Either remove these tasks, use gracefulExit() instead of process.exit(), or ensure your parent process sends a SIGINT to the process running this code.
+exit 0
+load at end: 17.02 15.95 15.97

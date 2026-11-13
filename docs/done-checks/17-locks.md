@@ -159,61 +159,61 @@ What already exists (do not rebuild it):
 ## 17a — Server
 
 ### Build
-- [ ] Migration `apps/server/drizzle/0011_page_locks.sql` adds `locked_at`
+- [x] Migration `apps/server/drizzle/0011_page_locks.sql` adds `locked_at`
       and `locked_by` to `pages` (both nullable, `locked_by` references users
       `on delete set null`), plus a check that both are null or both are
       set. `apps/server/src/db/schema.ts` matches. Migrations still run on
       start.
-- [ ] `apps/server/src/pages/locks.ts` with `lockPage` and `unlockPage`
+- [x] `apps/server/src/pages/locks.ts` with `lockPage` and `unlockPage`
       (editor and up, no-op when already in that state, no change to version,
       `updated_at`, document or history). Routes `POST /api/pages/:id/lock`
       and `/unlock` in `apps/server/src/routes/pages.ts`.
-- [ ] `savePage` refuses a locked page inside its `update` statement and
+- [x] `savePage` refuses a locked page inside its `update` statement and
       answers 423 `page_locked` with the locker's name; 409 and 404 work as
       before.
-- [ ] `trashPage` refuses a locked page, or a page with a locked live page
+- [x] `trashPage` refuses a locked page, or a page with a locked live page
       under it, with 423, in one transaction with the trash. `trashSpace`,
       `restorePage`, `restoreSpace` and the purges are unchanged and keep the
       lock columns.
-- [ ] Shared type `PageLock` and `Page.lock` in `packages/shared/src/index.ts`;
+- [x] Shared type `PageLock` and `Page.lock` in `packages/shared/src/index.ts`;
       `GET /api/pages/:id` returns `lock`.
 
 ### Checks that must exist and pass — `apps/server/test/locks.test.ts` (Vitest, real Postgres)
-- [ ] Who: in a restricted space, an editor member and a space admin can lock
+- [x] Who: in a restricted space, an editor member and a space admin can lock
       and unlock (200); a viewer member gets 403; an editor who is not a
       member gets 404; signed out gets 401; a trashed page gets 404. Any
       editor can unlock a page another editor locked.
-- [ ] No-op and no trace: locking twice and unlocking twice answer the state
+- [x] No-op and no trace: locking twice and unlocking twice answer the state
       with nothing written; after lock and unlock, `pages.version`,
       `updated_at`, `updated_by`, `doc`, `doc_text` and the count of
       `page_versions` are the same as before, and no notification row is
       made for followers.
-- [ ] `GET /api/pages/:id` shows `lock` with the locker's id and name, and
+- [x] `GET /api/pages/:id` shows `lock` with the locker's id and name, and
       `null` after unlock; `by` is null after the locker's user row is
       removed (directly in the test database; the app has no account
       delete today), and the page stays locked.
-- [ ] Read-only for everyone: on a locked page, `PUT /api/pages/:id` by the
+- [x] Read-only for everyone: on a locked page, `PUT /api/pages/:id` by the
       locker, by another editor and by an admin all get 423 `page_locked`
       with the plain message, and the page is unchanged. After unlock, the
       same save with the same `baseVersion` succeeds.
-- [ ] Race: a save whose read happens before a lock and whose update happens
+- [x] Race: a save whose read happens before a lock and whose update happens
       after it (made with a test hook, as `tickTask` already has) gets 423,
       not a saved version.
-- [ ] Restore: on a locked page, listing and reading versions work; restore
+- [x] Restore: on a locked page, listing and reading versions work; restore
       gets 423 and writes nothing. After unlock it works.
-- [ ] Tasks: ticking a task on a locked page gets 423 and the doc is
+- [x] Tasks: ticking a task on a locked page gets 423 and the doc is
       unchanged.
-- [ ] Trash: trashing a locked page gets 423; trashing its parent gets 423
+- [x] Trash: trashing a locked page gets 423; trashing its parent gets 423
       naming the locked sub-page, and neither page is in the trash. After
       unlock both trash. Trashing the space as its admin works with a locked
       page in it; restoring the space brings the page back still locked, with
       the same `locked_at` and `locked_by`.
-- [ ] Templates: "Save as template" from a locked page works and the template
+- [x] Templates: "Save as template" from a locked page works and the template
       has no lock; a page made from that template is unlocked.
-- [ ] Not blocked: on a locked page, comments, labels, follow, favourite,
+- [x] Not blocked: on a locked page, comments, labels, follow, favourite,
       export, search, moving it and making a sub-page under it all still
       work; the sub-page is not locked.
-- [ ] `npm run check` passes (this file is part of it), and the originality
+- [x] `npm run check` passes (this file is part of it), and the originality
       scan (c5) passes on the new code and texts.
 
 ### Builder's notes (item #180, 2026-11-13)
@@ -244,18 +244,18 @@ Boxes are left for the lead to tick. What is where:
 ## 17b — Screen
 
 ### Build
-- [ ] Lock / Unlock button in the page header (editors and up only), the
+- [x] Lock / Unlock button in the page header (editors and up only), the
       quiet "Locked by X · date" line for everyone, and the read-only editor,
       title, task boxes, History restore and trash action on a locked page,
       as in Decisions. Keyboard works and the button and note have proper
       labels for screen readers.
-- [ ] A 423 while editing turns the page read-only, shows the note, and keeps
+- [x] A 423 while editing turns the page read-only, shows the note, and keeps
       the unsaved text in a quiet note with Copy. A 423 on trash or restore
       shows the server's plain message as a quiet note, not an error page.
-- [ ] Styles use only the design tokens. Light and dark both look right.
+- [x] Styles use only the design tokens. Light and dark both look right.
       Motion is soft and short and turns off under `prefers-reduced-motion`.
       Text and controls pass the contrast check (c6).
-- [ ] Nothing in the new code or text uses another product's names or assets
+- [x] Nothing in the new code or text uses another product's names or assets
       (the originality scan, c5, passes).
 
 ### Builder's notes (item #181, 2026-11-13)
@@ -311,11 +311,11 @@ test must be **no slower than the middle test of the same run**, in
 Playwright's per-test output, and the run must exit 0 (the rule of
 done-check 15 and 16). Everything the 17a boxes prove stays proved by the
 server tests; the browser test proves only what only a browser can.
-- [ ] One test: an **editor** locks a page; the "Locked by" line shows and the
+- [x] One test: an **editor** locks a page; the "Locked by" line shows and the
       editor cannot type into the page. A **viewer** opening the same page
       sees the line and no Lock button. The editor unlocks, types, and the
       page saves.
-- [ ] `npm run test:e2e` passes in full with the new test (27 + 1 = 28 tests
+- [x] `npm run test:e2e` passes in full with the new test (27 + 1 = 28 tests
       if export's count holds), no retries, no skips, no `.only`.
 - [ ] Time, under done-check 10's rule as rewritten in item #147: at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with the
@@ -331,46 +331,46 @@ server tests; the browser test proves only what only a browser can.
 ---
 
 ## Hand check (lead, in a browser, both themes)
-- [ ] As admin: a restricted space with an editor and a viewer who are
+- [x] As admin: a restricted space with an editor and a viewer who are
       members, and an outsider who is not. A page "Budget" with a task list,
       under a page "Plans", with a few versions in its history.
-- [ ] Two windows: the editor has "Budget" open and is typing; the admin
+- [x] Two windows: the editor has "Budget" open and is typing; the admin
       locks it. The editor's next save turns the page read-only with "Locked
       by" and the unsaved text in the Copy note; nothing is lost silently.
-- [ ] On the locked page: the title, the body and the task boxes cannot be
+- [x] On the locked page: the title, the body and the task boxes cannot be
       changed; History opens but has no Restore; the trash action is
       disabled. Trashing "Plans" says "Budget" is locked. Comments, labels,
       follow, favourite and export still work.
-- [ ] As the viewer: the note shows, no Lock button. As the outsider: 404.
-- [ ] Unlock as the editor (not the one who locked it): editing, restore and
+- [x] As the viewer: the note shows, no Lock button. As the outsider: 404.
+- [x] Unlock as the editor (not the one who locked it): editing, restore and
       trash work again. History shows no extra version for the lock or the
       unlock.
-- [ ] Light and dark: the button and the note are calm and soft, not alarming.
+- [x] Light and dark: the button and the note are calm and soft, not alarming.
       Motion is quiet, and with reduced motion turned on it is instant.
       Keyboard alone can lock and unlock.
 
 ## Lead check
-- [ ] Read the diff myself: the lock is checked in `savePage`'s own update,
+- [x] Read the diff myself: the lock is checked in `savePage`'s own update,
       not before it; lock and unlock write no version, document or history;
       trash checks the whole branch in one transaction; restore and task
       ticks are blocked only through `savePage`; locks are never copied into
       templates; one permission path.
-- [ ] Ran `npm run check` myself: exit 0, log in `docs/done-checks/logs/`.
-- [ ] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
+- [x] Ran `npm run check` myself: exit 0, log in `docs/done-checks/logs/`.
+- [x] Ran `npm run test:e2e` myself, timed: all passed, exit 0, count, time
       and load noted here, and my run is added to the time record above.
-- [ ] Hand check above done and ticked.
+- [x] Hand check above done and ticked.
 - [ ] `docker compose build` and the smoke script still pass with the new
       migration (self-host engineer's run, read back by the lead). While no
       Docker daemon is reachable from the workspace, this box stays open and
       says so.
-- [ ] ARCHITECTURE.md gets a short "Page locks" section (section 21): the
+- [x] ARCHITECTURE.md gets a short "Page locks" section (section 21): the
       flag on the page row, the one check in `savePage`, what a lock does and
       does not block, trash and restore, and why co-editing can still be
       added.
 - [ ] Committed on `master` and pushed to GitHub, as the owner asked. While
       the workspace has no GitHub address, this box stays open and says it is
       waiting on the owner.
-- [ ] Lead sign-off written here.
+- [x] Lead sign-off written here.
 
 ### Tester, item #182 (2026-11-13): locks browser test and timed runs
 - The test is the third test of `e2e/tests/editor.spec.ts` ("an editor locks a
@@ -402,3 +402,102 @@ server tests; the browser test proves only what only a browser can.
   that timed out at load 21); those logs were replaced. I cut the test's final
   reload; I raised no limit and dropped no other test. Whether to cut it
   further, or to treat the suite's speed as #184's job, is for the lead.
+
+### Lead check and sign-off, item #183 (2026-11-13)
+
+**Diff read myself** (`55acb69`, `c107aeb`, `c3fd292`):
+- The lock is checked inside `savePage`'s own `update … where version =
+  baseVersion and deleted_at is null and locked_at is null`; the one read
+  after a miss tells 404, 423 and 409 apart. `grep "update(pages)"` finds no
+  other writer of title or body: `movePage` and trash restore write only
+  `parent_id`/`position`/trash columns; `restoreVersion` and `tickTask` save
+  through `savePage`.
+- `lockPage`/`unlockPage` set only `locked_at`/`locked_by`, with the
+  "already in that state" guard in the `where`, after `requirePageRole(editor)`
+  (the one permission path).
+- `trashPage` now runs `lockSpaceTree`, then reads the live branch `for
+  update` and calls `deletePage` in the same transaction.
+- Templates: no template code reads or writes the lock columns, and new pages
+  are inserted without them, so a lock is never copied.
+- **The builder's change to the Decisions is accepted.** The check is
+  `locked_by is null or locked_at is not null`, not "both or neither". "Both
+  or neither" cannot hold together with `on delete set null` and "the page
+  stays locked when the locker is gone".
+- The race test is sound. The `for update` pre-read in `savePage` only runs
+  when the new doc mentions someone; then a lock simply waits for the save to
+  commit, which is also safe.
+
+**`npm run check`**: exit 0, all 7 steps, 443 tests in 25 files
+(`locks.test.ts` 11), contrast 58 pairs ok, originality scan ok. Load 11.7
+at the start, 14.1 at the end. Log `logs/17-locks-check-183.txt`.
+
+**Hand check** in Chromium, driven by a script (kept as
+`logs/17-locks-handcheck-183.spec.ts.txt`, **not** in the suite; log
+`logs/17-locks-handcheck-183.txt`, 6 of 6 passed, exit 0, load 15.8 → 17.0).
+I looked at the screenshots myself.
+- Admin set up a restricted space with two editors and a viewer as members,
+  plus an outsider (an instance editor who is not a member), and "Budget",
+  with a task, under "Plans". It had 3 versions by 3 people.
+- Two windows. The editor had Budget open; the admin pressed Lock in their
+  own window and the editor kept typing. The editor's page turned read-only
+  with "Locked by Ada Lind", and "words typed after the lock" was in the Copy
+  note. No version was written, and there were no page errors.
+- On the locked page, the title is not editable, the body has
+  `contenteditable=false`, and the task box is disabled. Delete is
+  `aria-disabled`, and Enter on it opens no dialog. History lists the
+  versions with no Restore, and shows "Unlock the page to restore a version".
+  A comment, a label, Follow, the star and the Markdown export all worked.
+  Trashing "Plans" gave the quiet note "“Budget” under this page is locked by
+  Ada Lind. Unlock it first." with no red error, and both pages stayed.
+- The viewer sees the line and no Lock button; their unlock call is 403. The
+  outsider sees "Nothing here", and the API answers 404.
+- A second editor, not the locker, unlocked with the keyboard (focus stays on
+  the button), locked again and unlocked again, under reduced motion. The
+  line's animation is 1e-06 s, so it is instant. No version was added for
+  any lock or unlock. Then editing saved, restoring version 1 worked, and
+  trashing Plans took Budget with it. Restoring Plans from the Trash view
+  brought Budget back, editable.
+- The admin locked Budget, trashed the whole space and restored it. Budget
+  came back still locked.
+- **Light and dark.** In my first dark shots the main area looked washed-out
+  grey. I traced that to taking the shot during the theme cross-fade. A probe
+  (`logs/17-locks-darkprobe-183.spec.ts.txt`) loaded the open and the locked
+  page straight in dark and waited. Both have the dark background
+  (rgb(28,29,28)), with no overlay, opacity or filter. The lock line is muted,
+  the Unlock button is a soft tint like Following, and the Copy note is the
+  same calm note as elsewhere. Nothing is alarming in either theme.
+
+**`npm run test:e2e`, timed** (`/usr/bin/time`, the whole suite):
+
+| Run | Result | Time | Load start → end | Locks test: time, rank | Middle (14th) test |
+|-----|--------|------|------------------|------------------------|--------------------|
+| 183-1 | 27 passed, 1 failed, exit 1 | 78.45 s | 17.40 → 24.54 | (passed) | — |
+| 183-2 | 28 passed, exit 0 | 79.91 s | 23.06 → 23.64 | 8.3 s, 8th of 28 | 7.0 s |
+
+Run 1 failed in `editor-conflict.spec.ts` after 1.3 s with
+`page.goto: net::ERR_NETWORK_CHANGED`. The machine's network changed under
+Chromium; it was not a check that failed or a test running out of time.
+Run 2 straight after passed in full. Both logs are kept
+(`logs/17-locks-e2e-183-run{1,2}.txt`). The working tree had another
+member's uncommitted timeout changes in `editor-conflict.spec.ts` and
+`embeds.spec.ts` (item #188) during these runs. I did not make or commit
+them.
+
+**Open boxes:**
+- **Time.** The full suite passes, and my run is 79.9 s, under 95 s. But the
+  locks test was slower than the middle test in all four runs (the tester's
+  three and mine: 10.4/8.7, 12.4/10.0, 11.4/10.5, 8.3/7.0 s), and the
+  tester's middle run was 102.8 s. The rule says the test is cut back first,
+  so this box stays open. A small follow-up item should trim it (it signs in
+  two people and switches the editor twice; the viewer half is already proved
+  by the hand check). The suite's overall speed under load stays with #184.
+- **Docker.** `docker info` fails here (no daemon reachable from the
+  workspace, 2026-11-13). This box waits on a run where Docker is available.
+- **Push.** `git remote -v` is empty. Committed on `master`; this waits on the
+  owner's GitHub address.
+
+**Sign-off:** locks works as the Decisions say, and I accept it on function,
+permissions, both themes and the read-only rules. Like export, it is **not
+fully closed**. The timing box is open, and so are the two boxes that wait on
+the owner. ARCHITECTURE.md now has section 21, "Page locks". RESULT.json lists
+the export and locks done-checks.

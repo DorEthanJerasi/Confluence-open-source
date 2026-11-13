@@ -4,7 +4,7 @@
       "title": "Stillwater - the team wiki app",
       "kind": "app",
       "path": "apps",
-      "note": "Web screens (apps/web) and server API (apps/server): sign-up and log-in, admin/editor/viewer roles, per-space permissions, spaces with nested pages, block editor with slash commands and embeds, permission-aware search, page history with restore, page comments, AI summarise and ask-your-docs."
+      "note": "Web screens (apps/web) and server API (apps/server): sign-up and log-in, admin/editor/viewer roles, per-space permissions, spaces with nested pages, block editor with slash commands and embeds, permission-aware search, page history with restore, comments, templates, favourites and recently viewed, trash, task lists, labels, @mentions with notifications and following, export to Markdown and PDF, single-page locks, AI summarise and ask-your-docs."
     },
     {
       "title": "Shared code and editor document schema",
@@ -40,7 +40,7 @@
       "title": "Architecture decisions",
       "kind": "document",
       "path": "ARCHITECTURE.md",
-      "note": "Editor and document model, storage, auth and permissions, search, history, AI provider design, comments."
+      "note": "Editor and document model, storage, auth and permissions, search, history, AI provider design, comments, templates, favourites, trash, tasks, labels, mentions and notifications, export (section 20) and page locks (section 21)."
     },
     {
       "title": "Design system",
@@ -58,13 +58,25 @@
       "title": "End-to-end browser tests",
       "kind": "code",
       "path": "e2e/tests",
-      "note": "Playwright suite (npm run test:e2e): auth, permissions, nested pages, editor, embeds, search, history, AI on the stub, comments."
+      "note": "Playwright suite (npm run test:e2e, 28 tests in 18 files): auth, permissions, nested pages, editor, embeds, search, history, AI on the stub, comments, templates, trash, tasks, labels, mentions, export (viewer.spec.ts) and locks (editor.spec.ts)."
     },
     {
       "title": "Check scripts",
       "kind": "code",
       "path": "scripts",
       "note": "npm run check (typecheck, unit and API tests, originality scan, contrast check) and smoke.sh for the real compose stack."
+    },
+    {
+      "title": "Export to Markdown and PDF: done-check and sign-off",
+      "kind": "document",
+      "path": "docs/done-checks/16-export.md",
+      "note": "Export a page, or a page with its sub-pages, as Markdown (.md or .zip with files) or PDF; read-only, same permissions as reading. Signed off by the lead in item #185; Docker build and push wait on the owner."
+    },
+    {
+      "title": "Single-page locks: done-check and sign-off",
+      "kind": "document",
+      "path": "docs/done-checks/17-locks.md",
+      "note": "Editors and up can lock a page so nobody can change its title or body until it is unlocked; quiet 'Locked by' line, read-only editor, trash and restore respect it. Lead check in item #183."
     },
     {
       "title": "Showcase video",

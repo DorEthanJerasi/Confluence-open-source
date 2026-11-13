@@ -667,3 +667,63 @@ someone on the team has done it by hand in a browser against the compose stack.
 - **Not yet:** exporting a whole space, Word or HTML, any import, comments or
   history in the export, scheduled or emailed exports, fonts for scripts
   Roboto does not cover (they show as blank boxes, noted in INSTALL.md).
+
+## 21. Page locks
+
+- **A flag on the page row, nothing more.** Two nullable columns on `pages`,
+  `locked_at` and `locked_by` (user id, `on delete set null`), added by
+  migration `0011_page_locks.sql`. A check stops a locker without a lock
+  (`locked_by is null or locked_at is not null`); if the locker's user row is
+  ever removed the page stays locked and the screen just says "Locked". There
+  is no lock table, no lease and no time-out: a lock stays until someone
+  unlocks it. Only `apps/server/src/pages/locks.ts` writes the two columns.
+- **Who.** `POST /api/pages/:id/lock` and `/unlock` go through
+  `requirePageRole(editor)`, the one permission path: editors, space admins and
+  instance admins may lock and unlock, and any of them may unlock a page
+  someone else locked. A viewer gets 403, someone who cannot read the space
+  404, signed out 401, a trashed page 404. Locking a locked page or unlocking
+  an unlocked one writes nothing and answers the current state.
+  `GET /api/pages/:id` carries `lock` (`PageLock` in `packages/shared`).
+- **A lock is never an edit.** Lock and unlock touch only the two columns:
+  not `version`, `updated_at`, `updated_by`, the document, the search text or
+  `page_versions`. So a lock never shows up in history, "recently updated" or
+  followers' edit notifications.
+- **One check, inside the one write path.** `savePage` (`pages/pages.ts`)
+  has `locked_at is null` in its own `update … where version = baseVersion`,
+  not in a read before it, so a save that races a lock cannot slip through
+  (Postgres re-reads the row it waited for). When no row matches, one read
+  tells gone (404), locked (423 `page_locked`, "This page is locked by Ada
+  Lind. Unlock it to make changes.") and stale (409) apart. Restoring a
+  version (`pages/history.ts`) and ticking a task (`tasks/tasks.ts`) save
+  through `savePage`, so they are refused there with no check of their own.
+- **What a lock does not stop:** reading, search, AI answers, export,
+  comments, labels, following, favourites, moving the page, and new sub-pages
+  under it. Sub-pages are not locked by their parent. A lock protects what
+  the page says, not the talk around it or where it sits.
+- **Trash and restore.** `trashPage` (`trash/trash.ts`) reads the whole live
+  branch `for update` in the same transaction as the trash and refuses with
+  423 if the page or any page under it is locked, naming the first locked
+  sub-page; nothing is trashed. Trashing a whole space (space admins) is still
+  allowed. Trash, restore and purge leave the two columns as they are, so a
+  page that went to the trash locked (with its space) comes back locked.
+  Templates only read a page and only make new ones, so a lock is never
+  copied.
+- **Screen.** A Lock / Unlock button beside Export (editors and up only), and
+  for everyone one quiet line under the title, "Locked by Ada Lind · 13 Nov",
+  in muted text with a small lock icon, fading in and out (instant under
+  reduced motion) (`apps/web/src/locks/LockControls.tsx`). On a locked page the
+  title, body and task boxes are read-only for everyone, History has no
+  Restore, and Delete is `aria-disabled` with a reason screen readers hear. If
+  a lock arrives while someone is writing, their next save gets 423; the
+  saver (`editor/saver.ts`) stops in a `locked` state, the page turns
+  read-only and their unsaved text is kept in a note with "Copy my text". A
+  423 on trash or restore is a quiet note with the server's message.
+- **Why co-editing can still be added without a rewrite.** The lock lives on
+  the page row and is checked in `savePage`, the one write path a co-editing
+  server would also save through; that server would check the same flag
+  before taking edits and close live sessions when a page is locked. Nothing
+  about the lock is in the document, so the stored JSON and a future Yjs state
+  are untouched, and page ids do not change.
+- **Not yet:** locking a whole space or branch at once, locks that run out,
+  "only the locker may unlock", asking for an unlock, notifications for lock
+  and unlock, and showing locks in the sidebar or search results.
