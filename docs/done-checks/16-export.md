@@ -443,7 +443,17 @@ only a browser can.
       skips, no `.only`. *(Item #185: the suite is now 28 with the locks
       test. Four full runs in a row pass with exit 0 and no retries: the
       tester's three #182 runs and the lead's #185 run.)*
-- [x] Time, under done-check 10's rule as rewritten in item #147: at least
+- [ ] **Time, rewritten by the lead, item #191 (2026-11-17): every counted
+      `npm run test:e2e` run exits 0 with no failures, and the export test
+      is no slower than the middle test of the same run.** No whole-suite
+      time limit. Counted runs and the judgement: "The one timing rule (item
+      #191)" at the end of `10-e2e-speed.md`. *(Lead, #191: all 6 counted
+      runs exit 0. The export test is faster than the middle test in 3 of
+      them (4th, 8th, 9th) and slower in 3 (16th, 21st, 22nd of 28). The #185
+      tick below rested on four earlier runs; the later ones do not hold.
+      **Reopened. Missing:** the export test cut back, then three counted
+      runs after the cut.)*
+- ~~[x] Time, under done-check 10's rule as rewritten in item #147:~~ at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with the
       export test in the suite, load noted at the start and end of each,
       **every run passes with exit 0 and the middle run is under 95 s**. The
@@ -691,3 +701,12 @@ only a browser can.
 - So **the under-95 s box stays open**. Nothing here makes it reliable; what
   would is fewer or shorter tests (the lead's call: `editor.spec.ts` alone is
   about 41 s in one worker) or a limit that allows for load. I changed neither.
+
+### Lead, item #191 (2026-11-17): timing box judged under the one rule
+The whole-suite "under 95 s" target is dropped. The timing box above now
+asks only that every counted run exits 0 and that this feature's test is no
+slower than the middle test of the same run. Judged on the six counted runs
+already committed (table in `10-e2e-speed.md`, "The one timing rule"): the
+box is **open**, as written in it, and what is missing is named there: the
+test cut back, then three counted runs. The feature works as signed off;
+this box is about its test's cost only.

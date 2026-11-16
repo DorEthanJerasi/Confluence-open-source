@@ -216,6 +216,13 @@ not only fewer tests. A file over its budget is fine if the total holds.
    slowest runs keeps the real risk (a run near the checker's limit) on
    record instead of hidden. First applied in `12-tasks.md`, "Lead sign-off
    (item #147)": 13 runs, all passed, median 85.51 s, slowest 110.56 s.
+   **Rewritten again by the lead, item #191 (2026-11-17). Box 1 now reads:
+   every counted `npm run test:e2e` run exits 0 with no failures.** There is
+   no time limit on the whole run any more; a feature's box asks in
+   addition that its own test is no slower than the middle test of the same
+   run. Which runs count, and the judgement, are in "The one timing rule
+   (item #191)" at the end of this file. *(Lead, #191: 6 of 6 counted runs,
+   28 passed, exit 0. Failures in runs that do not count are listed there.)*
 2. [x] Every run prints `N passed` and exits 0, where N is the number of
    tests in the lean suite (see "The lean suite" below; it replaces "N ≥ 40").
    No retries, no skipped tests, no `.only`, no failures, in all three runs.
@@ -772,3 +779,72 @@ watching (c3 passed the checker at about 110 s), but it passed.
   11 only if all three runs meet them. Checks every row of the table against
   the specs and the named server tests and ticks 3 and 8; re-checks 7.
 - Lead: runs it once more and accepts or sends it back.
+
+## The one timing rule (item #191, lead, 2026-11-17)
+
+**Why it changed.** The whole-suite "under 95 s" target was our own margin,
+not the owner's. On this shared 4-core machine the same code lands anywhere
+from 78 s to 112 s at a start load under 10 (the tests add up to about 230 s
+of work across four workers), so the target measured how busy the machine
+was. It held back #139 and #190 three times each, and the timing boxes in
+12, 16 and 17, with no fault in the app. It is dropped everywhere.
+
+**The rule, for every timing box in done-checks 10, 12, 16 and 17:**
+1. The run exits 0 with no failures.
+2. A feature's test is no slower than the middle test of the same run
+   (sort the run's tests by their own time; with 28 tests the middle is the
+   14th fastest). A feature with two tests needs both to meet it.
+
+A box is ticked when every counted run meets both points. If the feature's
+test misses point 2, it is cut back first; no limit is raised and no other
+test is dropped to make room.
+
+**Which runs count:** the plain `npm run test:e2e` (default 4 workers, no
+`E2E_WORKERS`) on the 28-test suite, at or after `e4f47aa` (the last change
+under `e2e/`, `apps/` or `packages/`: the 60 s per-test limit), with its raw
+log in `docs/done-checks/logs/` and its start load under 10 written down.
+That gives six runs. The times below were recounted by me from the raw logs
+(script kept as `logs/19-timing-191-judge.py.txt`, its output in
+`logs/19-timing-191-judgement.txt`). Some "rank" figures in older tables in
+16 and 17 do not match the logs (for example 17's "locks 10.4 s, 9th of 28"
+in #182 run 1 is 20th by time); the figures here replace them.
+
+| Run (log) | Start load | Wall | Result | Middle (14th) | Export | Locks | Tasks 1 | Tasks 2 |
+|---|---|---:|---|---:|---|---|---|---|
+| tester #188 run 1 (`16-export-e2e-188b-run1`) | 9.74 | 88.17 s | 28 passed, exit 0 | 7.0 s | 6.2 s, 8th | **8.9 s, 17th** | **12.7 s, 25th** | 4.4 s, 3rd |
+| tester #188 run 2 (`…188b-run2`) | 9.88 | 107.24 s | 28 passed, exit 0 | 8.1 s | **11.4 s, 21st** | **11.4 s, 21st** | **10.7 s, 19th** | 3.9 s, 1st |
+| tester #188 run 3 (`…188b-run3`) | 9.53 | 111.54 s | 28 passed, exit 0 | 9.9 s | 8.2 s, 9th | **14.9 s, 24th** | **16.2 s, 25th** | 4.2 s, 1st |
+| tester #190, 4 workers (`19-190-base4-run1`) | 7.06 | 97.07 s | 28 passed, exit 0 | 8.7 s | **10.1 s, 16th** | **11.8 s, 21st** | **13.1 s, 25th** | 3.6 s, 1st |
+| tester #190, 4 workers (`19-190-run1`) | 8.38 | 81.2 s | 28 passed, exit 0 | 6.5 s | **8.9 s, 22nd** | **7.5 s, 16th** | **8.7 s, 21st** | 2.4 s, 1st |
+| coder #154 re-check (`14-keyboard-fix-154-recheck-e2e`) | 0.5 | 78 s | 28 passed, exit 0 | 5.9 s | 3.6 s, 4th | **7.7 s, 20th** | **9.6 s, 24th** | 2.2 s, 1st |
+
+Bold = slower than the middle test of that run. "Tasks 1" is "an editor
+gives a task a person and a due date…"; "Tasks 2" is "a viewer sees their
+overdue task…". Export is the second test of `viewer.spec.ts`; locks is the
+third test of `editor.spec.ts`.
+
+**Not counted, but on record so nothing is hidden:**
+- `19-190-probe` (2026-11-13 07:01): 1 failed (`embeds.spec.ts` image and
+  file, 34.6 s), no start load written down; its middle test was 17.4 s, so
+  the machine was very busy.
+- Tester #139 re-run (2026-11-16, `12-tasks.md`, no raw logs kept): run 1,
+  start load 9.3, 28 passed, exit 0; runs 2 and 3 started at 21.3 and 18.7
+  and each had 1 failure, the same `embeds.spec.ts` image-and-file test.
+  **The risk on record:** at load near 20 that one test can still run out of
+  time. If a counted run ever fails on it, box 1 reopens.
+- `19-190-w3-run1..3`: 3 workers, not the default.
+
+**Judgement:**
+- **Done-check 10, box 1 (whole suite):** 6 of 6 counted runs exit 0 with no
+  failures. **Ticked.**
+- **12 (task lists):** Tasks 1 is slower than the middle test in 6 of 6
+  runs. **Open.**
+- **16 (export):** slower than the middle test in 3 of 6 runs. **Open**
+  (it was ticked in #185 on four earlier runs; the later runs do not hold).
+- **17 (locks):** slower than the middle test in 6 of 6 runs. **Open.**
+
+**What is missing, the same for all three:** the test is cut back (the
+rule's own remedy: fewer sign-ins, page switches and reloads where they are
+not what the test proves), then three counted runs after the cut, logs kept,
+judged by this table's rule. That is new work for the tester, one item per
+feature; no run already on record can close these boxes.

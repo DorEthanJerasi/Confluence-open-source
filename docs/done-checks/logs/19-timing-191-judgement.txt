@@ -1,0 +1,24 @@
+# Item #191: per-test judgement from the raw logs, 2026-11-17
+# command: python3 -I docs/done-checks/logs/19-timing-191-judge.py.txt <logs>
+# mid = 14th fastest of 28; rN = rank by time, 1 = fastest; SLOWER = slower than mid
+# counted runs:
+14-keyboard-fix-154-recheck-e2e.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[] mid=5.9 locks=7.7s r20 SLOWER | export=3.6s r4 | tasks1=9.6s r24 SLOWER | tasks2=2.2s r1
+16-export-e2e-188b-run1.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=7.0 locks=8.9s r17 SLOWER | export=6.2s r8 | tasks1=12.7s r25 SLOWER | tasks2=4.4s r3
+16-export-e2e-188b-run2.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=8.1 locks=11.4s r21 SLOWER | export=11.4s r21 SLOWER | tasks1=10.7s r19 SLOWER | tasks2=3.9s r1
+16-export-e2e-188b-run3.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=9.9 locks=14.9s r24 SLOWER | export=8.2s r9 | tasks1=16.2s r25 SLOWER | tasks2=4.2s r1
+19-190-base4-run1.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=8.7 locks=11.8s r21 SLOWER | export=10.1s r16 SLOWER | tasks1=13.1s r25 SLOWER | tasks2=3.6s r1
+19-190-run1.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=6.5 locks=7.5s r16 SLOWER | export=8.9s r22 SLOWER | tasks1=8.7s r21 SLOWER | tasks2=2.4s r1
+# not counted (listed for the record):
+16-export-e2e-188-run1.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=6.4 locks=8.9s r20 SLOWER | export=3.8s r3 | tasks1=12.4s r25 SLOWER | tasks2=3.0s r1
+16-export-e2e-188-run2.txt lines=28 passed=['27'] failed=['1'] flaky=[] exit=[('1', '')] mid=8.0 locks=8.7s r17 SLOWER | export=8.5s r16 SLOWER | tasks1=9.4s r20 SLOWER | tasks2=2.5s r1
+16-export-e2e-188-run3.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=9.7 locks=13.3s r23 SLOWER | export=8.2s r10 | tasks1=16.3s r25 SLOWER | tasks2=4.7s r2
+16-export-lead-185-e2e.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=9.0 locks=12.1s r23 SLOWER | export=6.7s r9 | tasks1=14.0s r24 SLOWER | tasks2=4.6s r1
+17-locks-e2e-182-run1.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=8.5 locks=10.4s r20 SLOWER | export=5.0s r4 | tasks1=12.3s r23 SLOWER | tasks2=4.3s r2
+17-locks-e2e-182-run2.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=9.4 locks=12.4s r21 SLOWER | export=7.6s r8 | tasks1=14.6s r24 SLOWER | tasks2=4.1s r1
+17-locks-e2e-182-run3.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=10.1 locks=11.4s r18 SLOWER | export=5.5s r4 | tasks1=13.0s r20 SLOWER | tasks2=4.2s r2
+17-locks-e2e-183-run1.txt lines=28 passed=['27'] failed=['1'] flaky=[] exit=[('1', '')] mid=6.6 locks=9.3s r20 SLOWER | export=9.0s r19 SLOWER | tasks1=10.7s r24 SLOWER | tasks2=2.3s r2
+17-locks-e2e-183-run2.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=6.3 locks=8.3s r21 SLOWER | export=11.9s r25 SLOWER | tasks1=12.7s r26 SLOWER | tasks2=3.5s r2
+19-190-probe.txt lines=27 passed=['26'] failed=['1'] flaky=[] exit=[] mid=17.4 locks=17.0s r13 | export=17.4s r14 | tasks1=19.3s r20 SLOWER | tasks2=8.9s r2
+19-190-w3-run1.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=6.7 locks=10.0s r24 SLOWER | export=4.6s r7 | tasks1=10.4s r25 SLOWER | tasks2=2.9s r1
+19-190-w3-run2.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=8.7 locks=12.6s r24 SLOWER | export=6.2s r7 | tasks1=12.8s r25 SLOWER | tasks2=3.3s r1
+19-190-w3-run3.txt lines=28 passed=['28'] failed=[] flaky=[] exit=[('0', '')] mid=7.4 locks=10.0s r20 SLOWER | export=11.4s r23 SLOWER | tasks1=11.4s r23 SLOWER | tasks2=3.7s r1

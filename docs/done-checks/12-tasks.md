@@ -338,8 +338,19 @@ over-limit run and this one are the same code; a shared box's load varies
 run to run, and this time three in a row landed under the line. The 12b e2e
 boxes above, and this box, are ticked from these three runs, not the earlier
 single one.
-- [x] `npm run test:e2e` meets done-check 10's time rule with `tasks.spec.ts`
-      in the suite. **Rewritten by the lead, item #147** (old wording: "under
+- [ ] **Rewritten by the lead, item #191 (2026-11-17): every counted
+      `npm run test:e2e` run with `tasks.spec.ts` in it exits 0 with no
+      failures, and each of the two task-list tests is no slower than the
+      middle test of the same run.** No whole-suite time limit. Counted runs
+      and the judgement: "The one timing rule (item #191)" at the end of
+      `10-e2e-speed.md`. *(Lead, #191: all 6 counted runs exit 0, and the
+      viewer test is 1st–3rd fastest every time. But "an editor gives a task
+      a person and a due date…" is slower than the middle test in 6 of 6
+      runs (19th–25th of 28, 8.7–16.2 s against a middle of 5.9–9.9 s).
+      **Open. Missing:** that test cut back, then three counted runs after
+      the cut. The #147 tick below was under the old rule.)*
+- ~~[x] `npm run test:e2e` meets done-check 10's time rule with `tasks.spec.ts`
+      in the suite.~~ **Rewritten by the lead, item #147** (old wording: "under
       95 s at load 15 or more", three runs in a row). The rule now: **every
       recorded run since the #145 cut passed with exit 0, the middle run is
       under 95 s, and the slowest runs are listed against the checker's
@@ -771,3 +782,12 @@ under 6 as the last note asked, so this is not a quiet-machine proof.
   (the known load cause in `16-export.md`), not task code.
 - No run was under 95 s. The 95 s box stays open; it needs a quiet machine or
   the lead's decision on test count / limit (see item #190 in `16-export.md`).
+
+### Lead, item #191 (2026-11-17): timing box judged under the one rule
+The whole-suite "under 95 s" target is dropped. The timing box above now
+asks only that every counted run exits 0 and that this feature's test is no
+slower than the middle test of the same run. Judged on the six counted runs
+already committed (table in `10-e2e-speed.md`, "The one timing rule"): the
+box is **open**, as written in it, and what is missing is named there: the
+test cut back, then three counted runs. The feature works as signed off;
+this box is about its test's cost only.

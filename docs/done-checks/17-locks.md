@@ -317,7 +317,17 @@ server tests; the browser test proves only what only a browser can.
       page saves.
 - [x] `npm run test:e2e` passes in full with the new test (27 + 1 = 28 tests
       if export's count holds), no retries, no skips, no `.only`.
-- [ ] Time, under done-check 10's rule as rewritten in item #147: at least
+- [ ] **Time, rewritten by the lead, item #191 (2026-11-17): every counted
+      `npm run test:e2e` run exits 0 with no failures, and the locks test is
+      no slower than the middle test of the same run.** No whole-suite time
+      limit. Counted runs and the judgement: "The one timing rule (item
+      #191)" at the end of `10-e2e-speed.md`. *(Lead, #191: all 6 counted
+      runs exit 0, but the locks test is slower than the middle test in 6 of
+      6 (16th–24th of 28, 7.5–14.9 s against a middle of 5.9–9.9 s). **Open.
+      Missing:** the locks test cut back (it signs in two people and switches
+      between them twice; the viewer half is already proved by the hand
+      check), then three counted runs after the cut.)*
+- ~~[ ] Time, under done-check 10's rule as rewritten in item #147:~~ at least
       three timed `/usr/bin/time npm run test:e2e` runs by the tester with the
       locks test in the suite, load noted at the start and end of each, raw
       logs kept in `docs/done-checks/logs/`, **every run passes with exit 0
@@ -501,3 +511,12 @@ permissions, both themes and the read-only rules. Like export, it is **not
 fully closed**. The timing box is open, and so are the two boxes that wait on
 the owner. ARCHITECTURE.md now has section 21, "Page locks". RESULT.json lists
 the export and locks done-checks.
+
+### Lead, item #191 (2026-11-17): timing box judged under the one rule
+The whole-suite "under 95 s" target is dropped. The timing box above now
+asks only that every counted run exits 0 and that this feature's test is no
+slower than the middle test of the same run. Judged on the six counted runs
+already committed (table in `10-e2e-speed.md`, "The one timing rule"): the
+box is **open**, as written in it, and what is missing is named there: the
+test cut back, then three counted runs. The feature works as signed off;
+this box is about its test's cost only.

@@ -1,0 +1,33 @@
+import re, sys, glob, os
+FEAT = {
+ 'locks': lambda f,t: 'editor.spec.ts' in f and 'locks a page' in t,
+ 'export': lambda f,t: 'viewer.spec.ts' in f and ('export' in t.lower() or 'pdf' in t.lower()),
+ 'tasks1': lambda f,t: 'tasks.spec.ts' in f and 'gives a task' in t,
+ 'tasks2': lambda f,t: 'tasks.spec.ts' in f and 'viewer sees their overdue' in t,
+}
+line = re.compile(r'^\s*(✓|✘|-|×)\s+\d+\s+\[chromium\]\s+›\s+(\S+)\s+›\s+(.*)\((\d+(?:\.\d+)?)(m?s)\)\s*$')
+for p in sorted(sys.argv[1:]):
+    txt = open(p, encoding='utf-8', errors='replace').read()
+    tests = {}
+    for l in txt.splitlines():
+        m = line.match(l)
+        if not m: continue
+        mark, f, t, v, u = m.groups()
+        sec = float(v)/1000 if u == 'ms' else float(v)
+        tests[(f, t.strip())] = (mark, sec)   # retries overwrite; retries are 0
+    if not tests:
+        print(os.path.basename(p), 'NO TEST LINES'); continue
+    passed = re.findall(r'^\s*(\d+) passed', txt, re.M)
+    failed = re.findall(r'^\s*(\d+) failed', txt, re.M)
+    flaky = re.findall(r'^\s*(\d+) flaky', txt, re.M)
+    ex = re.findall(r'exit[ =:]*(\d+)|EXIT[ =:]*(\d+)', txt)
+    times = sorted(s for (_, s) in tests.values())
+    n = len(times); mid = times[(n+1)//2 - 1]
+    out = []
+    for k, fn in FEAT.items():
+        for (f, t), (mark, s) in tests.items():
+            if fn(f, t):
+                rank = 1 + sum(1 for x in times if x < s)
+                out.append(f"{k}={s}s r{rank}{'' if s <= mid else ' SLOWER'}{'' if mark=='✓' else ' NOTPASS'}")
+    wall = re.findall(r'([\d.]+)\s*(?:real|elapsed)|wall[^\d]*([\d.]+)', txt)
+    print(os.path.basename(p), f"lines={n} passed={passed} failed={failed} flaky={flaky} exit={ex[-1:] } mid={mid}", ' | '.join(out))
