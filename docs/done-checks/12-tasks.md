@@ -752,3 +752,22 @@ Runs from before the cut are left out too.
 
 **Result: every box in this file is ticked. Task lists are signed off, and
 labels may start.**
+
+### Tester re-run of the task-list proof (item #139, 2026-11-16): tasks pass, the 95 s box is NOT met
+
+`e2e/tests/tasks.spec.ts` holds 2 tests, set up through `e2e/login.ts`, and
+matches the two 12b Playwright boxes (unchanged; not edited). Three timed
+`npm run test:e2e` runs on Node 22, one after another. Load was 9-21, never
+under 6 as the last note asked, so this is not a quiet-machine proof.
+
+| run | result | wall clock | load start → end | tasks tests |
+|-----|--------|-----------|-------------------|-------------|
+| 1 | 28 passed, exit 0 | 221.4 s | 9.3 → 21.3 | both pass (15.7 s, 4.9 s) |
+| 2 | 1 failed, 26 passed, exit 1 | 122.6 s | 21.3 → 18.7 | both pass |
+| 3 | 1 failed, 26 passed, exit 1 | 135.8 s | 18.7 → 20.4 | both pass |
+
+- Both task-list tests passed in all 3 runs. The two failures were the same
+  `embeds.spec.ts` image-and-file test hitting its 20 s step limit under load
+  (the known load cause in `16-export.md`), not task code.
+- No run was under 95 s. The 95 s box stays open; it needs a quiet machine or
+  the lead's decision on test count / limit (see item #190 in `16-export.md`).
