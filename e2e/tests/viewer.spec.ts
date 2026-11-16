@@ -158,11 +158,10 @@ test.describe.serial('a viewer', () => {
 
   test('a viewer exports a page with its sub-page as a PDF and as a Markdown zip', async ({ page }) => {
     await page.context().clearCookies();
-    await logIn(page, admin, '/');
+    await logIn(page, admin, null);
     await createSpace(page, { name: 'Garden', key: 'garden', defaultRole: 'viewer' });
     const root = await createPage(page, 'garden', { title: 'Field notes', text: 'Watering rota.' });
     await createPage(page, 'garden', { title: 'Greenhouse', text: 'Vents open at nine.', parentId: root.id });
-    await page.context().clearCookies();
     await logIn(page, viewer, root.path);
     await page.getByRole('button', { name: 'Export' }).click();
     const menu = page.getByRole('menu', { name: 'Export this page' });

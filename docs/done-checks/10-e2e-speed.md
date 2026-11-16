@@ -848,3 +848,33 @@ rule's own remedy: fewer sign-ins, page switches and reloads where they are
 not what the test proves), then three counted runs after the cut, logs kept,
 judged by this table's rule. That is new work for the tester, one item per
 feature; no run already on record can close these boxes.
+
+## Item #192: the three tests cut back, then three runs (2026-11-17)
+
+**Cuts** (same behaviours proved, fewer sign-ins and page loads):
+- Task lists test: Ada (signed up, an editor of the space) gives the task
+  herself; the separate "Ed" account, its add-person call and its person
+  switch are gone. One sign-in switch fewer (Ada to Eve remains).
+- Locks test (`editor.spec.ts`): Eve gets her own browser window (second
+  context). Ada stays signed in, so the three person switches and two page
+  loads become one Eve sign-in, plus one reload after Ada unlocks.
+- Export test (`viewer.spec.ts`): Ada's sign-in no longer loads the home page,
+  and the extra cookie-clear before Vera's sign-in is gone.
+
+**Runs** (`logs/20-192-run1..3.txt`), with the test timed against the middle
+(14th) test of the same run:
+
+| Run | Start load | Result | Middle | Export | Locks | Tasks 1 |
+|---|---:|---|---:|---|---|---|
+| 1 | 14.9 | 28 passed, exit 0 | 10.0 s | 7.5 s, 6th | **10.9 s, 16th** | **12.6 s, 20th** |
+| 2 | 22.2 | **4 failed**, exit 1 (ai, comments, editor, editor-conflict timeouts; locks did not run) | 16.4 s (25 ran) | 7.8 s, 6th | not run | **14.5 s, 11th of 25** |
+| 3 | 31.6 | 28 passed, exit 0 | 8.8 s | **15.0 s, 26th** | **10.8 s, 18th** | **12.4 s, 21st** |
+
+**Judgement: none of the three boxes closes, and these are not clean counted
+runs.** The box was busier than the rule's "normal load" (start load 15-32,
+others' work on the machine), and run 2 failed on four tests this item did not
+touch. Faster than before in absolute terms (export 7.5-7.8 s in two runs;
+locks 10.8-10.9 s against 7.5-14.9 s before), but locks and tasks are still
+slower than the middle test in every run they completed. Export: 2 of 3 under
+the middle, 1 over (at load 32). Needs a further cut for tasks (two sign-ins
+and the dark-mode screenshot dominate) and runs on a quieter machine.

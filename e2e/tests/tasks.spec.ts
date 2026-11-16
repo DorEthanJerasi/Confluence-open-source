@@ -19,7 +19,6 @@ import { addPerson, createPage, createSpace, logIn, signUp } from '../login';
 import { resetDatabase } from '../reset-db';
 
 const admin = { name: 'Ada Admin', email: 'ada@stillwater.test', password: 'correct horse battery' };
-const ed = { name: 'Ed Editor', email: 'ed@stillwater.test', password: 'battery horse correct' };
 const eve = { name: 'Eve Editor', email: 'eve@stillwater.test', password: 'horse correct battery' };
 const vera = { name: 'Vera Viewer', email: 'vera@stillwater.test', password: 'horse battery correct' };
 
@@ -64,7 +63,6 @@ test.describe.serial('task lists', () => {
   }) => {
     await signUp(page, admin);
     await createSpace(page, { name: 'Allotment', key: 'allotment', defaultRole: 'editor' });
-    await addPerson(page, ed, 'editor');
     await addPerson(page, eve, 'editor');
     veraId = await addPerson(page, vera, 'viewer');
     const plan = await createPage(page, 'allotment', {
@@ -72,7 +70,8 @@ test.describe.serial('task lists', () => {
       doc: taskDoc([{ text: 'Water the ferns' }, { text: 'Sweep the porch' }]),
     });
 
-    await switchUser(page, ed, plan.path);
+    // Ada (an editor of the space, signed in by signUp) gives the task: no second sign-in, one page load.
+    await page.goto(plan.path);
     const row = taskRow(page, 'Water the ferns');
     await expect(row).toBeVisible();
 

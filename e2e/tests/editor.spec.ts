@@ -146,7 +146,7 @@ test.describe.serial('editor', () => {
   // refusal; this proves what only a browser shows. Ada locks a page, Eve (a
   // second editor) sees the quiet note and cannot type, Ada unlocks, Eve types
   // and it saves (the "Saved" status; reload-and-text is test 1). Both people and the page come through the API.
-  test('an editor locks a page; a second editor sees it read-only with the note; unlocking restores editing', async ({ page }) => {
+  test('an editor locks a page; a second editor sees it read-only with the note; unlocking restores editing', async ({ page, browser, baseURL }) => {
     await logIn(page, admin, null);
     const eve = { name: 'Eve Editor', email: 'eve@stillwater.test', password: 'battery horse correct' };
     await addPerson(page, eve, 'editor');
@@ -156,23 +156,27 @@ test.describe.serial('editor', () => {
     await page.getByRole('button', { name: 'Lock', exact: true }).click();
     await expect(page.getByText('Locked by Ada Admin')).toBeVisible();
 
-    await page.context().clearCookies();
-    await logIn(page, eve, path);
-    await expect(page.getByText('Locked by Ada Admin')).toBeVisible();
-    await expect(body(page)).toContainText('Q4 numbers');
-    await expect(body(page)).toHaveAttribute('contenteditable', 'false');
+    // Eve has her own browser window (second context), so Ada stays signed in and nobody switches.
+    const eveContext = await browser.newContext({ baseURL });
+    try {
+      const evePage = await eveContext.newPage();
+      await logIn(evePage, eve, path);
+      await expect(evePage.getByText('Locked by Ada Admin')).toBeVisible();
+      await expect(body(evePage)).toContainText('Q4 numbers');
+      await expect(body(evePage)).toHaveAttribute('contenteditable', 'false');
 
-    await page.context().clearCookies();
-    await logIn(page, admin, path);
-    await page.getByRole('button', { name: 'Unlock', exact: true }).click();
-    await expect(page.getByText('Locked by Ada Admin')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Unlock', exact: true }).click();
+      await expect(page.getByText('Locked by Ada Admin')).toHaveCount(0);
 
-    await page.context().clearCookies();
-    await logIn(page, eve, path);
-    await expect(body(page)).toHaveAttribute('contenteditable', 'true');
-    await body(page).click();
-    await page.keyboard.press('Control+End');
-    await page.keyboard.insertText(' and Q1 plan');
-    await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
+      await evePage.reload();
+      await expect(body(evePage)).toHaveAttribute('contenteditable', 'true');
+      await expect(evePage.getByText('Locked by Ada Admin')).toHaveCount(0);
+      await body(evePage).click();
+      await evePage.keyboard.press('Control+End');
+      await evePage.keyboard.insertText(' and Q1 plan');
+      await expect(evePage.locator('.save-status')).toHaveText('Saved', { timeout: 10_000 });
+    } finally {
+      await eveContext.close();
+    }
   });
 });
