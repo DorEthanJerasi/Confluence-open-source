@@ -140,6 +140,14 @@ scratch.
   new line went above the image); with it put back it passes. Logs:
   `docs/done-checks/logs/14-keyboard-fix-lead-175-*.txt`. Not pushed: the
   workspace still has no GitHub address.
+  **Re-check on today's master (item #154 reset, 2026-11-17, load 0.5–3):**
+  `npm run check` exit 0 (443 tests, 109 s); `npm run test:e2e` exit 0
+  (28 passed, 78 s). With `DocEndKey` commented out, `embeds.spec.ts` fails
+  on "image stays in second place"; put back, both tests pass. Running the
+  test alone with `-g` does not work: the file is serial and its first test
+  makes the admin, so a lone run fails at log-in (401). Logs:
+  `docs/done-checks/logs/14-keyboard-fix-154-recheck-*.txt`. Still not
+  pushed: `git remote -v` is empty.
 - In full-page screenshots the left sidebar's background ends at the window
   height. On a real screen the sidebar stays put while the page scrolls, so
   nobody sees this.
